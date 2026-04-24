@@ -1,0 +1,95 @@
+/* ─── StockScript Design Tokens ─────────────────────────────────────────────
+   Single source of truth for every visual decision.
+   All hex values live here. Components reference only var(--...).
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Brand / Primary ─────────────────────────────────────── */
+  --color-primary:        #185FA5;
+  --color-primary-hover:  #14508E;
+  --color-primary-light:  #EBF3FB;
+
+  /* ── Page & surfaces ─────────────────────────────────────── */
+  --color-page-bg:  #F7F8FA;
+  --color-surface:  #FFFFFF;
+
+  /* ── Text hierarchy ──────────────────────────────────────── */
+  --color-text-heading:     #111827;
+  --color-text-body:        #374151;
+  --color-text-muted:       #6B7280;
+  --color-text-placeholder: #9CA3AF;
+
+  /* ── Borders ─────────────────────────────────────────────── */
+  --color-border:       #E2E5EA;
+  --color-border-light: #F1F3F5;
+
+  /* ── Semantic colours ────────────────────────────────────── */
+  --color-profit:      #1D9E75;
+  --color-profit-bg:   #F0FBF7;
+  --color-profit-text: #0E6B4F;
+
+  --color-loss:      #D4537E;
+  --color-loss-bg:   #FDF2F5;
+  --color-loss-text: #9D1F47;
+
+  --color-warning:      #EF9F27;
+  --color-warning-bg:   #FEF8EC;
+  --color-warning-text: #A0620D;
+
+  --color-info:      #378ADD;
+  --color-info-bg:   #EBF3FB;
+  --color-info-text: #1A4F82;
+
+  /* ── Chart series — MUST match exactly ──────────────────────
+     ['#378ADD', '#1D9E75', '#EF9F27', '#D4537E']
+     ─────────────────────────────────────────────────────────── */
+  --chart-1: #378ADD;
+  --chart-2: #1D9E75;
+  --chart-3: #EF9F27;
+  --chart-4: #D4537E;
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  --sidebar-width:  220px;
+  --topbar-height:  64px;
+
+  /* ── Card ────────────────────────────────────────────────── */
+  --card-radius: 12px;
+  --card-border: 1px solid #E2E5EA;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  /* ── Buttons ─────────────────────────────────────────────── */
+  --btn-height: 36px;
+  --btn-radius: 8px;
+
+  /* ── Form inputs ─────────────────────────────────────────── */
+  --input-height: 36px;
+  --input-radius: 8px;
+
+  /* ── Table ───────────────────────────────────────────────── */
+  --table-header-size:  12px;
+  --table-row-height:   48px;
+  --table-divider:      0.5px solid #E2E5EA;
+
+  /* ── Badge palette ───────────────────────────────────────── */
+  --badge-success-bg:   #DCFCE7;
+  --badge-success-text: #15803D;
+  --badge-danger-bg:    #FEE2E2;
+  --badge-danger-text:  #DC2626;
+  --badge-warning-bg:   #FEF3C7;
+  --badge-warning-text: #D97706;
+  --badge-info-bg:      #DBEAFE;
+  --badge-info-text:    #1D4ED8;
+  --badge-neutral-bg:   #F1F5F9;
+  --badge-neutral-text: #64748B;
+  --badge-violet-bg:    #EDE9FE;
+  --badge-violet-text:  #7C3AED;
+
+  /* ── Typography ──────────────────────────────────────────── */
+  --text-page-title-size:   20px;
+  --text-page-title-weight: 600;
+  --text-card-label-size:   13px;
+  --text-card-label-weight: 500;
+  --text-body-size:         14px;
+  --text-body-weight:       400;
+  --text-stat-size:         28px;
+  --text-stat-weight:       700;
+}

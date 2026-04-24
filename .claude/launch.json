@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "stockscript",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true,
+      "env": {
+        "DATABASE_URL": "file:/Users/sdokania/Desktop/07_Projects/StockScriptNewProject/prisma/dev.db"
+      }
+    }
+  ]
+}
