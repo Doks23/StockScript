@@ -34,21 +34,6 @@ export default async function LeaderboardPage({
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
-      <section className="rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,rgba(15,23,32,0.96),rgba(49,91,74,0.88))] p-7 text-white shadow-soft">
-        <p className="text-sm uppercase tracking-[0.24em] text-white/60">
-          Leaderboard
-        </p>
-        <h1 className="mt-2 font-display text-2xl font-semibold">
-          Ranked by Portfolio Impact %
-        </h1>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-white/70">
-          Competitions score all trades inside the date window. Traders are
-          ranked by total portfolio return — no absolute ₹ values, so any
-          account size competes on equal footing.
-        </p>
-      </section>
-
       {/* Competition selector */}
       <section className="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
         <form className="flex flex-wrap items-end gap-4">

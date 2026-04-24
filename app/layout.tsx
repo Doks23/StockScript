@@ -3,6 +3,8 @@ import { DM_Sans, IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 const display = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
@@ -21,7 +23,8 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "StockScript Journal",
-  description: "Production-ready trading journal with competitions and return-based leaderboards.",
+  description:
+    "Production-ready trading journal with competitions and return-based leaderboards.",
 };
 
 export default function RootLayout({
@@ -31,7 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${body.variable} ${mono.variable} antialiased`}>
+      <body
+        className={`${display.variable} ${body.variable} ${mono.variable} antialiased`}
+      >
         <AppShell>{children}</AppShell>
       </body>
     </html>

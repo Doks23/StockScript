@@ -11,8 +11,6 @@ type TradesPageProps = {
     symbol?: string;
     tag?: string;
     status?: string;
-    minQty?: string;
-    sort?: string;
     hideAmounts?: string;
   };
 };
@@ -22,15 +20,38 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
   const effectiveStatus = searchParams.status ?? "OPEN";
   const showAmounts = searchParams.hideAmounts !== "1";
 
-  const journal = await getJournalData(user.id, { ...searchParams, status: effectiveStatus });
+  const journal = await getJournalData(user.id, {
+    ...searchParams,
+    status: effectiveStatus,
+  });
+
+  let defaultFrom = searchParams.from || "";
+  let defaultTo = searchParams.to || "";
+
+  if (!defaultFrom && journal.groupedRows.length > 0) {
+    const min = Math.min(
+      ...journal.groupedRows.map(
+        (r) => r.entryLegs[0]?.dateTime?.getTime() ?? Date.now(),
+      ),
+    );
+    if (!isNaN(min)) defaultFrom = new Date(min).toISOString().split("T")[0];
+  }
+  if (!defaultTo && journal.groupedRows.length > 0) {
+    const max = Math.max(
+      ...journal.groupedRows.map(
+        (r) =>
+          r.exitDateTime?.getTime() ?? r.entryLegs[0]?.dateTime?.getTime() ?? 0,
+      ),
+    );
+    if (max > 0 && !isNaN(max))
+      defaultTo = new Date(max).toISOString().split("T")[0];
+  }
 
   const filtersKey = [
     searchParams.symbol,
     searchParams.status,
     searchParams.from,
     searchParams.to,
-    searchParams.minQty,
-    searchParams.sort,
     searchParams.hideAmounts,
   ].join("|");
 
@@ -40,7 +61,12 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
       <section className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
         <JournalFilters
           key={filtersKey}
-          defaults={{ ...searchParams, status: effectiveStatus }}
+          defaults={{
+            ...searchParams,
+            status: effectiveStatus,
+            from: defaultFrom,
+            to: defaultTo,
+          }}
         />
       </section>
 
@@ -48,19 +74,6 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm p-3">
         <JournalTable rows={journal.groupedRows} showAmounts={showAmounts} />
       </section>
-
-      {/* Action bar */}
-      <div className="flex flex-wrap gap-3">
-        <Link href="/trades/new" className="journal-action-btn">
-          + New Trade
-        </Link>
-        <Link href="/dashboard" className="journal-action-btn">
-          Dashboard
-        </Link>
-        <Link href="/leaderboard" className="journal-action-btn">
-          Leaderboard
-        </Link>
-      </div>
     </div>
   );
 }

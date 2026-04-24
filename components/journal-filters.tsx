@@ -7,9 +7,7 @@ type Filters = {
   symbol: string;
   from: string;
   to: string;
-  minQty: string;
   status: string;
-  sort: string;
   hideAmounts: boolean;
 };
 
@@ -17,9 +15,7 @@ type Defaults = {
   symbol?: string;
   from?: string;
   to?: string;
-  minQty?: string;
   status?: string;
-  sort?: string;
   hideAmounts?: string;
 };
 
@@ -32,9 +28,7 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
     symbol: defaults.symbol ?? "",
     from: defaults.from ?? "",
     to: defaults.to ?? "",
-    minQty: defaults.minQty ?? "",
     status: defaults.status ?? "OPEN",
-    sort: defaults.sort ?? "DESC",
     hideAmounts: defaults.hideAmounts === "1",
   });
 
@@ -44,13 +38,11 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
       if (f.symbol) sp.set("symbol", f.symbol);
       if (f.from) sp.set("from", f.from);
       if (f.to) sp.set("to", f.to);
-      if (f.minQty) sp.set("minQty", f.minQty);
       sp.set("status", f.status);
-      sp.set("sort", f.sort);
       if (f.hideAmounts) sp.set("hideAmounts", "1");
       router.push(`${pathname}?${sp.toString()}`);
     },
-    [router, pathname]
+    [router, pathname],
   );
 
   const immediate = (update: Partial<Filters>) => {
@@ -75,14 +67,18 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
         onChange={(e) => debounced({ symbol: e.target.value })}
       />
 
-      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">From</span>
+      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+        From
+      </span>
       <input
         type="date"
         value={filters.from}
         className="journal-input"
         onChange={(e) => immediate({ from: e.target.value })}
       />
-      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">To</span>
+      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+        To
+      </span>
       <input
         type="date"
         value={filters.to}
@@ -90,31 +86,41 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
         onChange={(e) => immediate({ to: e.target.value })}
       />
 
-      <input
-        value={filters.minQty}
-        placeholder="Min Qty"
-        className="journal-input w-[90px]"
-        onChange={(e) => debounced({ minQty: e.target.value })}
-      />
-
-      <select
-        value={filters.status}
-        className="journal-input"
-        onChange={(e) => immediate({ status: e.target.value })}
-      >
-        <option value="ALL">All Trades</option>
-        <option value="OPEN">Open Only</option>
-        <option value="CLOSED">Closed Only</option>
-      </select>
-
-      <select
-        value={filters.sort}
-        className="journal-input"
-        onChange={(e) => immediate({ sort: e.target.value })}
-      >
-        <option value="DESC">Newest First</option>
-        <option value="ASC">Oldest First</option>
-      </select>
+      <div className="flex items-center gap-3 rounded-[8px] border border-slate-200 bg-white px-3 h-[36px] text-sm text-slate-600 shadow-sm">
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="radio"
+            name="status"
+            value="ALL"
+            checked={filters.status === "ALL"}
+            onChange={(e) => immediate({ status: e.target.value })}
+            className="accent-blue-600"
+          />
+          All
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="radio"
+            name="status"
+            value="OPEN"
+            checked={filters.status === "OPEN"}
+            onChange={(e) => immediate({ status: e.target.value })}
+            className="accent-blue-600"
+          />
+          Open
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="radio"
+            name="status"
+            value="CLOSED"
+            checked={filters.status === "CLOSED"}
+            onChange={(e) => immediate({ status: e.target.value })}
+            className="accent-blue-600"
+          />
+          Closed
+        </label>
+      </div>
 
       <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 cursor-pointer select-none">
         <input

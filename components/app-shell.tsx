@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { BarChart3, Flag, LayoutDashboard, Medal, PencilLine, Shield } from "lucide-react";
+import {
+  BarChart3,
+  Flag,
+  LayoutDashboard,
+  Medal,
+  PencilLine,
+  Shield,
+} from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 
 const traderNavigation = [
@@ -40,7 +47,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <header className="animate-reveal rounded-[28px] border border-[#e2d6b1] bg-white/90 px-5 py-4 shadow-soft backdrop-blur xl:px-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <Link href={user ? "/dashboard" : "/login"} className="inline-flex items-center gap-3">
+              <Link
+                href={user ? "/dashboard" : "/login"}
+                className="inline-flex items-center gap-3"
+              >
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#a7770e] text-sm font-semibold text-white shadow-lg shadow-amber-700/20">
                   SS
                 </span>
@@ -49,7 +59,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                     StockScript Journal
                   </p>
                   <p className="text-sm text-slate-600">
-                    Trader journals, approvals, competitions, and fair percentage returns.
+                    Trader journals, approvals, competitions, and fair
+                    percentage returns.
                   </p>
                 </div>
               </Link>
