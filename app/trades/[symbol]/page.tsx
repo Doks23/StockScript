@@ -11,7 +11,14 @@ import {
   formatPercent,
 } from "@/lib/format";
 import { getTradesBySymbol } from "@/lib/queries";
-import { parseTags, getWeightedEntryPrice, getWeightedExitPrice, getTotalEntryQty, getFirstEntryTime, getLastExitTime } from "@/lib/trade-utils";
+import {
+  parseTags,
+  getWeightedEntryPrice,
+  getWeightedExitPrice,
+  getTotalEntryQty,
+  getFirstEntryTime,
+  getLastExitTime,
+} from "@/lib/trade-utils";
 
 type TradeDetailPageProps = {
   params: {
@@ -24,9 +31,16 @@ type TradeDetailPageProps = {
   };
 };
 
-export default async function TradeDetailPage({ params, searchParams }: TradeDetailPageProps) {
+export default async function TradeDetailPage({
+  params,
+  searchParams,
+}: TradeDetailPageProps) {
   const user = await requireActiveUser();
-  const data = await getTradesBySymbol(user.id, decodeURIComponent(params.symbol), searchParams);
+  const data = await getTradesBySymbol(
+    user.id,
+    decodeURIComponent(params.symbol),
+    searchParams,
+  );
 
   if (!data.trades.length) {
     notFound();
@@ -36,21 +50,36 @@ export default async function TradeDetailPage({ params, searchParams }: TradeDet
     <div className="space-y-8">
       <section className="rounded-[20px] border border-[#e2d6b1] bg-white/95 px-6 py-4 shadow-soft flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/trades" className="text-sm text-[#8e6500] hover:text-[#6b4c00]">
+          <Link
+            href="/trades"
+            className="text-sm text-[#8e6500] hover:text-[#6b4c00]"
+          >
             ← Journal
           </Link>
-          <h1 className="font-display text-xl font-semibold text-ink uppercase">{data.symbol}</h1>
+          <h1 className="font-display text-xl font-semibold text-ink uppercase">
+            {data.symbol}
+          </h1>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-4">
-        <MetricCard label="Closed Trades" value={String(data.metrics.totalTrades)} />
-        <MetricCard label="Open Trades" value={String(data.metrics.openTrades)} />
-        <MetricCard label="Win Rate" value={formatPercent(data.metrics.winRate)} tone="profit" />
+        <MetricCard
+          label="Closed Trades"
+          value={String(data.metrics.totalTrades)}
+        />
+        <MetricCard
+          label="Open Trades"
+          value={String(data.metrics.openTrades)}
+        />
+        <MetricCard
+          label="Win Rate"
+          value={formatPercent(data.metrics.winRate)}
+          tone="profit"
+        />
         <MetricCard
           label="Net Realized P&L"
-          value={formatCurrency(data.metrics.totalNetPnl)}
-          tone={data.metrics.totalNetPnl >= 0 ? "profit" : "loss"}
+          value={formatCurrency(data.metrics.totalRealizedPnl)}
+          tone={data.metrics.totalRealizedPnl >= 0 ? "profit" : "loss"}
         />
       </section>
 
@@ -85,15 +114,25 @@ export default async function TradeDetailPage({ params, searchParams }: TradeDet
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="info-chip">
                     <p className="info-label">Entry</p>
-                    <p className="info-value">{formatNumber(getWeightedEntryPrice(trade))}</p>
+                    <p className="info-value">
+                      {formatNumber(getWeightedEntryPrice(trade))}
+                    </p>
                   </div>
                   <div className="info-chip">
                     <p className="info-label">Exit</p>
-                    <p className="info-value">{getWeightedExitPrice(trade) > 0 ? formatNumber(getWeightedExitPrice(trade)) : "--"}</p>
+                    <p className="info-value">
+                      {getWeightedExitPrice(trade) > 0
+                        ? formatNumber(getWeightedExitPrice(trade))
+                        : "--"}
+                    </p>
                   </div>
                   <div className="info-chip">
                     <p className="info-label">Closing Price</p>
-                    <p className="info-value">{trade.closingPrice ? formatNumber(trade.closingPrice) : "--"}</p>
+                    <p className="info-value">
+                      {trade.closingPrice
+                        ? formatNumber(trade.closingPrice)
+                        : "--"}
+                    </p>
                   </div>
                   <div className="info-chip">
                     <p className="info-label">Marked Price</p>
@@ -101,8 +140,8 @@ export default async function TradeDetailPage({ params, searchParams }: TradeDet
                       {trade.closingPrice
                         ? formatNumber(trade.closingPrice)
                         : getWeightedExitPrice(trade) > 0
-                        ? formatNumber(getWeightedExitPrice(trade))
-                        : "--"}
+                          ? formatNumber(getWeightedExitPrice(trade))
+                          : "--"}
                     </p>
                   </div>
                 </div>
@@ -113,12 +152,17 @@ export default async function TradeDetailPage({ params, searchParams }: TradeDet
                     <p className="mt-3 text-sm leading-7 text-slate-700">
                       Entry: {formatDateTime(getFirstEntryTime(trade))}
                       <br />
-                      Exit: {getLastExitTime(trade) ? formatDateTime(getLastExitTime(trade)!) : "Still open"}
+                      Exit:{" "}
+                      {getLastExitTime(trade)
+                        ? formatDateTime(getLastExitTime(trade)!)
+                        : "Still open"}
                     </p>
                   </div>
                   <div className="rounded-[24px] border border-[#f0e7cf] bg-[#fff9ec] p-4">
                     <p className="text-sm text-slate-500">Notes & tags</p>
-                    <p className="mt-3 text-sm leading-7 text-slate-700">{trade.notes || "No notes added."}</p>
+                    <p className="mt-3 text-sm leading-7 text-slate-700">
+                      {trade.notes || "No notes added."}
+                    </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {parseTags(trade.tags).map((tag) => (
                         <span
@@ -135,11 +179,15 @@ export default async function TradeDetailPage({ params, searchParams }: TradeDet
                 <div className="mt-6 grid gap-4 sm:grid-cols-4">
                   <div className="info-chip">
                     <p className="info-label">Qty</p>
-                    <p className="info-value">{formatNumber(getTotalEntryQty(trade))}</p>
+                    <p className="info-value">
+                      {formatNumber(getTotalEntryQty(trade))}
+                    </p>
                   </div>
                   <div className="info-chip">
                     <p className="info-label">Capital</p>
-                    <p className="info-value">{formatNumber(trade.capitalUsed)}</p>
+                    <p className="info-value">
+                      {formatNumber(trade.capitalUsed)}
+                    </p>
                   </div>
                   <div className="info-chip">
                     <p className="info-label">Charges</p>
@@ -147,7 +195,9 @@ export default async function TradeDetailPage({ params, searchParams }: TradeDet
                   </div>
                   <div className="info-chip">
                     <p className="info-label">Realized P&L</p>
-                    <p className={`info-value ${trade.netPnl >= 0 ? "text-profit" : "text-loss"}`}>
+                    <p
+                      className={`info-value ${trade.netPnl >= 0 ? "text-profit" : "text-loss"}`}
+                    >
                       {formatCurrency(trade.netPnl)}
                     </p>
                   </div>
