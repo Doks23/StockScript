@@ -62,8 +62,11 @@ model Trade {
   transactions  Transaction[]
 
   @@index([userId, status, firstEntryAt])
+  @@index([userId, createdAt])
   @@index([competitionId, status, firstEntryAt])
   @@index([symbol, userId])
+  @@index([status])
+  @@index([updatedAt])
 }
 
 model Transaction {
@@ -105,6 +108,8 @@ model Competition {
   stats         UserCompetitionStat[]
 
   @@index([startDate, endDate])
+  @@index([createdBy])
+  @@index([visibility])
 }
 
 model CompetitionParticipant {
