@@ -28,6 +28,7 @@ async function main() {
   await prisma.transaction.deleteMany();
   await prisma.trade.deleteMany();
   await prisma.emailVerificationToken.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
   await prisma.session.deleteMany();
   await prisma.competition.deleteMany();
   await prisma.user.deleteMany();

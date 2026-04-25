@@ -177,3 +177,67 @@ export function getVerificationUrl(token: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   return `${baseUrl}/verify-email?token=${token}`;
 }
+
+export async function createPasswordResetToken(userId: string) {
+  await prisma.passwordResetToken.deleteMany({
+    where: {
+      userId,
+      usedAt: null,
+    },
+  });
+
+  const token = randomBytes(32).toString("hex");
+
+  await prisma.passwordResetToken.create({
+    data: {
+      token,
+      userId,
+      expiresAt: addHours(new Date(), 24),
+    },
+  });
+
+  return token;
+}
+
+export async function verifyPasswordResetToken(token: string) {
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      token,
+      usedAt: null,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  return resetToken;
+}
+
+export async function usePasswordResetToken(tokenId: string, userId: string, newPasswordHash: string) {
+  await prisma.$transaction([
+    prisma.passwordResetToken.update({
+      where: {
+        id: tokenId,
+      },
+      data: {
+        usedAt: new Date(),
+      },
+    }),
+    prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        passwordHash: newPasswordHash,
+      },
+    }),
+  ]);
+}
+
+export function getPasswordResetUrl(token: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return `${baseUrl}/reset-password?token=${token}`;
+}

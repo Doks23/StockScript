@@ -2,38 +2,37 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
-export function LoginForm() {
-  const router = useRouter();
+export function ForgotPasswordForm() {
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setError("");
+    setSuccess("");
     setIsSubmitting(true);
 
-    const response = await fetch("/api/auth/login", {
+    const response = await fetch("/api/auth/forgot-password", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         email: String(formData.get("email") || ""),
-        password: String(formData.get("password") || ""),
       }),
     });
 
     const result = await response.json();
 
     if (!response.ok) {
-      setError(result.error || "Unable to log in.");
+      setError(result.error || "Unable to process password reset request.");
       setIsSubmitting(false);
       return;
     }
 
-    router.push(result.redirectTo || "/dashboard");
-    router.refresh();
+    setSuccess("If an account exists with this email, a password reset link will be sent.");
+    setIsSubmitting(false);
   }
 
   return (
@@ -42,10 +41,10 @@ export function LoginForm() {
       className="space-y-5 rounded-[32px] border border-[#e4d8b7] bg-white/95 p-8 shadow-soft"
     >
       <div>
-        <p className="text-sm uppercase tracking-[0.22em] text-[#9d7a1f]">Login</p>
-        <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Trader access</h1>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#9d7a1f]">Password Reset</p>
+        <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Recover your account</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">
-          Sign in with your trader ID email and password. Verified and approved traders can enter trades immediately.
+          Enter your registered email address and we'll send you a secure link to reset your password.
         </p>
       </div>
 
@@ -54,20 +53,15 @@ export function LoginForm() {
         <input name="email" type="email" required className="form-input" />
       </label>
 
-      <label className="form-field">
-        Password
-        <input name="password" type="password" required className="form-input" />
-      </label>
-
-      <div className="flex justify-end">
-        <Link href="/forgot-password" className="text-xs font-medium text-[#8e6500] hover:text-[#6b4c00]">
-          Forgot password?
-        </Link>
-      </div>
-
       {error ? (
         <p className="rounded-2xl border border-loss/30 bg-loss/10 px-4 py-3 text-sm text-loss">
           {error}
+        </p>
+      ) : null}
+
+      {success ? (
+        <p className="rounded-2xl border border-profit/30 bg-profit/10 px-4 py-3 text-sm text-profit">
+          {success}
         </p>
       ) : null}
 
@@ -76,13 +70,13 @@ export function LoginForm() {
         disabled={isSubmitting}
         className="inline-flex w-full items-center justify-center rounded-2xl bg-[#a7770e] px-4 py-3 font-medium text-white transition hover:bg-[#8e6500] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Signing in..." : "Login"}
+        {isSubmitting ? "Sending reset link..." : "Send Reset Link"}
       </button>
 
       <p className="text-sm text-slate-600">
-        New trader?{" "}
-        <Link href="/register" className="font-medium text-[#8e6500] hover:text-[#6b4c00]">
-          Create an account
+        Remember your password?{" "}
+        <Link href="/login" className="font-medium text-[#8e6500] hover:text-[#6b4c00]">
+          Back to login
         </Link>
       </p>
     </form>
