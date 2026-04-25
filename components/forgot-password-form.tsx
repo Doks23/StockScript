@@ -44,7 +44,7 @@ export function ForgotPasswordForm() {
         <p className="text-sm uppercase tracking-[0.22em] text-accent">Password Reset</p>
         <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Recover your account</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">
-          Enter your registered email address and we'll send you a secure link to reset your password.
+          Enter your registered email address and we&apos;ll send you a secure link to reset your password.
         </p>
       </div>
 
