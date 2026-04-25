@@ -119,7 +119,7 @@ export function DashboardCharts({
     }));
 
     return { equityCurve, recentStats: last10, monthlyTotals };
-  }, [trades, userCapital]);
+  }, [trades]);
 
   const PIE_COLORS = ["#10b981", "#ef4444"]; // Green, Red
   const pieData = [

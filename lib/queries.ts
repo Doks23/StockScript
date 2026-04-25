@@ -67,11 +67,11 @@ export async function getCompetitions() {
     include: {
       creator: { select: { id: true, name: true } },
       participants: {
-        select: { userId: true, user: { select: { id: true, name: true } } },
+        select: { userId: true, user: { select: { id: true, name: true, email: true } } },
       },
       requests: {
         where: { status: "PENDING" },
-        select: { id: true, status: true },
+        select: { id: true, status: true, userId: true },
       },
     },
     orderBy: { startDate: "desc" },
@@ -154,7 +154,7 @@ export async function getLeaderboard(competitionId: string) {
       participants: {
         select: {
           userId: true,
-          user: { select: { id: true, name: true, email: true, portfolioCapital: true } },
+          user: true,
         },
       },
     },
