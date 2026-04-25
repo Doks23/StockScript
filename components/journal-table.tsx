@@ -224,7 +224,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
     <div className="space-y-2">
       {/* Summary bar */}
       {rows.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[12px]">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 rounded-xl bg-canvas border border-line text-[12px]">
           <span className="text-slate-400 font-medium">{rows.length} trades</span>
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Alloc:</span>
@@ -258,7 +258,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-800 text-white text-[12px]">
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-ink text-white text-[12px]">
           <span className="text-slate-300">{selectedIds.size} selected</span>
           <button onClick={handleDeleteSelected} disabled={deletingIds.size > 0}
             className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 transition disabled:opacity-50 font-medium">
@@ -282,7 +282,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
       <div className="w-full overflow-x-auto scrollbar-hide">
         <table className="w-full whitespace-nowrap text-right text-[12px] text-slate-700">
           <thead>
-            <tr className="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
+            <tr className="bg-ink text-white text-[10px] uppercase tracking-wider">
               <th className="px-2 py-3 text-center w-8">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
                   className="h-3.5 w-3.5 rounded border-slate-500 accent-slate-400 cursor-pointer" />
@@ -307,7 +307,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
                 className="px-3 py-3 text-center">Impact %</SortTh>
               <th className="px-2 py-3 text-center w-8"></th>
             </tr>
-            <tr className="bg-slate-800 text-slate-400 text-[10px]">
+            <tr className="bg-slate-100 text-slate-500 text-[10px]">
               <th />
               <th className="px-3 py-1.5 text-left">L / S</th>
               <th className="px-3 py-1.5">Qty</th>
@@ -326,7 +326,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-line">
             {sortedRows.map((t) => {
               const isClosed = t.derivedStatus === "CLOSED";
               const isDeleting = deletingIds.has(t.id);

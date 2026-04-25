@@ -58,7 +58,7 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <section className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+      <section className="rounded-2xl border border-line bg-panel px-5 py-3 shadow-sm">
         <JournalFilters
           key={filtersKey}
           defaults={{
@@ -71,7 +71,7 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
       </section>
 
       {/* Journal table */}
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm p-3">
+      <section className="overflow-hidden rounded-2xl border border-line bg-panel shadow-sm p-3">
         <JournalTable rows={journal.groupedRows} showAmounts={showAmounts} />
       </section>
     </div>
