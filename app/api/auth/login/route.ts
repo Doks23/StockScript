@@ -11,6 +11,13 @@ export async function POST(request: Request) {
       where: {
         email: payload.email.toLowerCase(),
       },
+      select: {
+        id: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        isActive: true,
+        role: true,
+      },
     });
 
     if (!user || !verifyPassword(payload.password, user.passwordHash)) {

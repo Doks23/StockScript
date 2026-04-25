@@ -24,8 +24,8 @@ type TradeFilters = {
 const transactionInclude = {
   transactions: { orderBy: { dateTime: "asc" as const } },
   images: true,
-  competition: true,
-  user: true,
+  competition: { select: { id: true, name: true } },
+  user: { select: { id: true, name: true, email: true } },
 };
 
 function buildTradeWhere(
@@ -65,9 +65,14 @@ function buildTradeWhere(
 export async function getCompetitions() {
   return prisma.competition.findMany({
     include: {
-      creator: true,
-      participants: { include: { user: true } },
-      requests: { where: { status: "PENDING" } },
+      creator: { select: { id: true, name: true } },
+      participants: {
+        select: { userId: true, user: { select: { id: true, name: true } } },
+      },
+      requests: {
+        where: { status: "PENDING" },
+        select: { id: true, status: true },
+      },
     },
     orderBy: { startDate: "desc" },
   });
@@ -77,6 +82,7 @@ export async function getDashboardData(userId: string) {
   const trades = await prisma.trade.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    take: 500,
     include: transactionInclude,
   });
 
@@ -84,7 +90,7 @@ export async function getDashboardData(userId: string) {
   const openTrades = trades.filter((t) => t.status === "OPEN");
 
   return {
-    trades,
+    trades: trades.slice(0, 50),
     openTrades,
     closedTrades,
     groupedTrades: groupTradesBySymbol(closedTrades),
@@ -145,7 +151,12 @@ export async function getLeaderboard(competitionId: string) {
   const competition = await prisma.competition.findUnique({
     where: { id: competitionId },
     include: {
-      participants: { include: { user: true } },
+      participants: {
+        select: {
+          userId: true,
+          user: { select: { id: true, name: true, email: true, portfolioCapital: true } },
+        },
+      },
     },
   });
 
@@ -159,9 +170,8 @@ export async function getLeaderboard(competitionId: string) {
           where: {
             userId: { in: participantIds },
             OR: [
-              { competitionId }, // Include if explicitly linked
+              { competitionId },
               {
-                // Or if any transaction falls in the window
                 transactions: {
                   some: {
                     dateTime: {
@@ -172,14 +182,12 @@ export async function getLeaderboard(competitionId: string) {
                 },
               },
               {
-                // Or if the first entry falls in the window
                 firstEntryAt: {
                   gte: competition.startDate,
                   lte: competition.endDate,
                 },
               },
               {
-                // Or if it was closed during the window
                 status: "CLOSED",
                 updatedAt: {
                   gte: competition.startDate,
@@ -193,11 +201,19 @@ export async function getLeaderboard(competitionId: string) {
         })
       : [];
 
+  const tradesByUserId = new Map<string, typeof trades>();
+  trades.forEach((trade) => {
+    if (!tradesByUserId.has(trade.userId)) {
+      tradesByUserId.set(trade.userId, []);
+    }
+    tradesByUserId.get(trade.userId)!.push(trade);
+  });
+
   const entries = buildLeaderboardEntries(
     competition.participants.map((participant) => ({
       user: participant.user,
       trades: getCompetitionWindowTrades(
-        trades.filter((t) => t.userId === participant.userId),
+        tradesByUserId.get(participant.userId) || [],
         competition,
       ),
     })),

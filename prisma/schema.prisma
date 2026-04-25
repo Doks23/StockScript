@@ -27,6 +27,7 @@ model User {
   competitionStats        UserCompetitionStat[]
   sessions                Session[]
   verificationTokens      EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
   approvalsGiven          User[]                   @relation("UserApprovals")
   approver                User?                    @relation("UserApprovals", fields: [approvedBy], references: [id], onDelete: SetNull)
   createdAt               DateTime                 @default(now())
@@ -61,8 +62,11 @@ model Trade {
   transactions  Transaction[]
 
   @@index([userId, status, firstEntryAt])
+  @@index([userId, createdAt])
   @@index([competitionId, status, firstEntryAt])
   @@index([symbol, userId])
+  @@index([status])
+  @@index([updatedAt])
 }
 
 model Transaction {
@@ -104,6 +108,8 @@ model Competition {
   stats         UserCompetitionStat[]
 
   @@index([startDate, endDate])
+  @@index([createdBy])
+  @@index([visibility])
 }
 
 model CompetitionParticipant {
@@ -172,4 +178,16 @@ model EmailVerificationToken {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, email, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }

@@ -8,6 +8,7 @@ import {
   Shield,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { LogoutButton } from "./logout-button";
 
 const traderNavigation = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -93,12 +94,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
                       {user.name}
                     </span>
-                    <Link
-                      href="/logout"
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-slate-700 transition hover:border-[#c59e32] hover:text-[#8d6500]"
-                    >
-                      Logout
-                    </Link>
+                    <LogoutButton />
                   </div>
                 </>
               ) : (
