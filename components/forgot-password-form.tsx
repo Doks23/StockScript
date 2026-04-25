@@ -38,10 +38,10 @@ export function ForgotPasswordForm() {
   return (
     <form
       action={handleSubmit}
-      className="space-y-5 rounded-[32px] border border-[#e4d8b7] bg-white/95 p-8 shadow-soft"
+      className="space-y-5 rounded-[32px] border border-line bg-panel p-8 shadow-soft"
     >
       <div>
-        <p className="text-sm uppercase tracking-[0.22em] text-[#9d7a1f]">Password Reset</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-accent">Password Reset</p>
         <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Recover your account</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">
           Enter your registered email address and we'll send you a secure link to reset your password.
@@ -68,14 +68,14 @@ export function ForgotPasswordForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex w-full items-center justify-center rounded-2xl bg-[#a7770e] px-4 py-3 font-medium text-white transition hover:bg-[#8e6500] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center rounded-2xl bg-accent px-4 py-3 font-medium text-white transition hover:bg-accentDeep disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Sending reset link..." : "Send Reset Link"}
       </button>
 
       <p className="text-sm text-slate-600">
         Remember your password?{" "}
-        <Link href="/login" className="font-medium text-[#8e6500] hover:text-[#6b4c00]">
+        <Link href="/login" className="font-medium text-accent hover:text-accentDeep">
           Back to login
         </Link>
       </p>
