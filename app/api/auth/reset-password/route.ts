@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyPasswordResetToken, usePasswordResetToken } from "@/lib/auth";
+import { verifyPasswordResetToken, applyPasswordReset } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { z } from "zod";
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     const newPasswordHash = hashPassword(payload.password);
-    await usePasswordResetToken(resetToken.id, resetToken.userId, newPasswordHash);
+    await applyPasswordReset(resetToken.id, resetToken.userId, newPasswordHash);
 
     return NextResponse.json(
       { message: "Password has been reset successfully." },

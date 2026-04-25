@@ -216,7 +216,7 @@ export async function verifyPasswordResetToken(token: string) {
   return resetToken;
 }
 
-export async function usePasswordResetToken(tokenId: string, userId: string, newPasswordHash: string) {
+export async function applyPasswordReset(tokenId: string, userId: string, newPasswordHash: string) {
   await prisma.$transaction([
     prisma.passwordResetToken.update({
       where: {
