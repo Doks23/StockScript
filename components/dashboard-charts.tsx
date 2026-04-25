@@ -132,12 +132,12 @@ export function DashboardCharts({
       {/* Top row */}
       <div className="grid gap-4 md:grid-cols-3">
         {/* Past Trades Analysis */}
-        <div className="rounded-3xl border border-[#f0e7cf] bg-white p-5 shadow-sm">
+        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <p className="text-sm uppercase tracking-wider text-slate-500">
               Recent Performance
             </p>
-            <div className="flex bg-slate-100 p-1 rounded-full gap-1">
+            <div className="flex bg-canvas p-1 rounded-full gap-1">
               {(["10", "1w", "1m", "3m", "all"] as const).map((range) => (
                 <button
                   key={range}
@@ -294,7 +294,7 @@ export function DashboardCharts({
               <Area
                 type="monotone"
                 dataKey="equity"
-                stroke="#a7770e"
+                stroke="var(--accent)"
                 strokeWidth={3}
                 fillOpacity={1}
                 fill="url(#colorEquity)"
@@ -307,7 +307,7 @@ export function DashboardCharts({
       {/* Bottom Row Charts */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Portfolio Allocation % */}
-        <div className="rounded-3xl border border-[#f0e7cf] bg-white p-5 shadow-sm">
+        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">
             Portfolio Allocation % (Open)
           </p>
@@ -357,7 +357,7 @@ export function DashboardCharts({
         </div>
 
         {/* PnL */}
-        <div className="rounded-3xl border border-[#f0e7cf] bg-white p-5 shadow-sm">
+        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">PnL</p>
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -395,7 +395,7 @@ export function DashboardCharts({
         </div>
 
         {/* Winners per Month */}
-        <div className="rounded-3xl border border-[#f0e7cf] bg-white p-5 shadow-sm">
+        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">
             # Winners per Month
           </p>

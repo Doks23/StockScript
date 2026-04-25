@@ -86,7 +86,7 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
         onChange={(e) => immediate({ to: e.target.value })}
       />
 
-      <div className="flex items-center gap-3 rounded-[8px] border border-slate-200 bg-white px-3 h-[36px] text-sm text-slate-600 shadow-sm">
+      <div className="flex items-center gap-3 rounded-[8px] border border-line bg-canvas px-3 h-[36px] text-sm text-slate-600 shadow-sm">
         <label className="flex items-center gap-1.5 cursor-pointer">
           <input
             type="radio"
@@ -94,7 +94,7 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
             value="ALL"
             checked={filters.status === "ALL"}
             onChange={(e) => immediate({ status: e.target.value })}
-            className="accent-blue-600"
+            className="accent-accent"
           />
           All
         </label>
@@ -105,7 +105,7 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
             value="OPEN"
             checked={filters.status === "OPEN"}
             onChange={(e) => immediate({ status: e.target.value })}
-            className="accent-blue-600"
+            className="accent-accent"
           />
           Open
         </label>
@@ -116,7 +116,7 @@ export function JournalFilters({ defaults }: { defaults: Defaults }) {
             value="CLOSED"
             checked={filters.status === "CLOSED"}
             onChange={(e) => immediate({ status: e.target.value })}
-            className="accent-blue-600"
+            className="accent-accent"
           />
           Closed
         </label>
