@@ -42,10 +42,10 @@ export function RegisterForm() {
   return (
     <form
       action={handleSubmit}
-      className="space-y-5 rounded-[32px] border border-[#e4d8b7] bg-white/95 p-8 shadow-soft"
+      className="space-y-5 rounded-[32px] border border-line bg-panel p-8 shadow-soft"
     >
       <div>
-        <p className="text-sm uppercase tracking-[0.22em] text-[#9d7a1f]">Register</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-accent">Register</p>
         <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Create trader account</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">
           Your email must be verified first. After that, the admin approves the trader account before trade posting is enabled.
@@ -78,7 +78,7 @@ export function RegisterForm() {
           <p>Your account has been created. Verify the email to continue.</p>
           <Link
             href={success.verificationUrl}
-            className="inline-flex rounded-full bg-[#a7770e] px-4 py-2 font-medium text-white"
+            className="inline-flex rounded-full bg-accent px-4 py-2 font-medium text-white"
           >
             Verify email now
           </Link>
@@ -88,14 +88,14 @@ export function RegisterForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex w-full items-center justify-center rounded-2xl bg-[#a7770e] px-4 py-3 font-medium text-white transition hover:bg-[#8e6500] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center rounded-2xl bg-accent px-4 py-3 font-medium text-white transition hover:bg-accentDeep disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Creating account..." : "Create account"}
       </button>
 
       <p className="text-sm text-slate-600">
         Already registered?{" "}
-        <Link href="/login" className="font-medium text-[#8e6500] hover:text-[#6b4c00]">
+        <Link href="/login" className="font-medium text-accent hover:text-accentDeep">
           Login
         </Link>
       </p>
