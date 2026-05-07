@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import {
   AreaChart,
@@ -8,7 +8,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
@@ -18,6 +17,44 @@ import {
 } from "recharts";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { calculateOpenPnl } from "@/lib/trade-utils";
+
+function MeasuredChartFrame({
+  children,
+  height,
+  className = "",
+}: {
+  children: (width: number, height: number) => ReactNode;
+  height: number;
+  className?: string;
+}) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+
+    const updateWidth = () => {
+      setWidth(Math.max(1, Math.floor(frame.getBoundingClientRect().width)));
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(frame);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={frameRef}
+      className={`w-full min-w-0 ${className}`}
+      style={{ height }}
+    >
+      {width > 0 ? children(width, height) : null}
+    </div>
+  );
+}
 
 export function DashboardCharts({
   trades,
@@ -189,9 +226,9 @@ export function DashboardCharts({
           <p className="text-sm uppercase tracking-wider text-slate-500 mb-2 self-start">
             Batting Average
           </p>
-          <div className="h-32 w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <MeasuredChartFrame height={128} className="mt-2">
+            {(width, height) => (
+              <PieChart width={width} height={height}>
                 <Pie
                   data={pieData}
                   dataKey="value"
@@ -210,8 +247,8 @@ export function DashboardCharts({
                 </Pie>
                 <Tooltip />
               </PieChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </MeasuredChartFrame>
           <div className="flex gap-4 mt-2 text-sm font-medium">
             <span className="text-profit">
               Win {metrics.winRate.toFixed(1)}%
@@ -255,9 +292,11 @@ export function DashboardCharts({
       {/* Equity Curve */}
       <div className="rounded-3xl border border-[#f0e7cf] bg-white p-6 shadow-sm">
         <p className="text-md font-medium text-slate-700 mb-4">Equity Curve</p>
-        <div className="h-[280px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <MeasuredChartFrame height={280}>
+          {(width, height) => (
             <AreaChart
+              width={width}
+              height={height}
               data={equityCurve}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
@@ -300,8 +339,8 @@ export function DashboardCharts({
                 fill="url(#colorEquity)"
               />
             </AreaChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </MeasuredChartFrame>
       </div>
 
       {/* Bottom Row Charts */}
@@ -311,9 +350,11 @@ export function DashboardCharts({
           <p className="text-sm font-medium text-slate-700 mb-4">
             Portfolio Allocation % (Open)
           </p>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <MeasuredChartFrame height={192}>
+            {(width, height) => (
               <BarChart
+                width={width}
+                height={height}
                 data={trades
                   .filter((t: any) => t.status === "OPEN")
                   .slice(0, 6)
@@ -352,16 +393,18 @@ export function DashboardCharts({
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </MeasuredChartFrame>
         </div>
 
         {/* PnL */}
         <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">PnL</p>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <MeasuredChartFrame height={192}>
+            {(width, height) => (
               <BarChart
+                width={width}
+                height={height}
                 data={monthlyTotals}
                 margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
               >
@@ -390,8 +433,8 @@ export function DashboardCharts({
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </MeasuredChartFrame>
         </div>
 
         {/* Winners per Month */}
@@ -399,9 +442,11 @@ export function DashboardCharts({
           <p className="text-sm font-medium text-slate-700 mb-4">
             # Winners per Month
           </p>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <MeasuredChartFrame height={192}>
+            {(width, height) => (
               <BarChart
+                width={width}
+                height={height}
                 data={monthlyTotals}
                 margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
               >
@@ -420,8 +465,8 @@ export function DashboardCharts({
                 <Tooltip />
                 <Bar dataKey="winners" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </MeasuredChartFrame>
         </div>
       </div>
     </div>

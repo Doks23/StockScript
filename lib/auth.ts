@@ -19,6 +19,7 @@ function addHours(date: Date, hours: number) {
 export async function createSession(userId: string) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = addDays(new Date(), SESSION_TTL_DAYS);
+  const cookieStore = await cookies();
 
   await prisma.session.create({
     data: {
@@ -28,7 +29,7 @@ export async function createSession(userId: string) {
     },
   });
 
-  cookies().set(SESSION_COOKIE, token, {
+  cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -38,7 +39,8 @@ export async function createSession(userId: string) {
 }
 
 export async function destroySession() {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
 
   if (token) {
     await prisma.session.deleteMany({
@@ -48,11 +50,12 @@ export async function destroySession() {
     });
   }
 
-  cookies().delete(SESSION_COOKIE);
+  cookieStore.delete(SESSION_COOKIE);
 }
 
 export async function getCurrentUser() {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
 
   if (!token) {
     return null;

@@ -612,7 +612,15 @@ export function buildJournalRows(
 
 export type LeaderboardInput = {
   trades: TradeWithTxns[];
-  user: User;
+  user: Pick<
+    User,
+    | "id"
+    | "name"
+    | "email"
+    | "emailVerifiedAt"
+    | "approvalStatus"
+    | "portfolioCapital"
+  >;
 };
 
 export type LeaderboardEntry = {
