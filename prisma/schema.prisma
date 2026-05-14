@@ -8,14 +8,59 @@ datasource db {
   directUrl = env("DATABASE_URL")
 }
 
+enum UserRole {
+  ADMIN
+  TRADER
+  SUPER_TRADER
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TradeSegment {
+  EQUITY
+  INTRADAY
+  OPTIONS
+  FUTURES
+}
+
+enum TradeType {
+  LONG
+  SHORT
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+}
+
+enum CompetitionVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
 model User {
   id                      String                   @id @default(cuid())
   name                    String
   email                   String                   @unique
   passwordHash            String
-  role                    String                   @default("TRADER")
+  role                    UserRole                 @default(TRADER)
   emailVerifiedAt         DateTime?
-  approvalStatus          String                   @default("PENDING")
+  approvalStatus          ApprovalStatus           @default(PENDING)
   approvedAt              DateTime?
   approvedBy              String?
   isActive                Boolean                  @default(false)
@@ -41,15 +86,15 @@ model Trade {
   userId        String
   competitionId String?
   symbol        String
-  segment       String
-  tradeType     String
+  segment       TradeSegment
+  tradeType     TradeType
   closingPrice  Float?
   stopLoss      Float?
   charges       Float         @default(0)
   capitalUsed   Float         @default(0)
   netPnl        Float         @default(0)
   rowIndex      Int           @default(0)
-  status        String        @default("OPEN")
+  status        TradeStatus   @default(OPEN)
   tags          String        @default("")
   notes         String        @default("")
   firstEntryAt  DateTime?
@@ -70,14 +115,14 @@ model Trade {
 }
 
 model Transaction {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   tradeId   String
-  type      String
+  type      TransactionType
   price     Float
   quantity  Float
   dateTime  DateTime
-  order     Int      @default(0)
-  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  order     Int             @default(0)
+  trade     Trade           @relation(fields: [tradeId], references: [id], onDelete: Cascade)
 
   @@index([tradeId, type, dateTime])
 }
@@ -97,7 +142,7 @@ model Competition {
   name          String
   startDate     DateTime
   endDate       DateTime
-  visibility    String
+  visibility    CompetitionVisibility
   createdBy     String
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
@@ -125,15 +170,15 @@ model CompetitionParticipant {
 }
 
 model CompetitionRequest {
-  id             String      @id @default(cuid())
+  id             String          @id @default(cuid())
   competitionId  String
   userId         String
-  status         String      @default("PENDING")
-  createdAt      DateTime    @default(now())
+  status         RequestStatus   @default(PENDING)
+  createdAt      DateTime        @default(now())
   approvedBy     String?
   approvedAt     DateTime?
-  competition    Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competition    Competition     @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([competitionId, userId])
   @@index([competitionId, status])

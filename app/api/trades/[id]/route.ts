@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import {
   calculateTradeMetrics,
   normalizeTradePayload,
   tradePayloadSchema,
+  deriveTradeTypeAndStatus,
 } from "@/lib/trade-utils";
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -44,20 +46,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       order: i,
     }));
 
-    // Auto-detect tradeType from first chronological transaction
-    const sortedByDate = [...txPayload].sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-    const derivedTradeType = sortedByDate[0]?.type === "BUY" ? "LONG" : "SHORT";
-    const entryType = derivedTradeType === "LONG" ? "BUY" : "SELL";
-    const exitType = derivedTradeType === "LONG" ? "SELL" : "BUY";
+    const { tradeType: derivedTradeType, firstEntryAt, status: derivedStatus } =
+      deriveTradeTypeAndStatus(txPayload);
 
-    const entryTxns = txPayload.filter((t) => t.type === entryType).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-    const firstEntryAt = entryTxns.length > 0 ? entryTxns[0].dateTime : new Date();
-
-    const totalEntryQ = txPayload.filter((t) => t.type === entryType).reduce((s, t) => s + t.quantity, 0);
-    const totalExitQ = txPayload.filter((t) => t.type === exitType).reduce((s, t) => s + t.quantity, 0);
-    const derivedStatus = totalExitQ >= totalEntryQ ? "CLOSED" : payload.status;
-
-    // Replace all transactions atomically
     const trade = await prisma.$transaction(async (tx) => {
       await tx.transaction.deleteMany({ where: { tradeId: existingTrade.id } });
 
@@ -91,10 +82,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     return NextResponse.json({ trade });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to update trade." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Unable to update trade.");
   }
 }
 
@@ -113,9 +101,6 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
     return NextResponse.json({ deleted: true });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to delete trade." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Unable to delete trade.");
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createPasswordResetToken, getPasswordResetUrl } from "@/lib/auth";
+import { createPasswordResetToken } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -15,27 +16,16 @@ export async function POST(request: Request) {
       where: { email: payload.email.toLowerCase() },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { message: "If an account exists with this email, a password reset link will be sent." },
-        { status: 200 }
-      );
+    if (user) {
+      await createPasswordResetToken(user.id);
     }
 
-    const token = await createPasswordResetToken(user.id);
-    const resetUrl = getPasswordResetUrl(token);
-
+    // Always return the same response to prevent email enumeration
     return NextResponse.json(
-      {
-        message: "If an account exists with this email, a password reset link will be sent.",
-        resetUrl,
-      },
+      { message: "If an account exists with this email, a password reset link will be sent." },
       { status: 200 }
     );
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to process password reset request." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Unable to process password reset request.");
   }
 }

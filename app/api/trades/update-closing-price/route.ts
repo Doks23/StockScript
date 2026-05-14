@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 
 export async function PATCH(request: Request) {
@@ -16,16 +17,12 @@ export async function PATCH(request: Request) {
       data: { closingPrice: Number(closingPrice) },
     });
 
-    // Verify user owns the trade
     if (trade.userId !== user.id) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
     }
 
     return NextResponse.json({ trade }, { status: 200 });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to update closing price." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Unable to update closing price.");
   }
 }

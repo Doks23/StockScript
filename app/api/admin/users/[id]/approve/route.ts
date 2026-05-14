@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
+type RouteContext = { params: { id: string } };
 
 export async function POST(_: Request, { params }: RouteContext) {
   try {
     const admin = await requireAdmin();
-    const user = await prisma.user.findUnique({
-      where: { id: params.id },
-    });
+    const user = await prisma.user.findUnique({ where: { id: params.id } });
 
     if (!user) {
       return NextResponse.json({ error: "Trader not found." }, { status: 404 });
@@ -35,9 +30,6 @@ export async function POST(_: Request, { params }: RouteContext) {
 
     return NextResponse.json({ user: approved });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to approve trader." },
-      { status: 400 },
-    );
+    return handleApiError(error, "Unable to approve trader.");
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyPasswordResetToken, applyPasswordReset } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { hashPassword } from "@/lib/password";
 import { z } from "zod";
 
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const newPasswordHash = hashPassword(payload.password);
+    const newPasswordHash = await hashPassword(payload.password);
     await applyPasswordReset(resetToken.id, resetToken.userId, newPasswordHash);
 
     return NextResponse.json(
@@ -29,9 +30,6 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to reset password." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Unable to reset password.");
   }
 }

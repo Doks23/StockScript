@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { getCompetitions } from "@/lib/queries";
 import { prisma } from "@/lib/prisma";
 import { competitionPayloadSchema } from "@/lib/trade-utils";
@@ -36,11 +37,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ competition }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unable to create competition.",
-      },
-      { status: 400 },
-    );
+    return handleApiError(error, "Unable to create competition.");
   }
 }

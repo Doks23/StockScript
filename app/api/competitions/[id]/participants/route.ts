@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: { id: string } };
@@ -22,7 +23,6 @@ export async function POST(req: Request, { params }: RouteContext) {
     }
 
     if (user.role === "ADMIN") {
-      // Admin directly adds participant and approves request
       const participant = await prisma.competitionParticipant.upsert({
         where: { competitionId_userId: { competitionId: params.id, userId: trader.id } },
         create: { competitionId: params.id, userId: trader.id },
@@ -47,7 +47,6 @@ export async function POST(req: Request, { params }: RouteContext) {
 
       return NextResponse.json({ participant, traderName: trader.name }, { status: 201 });
     } else {
-      // Trader creates a request to join
       const request = await prisma.competitionRequest.upsert({
         where: { competitionId_userId: { competitionId: params.id, userId: user.id } },
         create: {
@@ -63,9 +62,6 @@ export async function POST(req: Request, { params }: RouteContext) {
       return NextResponse.json({ request }, { status: 201 });
     }
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to process request." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Failed to process request.");
   }
 }

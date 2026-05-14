@@ -1,3 +1,4 @@
+import type { TradeSegment, TradeType, TradeStatus } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../lib/password";
 import { calculateTradeMetrics } from "../lib/trade-utils";
@@ -11,9 +12,9 @@ type TradeSeed = {
   competitionId: string;
   rowIndex: number;
   symbol: string;
-  segment: string;
-  tradeType: "LONG" | "SHORT";
-  status: "OPEN" | "CLOSED";
+  segment: TradeSegment;
+  tradeType: TradeType;
+  status: TradeStatus;
   tags: string;
   notes: string;
   charges: number;
@@ -37,7 +38,7 @@ async function main() {
     data: {
       name: "Admin Desk",
       email: "admin@stockscript.dev",
-      passwordHash: hashPassword("Admin@12345"),
+      passwordHash: await hashPassword("Admin@12345"),
       role: "ADMIN",
       emailVerifiedAt: new Date("2026-04-01T09:00:00.000Z"),
       approvalStatus: "APPROVED",
@@ -52,7 +53,7 @@ async function main() {
       data: {
         name: "Aarav Mehta",
         email: "aarav@stockscript.dev",
-        passwordHash: hashPassword("Trader@123"),
+        passwordHash: await hashPassword("Trader@123"),
         role: "TRADER",
         portfolioCapital: 500000,
         emailVerifiedAt: new Date("2026-04-02T08:00:00.000Z"),
@@ -66,7 +67,7 @@ async function main() {
       data: {
         name: "Mira Shah",
         email: "mira@stockscript.dev",
-        passwordHash: hashPassword("Trader@123"),
+        passwordHash: await hashPassword("Trader@123"),
         role: "TRADER",
         portfolioCapital: 300000,
         emailVerifiedAt: new Date("2026-04-02T08:20:00.000Z"),
@@ -80,7 +81,7 @@ async function main() {
       data: {
         name: "Kabir Nair",
         email: "kabir@stockscript.dev",
-        passwordHash: hashPassword("Trader@123"),
+        passwordHash: await hashPassword("Trader@123"),
         role: "TRADER",
         portfolioCapital: 200000,
         emailVerifiedAt: new Date("2026-04-02T08:40:00.000Z"),
@@ -94,7 +95,7 @@ async function main() {
       data: {
         name: "Riya Jain",
         email: "riya@stockscript.dev",
-        passwordHash: hashPassword("Trader@123"),
+        passwordHash: await hashPassword("Trader@123"),
         role: "TRADER",
         emailVerifiedAt: new Date("2026-04-15T09:00:00.000Z"),
         approvalStatus: "PENDING",

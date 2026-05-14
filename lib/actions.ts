@@ -10,6 +10,7 @@ import { competitionPayloadSchema } from "./trade-utils"; // Keep this import
 export async function updateRequestStatus(formData: FormData) {
   const id = formData.get("requestId") as string;
   const status = formData.get("status") as "APPROVED" | "REJECTED";
+  const user = await requireActiveUser();
 
   const request = await prisma.competitionRequest.findUnique({ where: { id } });
   if (!request) return;
@@ -22,7 +23,7 @@ export async function updateRequestStatus(formData: FormData) {
   if (status === "APPROVED") {
     await prisma.competitionRequest.update({
       where: { id },
-      data: { approvedAt: new Date(), approvedBy: request.userId },
+      data: { approvedAt: new Date(), approvedBy: user.id },
     });
 
     const existing = await prisma.competitionParticipant.findFirst({

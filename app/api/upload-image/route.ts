@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { uploadTradeImage } from "@/lib/storage";
 
@@ -18,9 +19,7 @@ export async function POST(request: Request) {
     }
 
     const trade = await prisma.trade.findUnique({
-      where: {
-        id: tradeId,
-      },
+      where: { id: tradeId },
     });
 
     if (!trade || (trade.userId !== user.id && user.role !== "ADMIN")) {
@@ -32,21 +31,13 @@ export async function POST(request: Request) {
         const imageUrl = await uploadTradeImage(file);
 
         return prisma.tradeImage.create({
-          data: {
-            tradeId,
-            imageUrl,
-          },
+          data: { tradeId, imageUrl },
         });
       }),
     );
 
     return NextResponse.json({ images: uploads }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unable to upload chart image.",
-      },
-      { status: 400 },
-    );
+    return handleApiError(error, "Unable to upload chart image.");
   }
 }

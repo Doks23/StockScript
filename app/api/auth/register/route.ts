@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createEmailVerificationToken, getVerificationUrl } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/trade-utils";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
         name: payload.name,
         email: payload.email.toLowerCase(),
         emailVerifiedAt: new Date(),
-        passwordHash: hashPassword(payload.password),
+        passwordHash: await hashPassword(payload.password),
         role: "TRADER",
         approvalStatus: "APPROVED",
         isActive: true,
@@ -33,9 +34,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ userId: user.id, verificationUrl }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to register account." },
-      { status: 400 },
-    );
+    return handleApiError(error, "Unable to register account.");
   }
 }

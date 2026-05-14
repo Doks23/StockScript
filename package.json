@@ -1,5 +1,5 @@
 {
-  "name": "stockscript",
+  "name": "stockscript-next",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,10 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
-    "db:init": "rm -f prisma/dev.db && prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script | sqlite3 prisma/dev.db",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed-custom": "tsx prisma/seed-custom.ts",
+    "db:reset": "prisma migrate reset --force"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.782.0",

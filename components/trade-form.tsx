@@ -7,21 +7,48 @@ import { Plus, Trash2 } from "lucide-react";
 
 type TxRow = { price: string; quantity: string; dateTime: string };
 
-type TradeFormProps = {
-  competitions: { id: string; name: string }[];
-  initialData?: any;
+type TransactionPayload = {
+  type: string;
+  price: number;
+  quantity: number;
+  dateTime: string;
 };
 
-function toLocalDT(val?: string | null, offsetMinutes = 0) {
-  const date = val
-    ? new Date(val)
-    : new Date(Date.now() + offsetMinutes * 60 * 1000);
+type Transaction = {
+  type: string;
+  price: number;
+  quantity: number;
+  dateTime: string;
+};
+
+export type InitialTradeData = {
+  id: string;
+  status: string;
+  tradeType: string;
+  symbol: string;
+  segment: string;
+  tags: string;
+  notes: string;
+  stopLoss: number | null;
+  charges: number;
+  closingPrice: number | null;
+  competitionId: string | null;
+  transactions: Transaction[];
+};
+
+type TradeFormProps = {
+  competitions: { id: string; name: string }[];
+  initialData?: InitialTradeData;
+};
+
+function toLocalDT(val?: string | null) {
+  const date = val ? new Date(val) : new Date();
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
   return local.toISOString().slice(0, 16);
 }
 
 function buildInitialTxRows(
-  txns: any[],
+  txns: Transaction[],
   tradeType: string,
   side: "entry" | "exit",
 ): TxRow[] {
@@ -30,22 +57,22 @@ function buildInitialTxRows(
       {
         price: "",
         quantity: "",
-        dateTime: side === "entry" ? toLocalDT(null, -45) : "",
+        dateTime: side === "entry" ? toLocalDT() : "",
       },
     ];
   const entryType = tradeType === "LONG" ? "BUY" : "SELL";
   const sideType =
     side === "entry" ? entryType : entryType === "BUY" ? "SELL" : "BUY";
-  const filtered = txns.filter((t: any) => t.type === sideType);
+  const filtered = txns.filter((t) => t.type === sideType);
   if (filtered.length === 0)
     return [
       {
         price: "",
         quantity: "",
-        dateTime: side === "entry" ? toLocalDT(null, -45) : "",
+        dateTime: side === "entry" ? toLocalDT() : "",
       },
     ];
-  return filtered.map((t: any) => ({
+  return filtered.map((t) => ({
     price: String(t.price),
     quantity: String(t.quantity),
     dateTime: toLocalDT(t.dateTime),
@@ -57,7 +84,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<"OPEN" | "CLOSED">(
-    initialData?.status || "OPEN",
+    (initialData?.status as "OPEN" | "CLOSED") || "OPEN",
   );
   const [tradeType, setTradeType] = useState<string>(
     initialData?.tradeType || "LONG",
@@ -109,7 +136,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
     const entryType = tradeType === "LONG" ? "BUY" : "SELL";
     const exitType = tradeType === "LONG" ? "SELL" : "BUY";
 
-    const transactions: any[] = [];
+    const transactions: TransactionPayload[] = [];
 
     for (const row of entryRows) {
       if (!row.price || !row.quantity || !row.dateTime) continue;

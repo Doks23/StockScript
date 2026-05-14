@@ -11,8 +11,8 @@ export const segmentSchema = z.enum([
 export const tradeTypeSchema = z.enum(["LONG", "SHORT"]);
 export const tradeStatusSchema = z.enum(["OPEN", "CLOSED"]);
 export const competitionVisibilitySchema = z.enum(["PUBLIC", "PRIVATE"]);
-export const userRoleSchema = z.enum(["ADMIN", "TRADER"]);
-export const approvalStatusSchema = z.enum(["PENDING", "APPROVED"]);
+export const userRoleSchema = z.enum(["ADMIN", "TRADER", "SUPER_TRADER"]);
+export const approvalStatusSchema = z.enum(["PENDING", "APPROVED", "REJECTED"]);
 
 export type SegmentValue = z.infer<typeof segmentSchema>;
 export type TradeTypeValue = z.infer<typeof tradeTypeSchema>;
@@ -429,6 +429,34 @@ export function groupTradesBySymbol(trades: TradeWithTxns[]) {
         : 0,
     }))
     .sort((a, b) => b.totalNetPnl - a.totalNetPnl);
+}
+
+import type { TradeType, TradeStatus } from "@prisma/client";
+
+export function deriveTradeTypeAndStatus(
+  transactions: { type: string; dateTime: Date; quantity: number }[],
+) {
+  const sorted = [...transactions].sort(
+    (a, b) => a.dateTime.getTime() - b.dateTime.getTime(),
+  );
+  const tradeType: TradeType = sorted[0]?.type === "BUY" ? "LONG" : "SHORT";
+  const entryType = tradeType === "LONG" ? "BUY" as const : "SELL" as const;
+  const exitType = tradeType === "LONG" ? "SELL" as const : "BUY" as const;
+
+  const entryTxns = sorted
+    .filter((t) => t.type === entryType)
+    .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+  const firstEntryAt = entryTxns.length > 0 ? entryTxns[0].dateTime : new Date();
+
+  const totalEntryQ = sorted
+    .filter((t) => t.type === entryType)
+    .reduce((s, t) => s + t.quantity, 0);
+  const totalExitQ = sorted
+    .filter((t) => t.type === exitType)
+    .reduce((s, t) => s + t.quantity, 0);
+  const status: TradeStatus = totalExitQ >= totalEntryQ ? "CLOSED" : "OPEN";
+
+  return { tradeType, firstEntryAt, status, entryType, exitType, entryTxns, totalEntryQ, totalExitQ };
 }
 
 export function normalizeTradePayload(

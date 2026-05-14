@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/trade-utils";
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!user || !verifyPassword(payload.password, user.passwordHash)) {
+    if (!user || !(await verifyPassword(payload.password, user.passwordHash))) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
@@ -36,9 +37,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ redirectTo });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to log in." },
-      { status: 400 },
-    );
+    return handleApiError(error, "Unable to log in.");
   }
 }

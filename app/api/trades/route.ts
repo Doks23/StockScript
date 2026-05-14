@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import {
   calculateTradeMetrics,
   normalizeTradePayload,
   tradePayloadSchema,
-  getFirstEntryTime,
+  deriveTradeTypeAndStatus,
 } from "@/lib/trade-utils";
 
 export async function GET() {
@@ -49,7 +50,6 @@ export async function POST(request: Request) {
 
     const previousCount = await prisma.trade.count({ where: { userId: user.id } });
 
-    // Derive firstEntryAt from the first entry transaction (by date)
     const txPayload = payload.transactions.map((t, i) => ({
       type: t.type,
       price: t.price,
@@ -58,19 +58,8 @@ export async function POST(request: Request) {
       order: i,
     }));
 
-    // Auto-detect tradeType from first chronological transaction
-    const sortedByDate = [...txPayload].sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-    const derivedTradeType = sortedByDate[0]?.type === "BUY" ? "LONG" : "SHORT";
-    const entryType = derivedTradeType === "LONG" ? "BUY" : "SELL";
-    const exitType = derivedTradeType === "LONG" ? "SELL" : "BUY";
-
-    const entryTxns = txPayload.filter((t) => t.type === entryType).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-    const firstEntryAt = entryTxns.length > 0 ? entryTxns[0].dateTime : new Date();
-
-    // Auto-close if all entry qty is covered by exits
-    const totalEntryQ = txPayload.filter((t) => t.type === entryType).reduce((s, t) => s + t.quantity, 0);
-    const totalExitQ = txPayload.filter((t) => t.type === exitType).reduce((s, t) => s + t.quantity, 0);
-    const derivedStatus = totalExitQ >= totalEntryQ ? "CLOSED" : payload.status;
+    const { tradeType: derivedTradeType, firstEntryAt, status: derivedStatus } =
+      deriveTradeTypeAndStatus(txPayload);
 
     const trade = await prisma.trade.create({
       data: {
@@ -102,9 +91,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ trade }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to create trade." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Unable to create trade.");
   }
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { csvToTransactions, parseCSVText, detectBrokerProfile, BROKER_PROFILES } from "@/lib/csv-parser";
+import type { TradeSegment } from "@prisma/client";
 import { buildTradesFromTransactions } from "@/lib/trade-matcher";
 import { calculateTradeMetrics } from "@/lib/trade-utils";
 
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
 
     if (transactions.length === 0) {
       return NextResponse.json(
-        { error: "No valid transactions found in CSV.", parseErrors },
+        { error: "No valid transactions found in CSV." },
         { status: 400 }
       );
     }
@@ -100,7 +102,7 @@ export async function POST(request: Request) {
           userId: user.id,
           competitionId: competitionId || null,
           symbol: matched.ticker,
-          segment: segment || "EQUITY",
+          segment: (segment || "EQUITY") as TradeSegment,
           tradeType: matched.tradeType,
           status: matched.status,
           rowIndex,
@@ -124,14 +126,10 @@ export async function POST(request: Request) {
         open: createdTrades.filter((t) => t.status === "OPEN").length,
         closed: createdTrades.filter((t) => t.status === "CLOSED").length,
         brokerDetected: profile.name,
-        parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
       },
       { status: 201 }
     );
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to import trades." },
-      { status: 400 }
-    );
+    return handleApiError(error, "Unable to import trades.");
   }
 }

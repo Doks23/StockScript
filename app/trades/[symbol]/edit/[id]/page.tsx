@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { TradeForm } from "@/components/trade-form";
+import type { InitialTradeData } from "@/components/trade-form";
 import { getCompetitions } from "@/lib/queries";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/auth";
@@ -21,6 +22,16 @@ export default async function EditTradePage({
     notFound();
   }
 
+  const initialData: InitialTradeData = {
+    ...trade,
+    transactions: trade.transactions.map((tx) => ({
+      type: tx.type,
+      price: tx.price,
+      quantity: tx.quantity,
+      dateTime: tx.dateTime.toISOString(),
+    })),
+  };
+
   return (
     <div className="space-y-8">
       <section className="rounded-[36px] border border-[#e2d6b1] bg-white/95 p-7 shadow-soft">
@@ -33,7 +44,7 @@ export default async function EditTradePage({
           id: comp.id,
           name: comp.name,
         }))}
-        initialData={trade}
+        initialData={initialData}
       />
     </div>
   );

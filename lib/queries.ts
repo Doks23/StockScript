@@ -1,3 +1,4 @@
+import type { TradeStatus } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import {
@@ -35,7 +36,7 @@ function buildTradeWhere(
   const where: Prisma.TradeWhereInput = { userId };
 
   if (filters.status && filters.status !== "ALL") {
-    where.status = filters.status;
+    where.status = filters.status as TradeStatus;
   }
 
   if (filters.symbol) {
