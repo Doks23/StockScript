@@ -19,6 +19,10 @@ import {
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { calculateOpenPnl } from "@/lib/trade-utils";
 
+const ACCENT = "#0c8f6a";
+const PROFIT = "#157f5b";
+const LOSS = "#b33f40";
+
 export function DashboardCharts({
   trades,
   metrics,
@@ -35,7 +39,6 @@ export function DashboardCharts({
   );
 
   const { equityCurve, recentStats, monthlyTotals } = useMemo(() => {
-    // Sort trades asc by firstEntryAt
     const sorted = [...trades].sort(
       (a, b) =>
         new Date(a.firstEntryAt ?? a.createdAt).getTime() -
@@ -121,7 +124,7 @@ export function DashboardCharts({
     return { equityCurve, recentStats: last10, monthlyTotals };
   }, [trades]);
 
-  const PIE_COLORS = ["#10b981", "#ef4444"]; // Green, Red
+  const PIE_COLORS = [PROFIT, LOSS];
   const pieData = [
     { name: "Wins", value: metrics.winRate },
     { name: "Losses", value: 100 - metrics.winRate },
@@ -131,8 +134,8 @@ export function DashboardCharts({
     <div className="space-y-6">
       {/* Top row */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Past Trades Analysis */}
-        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
+        {/* Recent Performance */}
+        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <p className="text-sm uppercase tracking-wider text-slate-500">
               Recent Performance
@@ -162,21 +165,21 @@ export function DashboardCharts({
             </div>
           </div>
           <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2 text-profit">
-              <ArrowUp className="w-8 h-8" />
-              <span className="text-3xl font-display font-semibold">
+            <div className="flex items-center gap-2">
+              <ArrowUp className="w-8 h-8 text-profit" />
+              <span className="text-3xl font-display font-semibold text-profit">
                 {recentStats.winners}
               </span>
             </div>
-            <span className="text-xl text-slate-400">vs</span>
-            <div className="flex items-center gap-2 text-loss">
-              <ArrowDown className="w-8 h-8 relative top-1" />
-              <span className="text-3xl font-display font-semibold relative top-1">
+            <span className="text-xl text-slate-300">|</span>
+            <div className="flex items-center gap-2">
+              <ArrowDown className="w-8 h-8 text-loss" />
+              <span className="text-3xl font-display font-semibold text-loss">
                 {recentStats.losers}
               </span>
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between text-sm text-slate-500">
+          <div className="mt-4 pt-4 border-t border-line flex justify-between text-sm text-slate-500">
             <span className="text-slate-400">Sample Size</span>
             <span className="font-medium text-ink">
               {recentStats.total} trades
@@ -185,7 +188,7 @@ export function DashboardCharts({
         </div>
 
         {/* Batting Average */}
-        <div className="rounded-3xl border border-[#f0e7cf] bg-white p-5 shadow-sm flex flex-col items-center">
+        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm flex flex-col items-center">
           <p className="text-sm uppercase tracking-wider text-slate-500 mb-2 self-start">
             Batting Average
           </p>
@@ -213,30 +216,30 @@ export function DashboardCharts({
             </ResponsiveContainer>
           </div>
           <div className="flex gap-4 mt-2 text-sm font-medium">
-            <span className="text-profit">
+            <span style={{ color: PROFIT }}>
               Win {metrics.winRate.toFixed(1)}%
             </span>
-            <span className="text-loss">
+            <span style={{ color: LOSS }}>
               Loss {(100 - metrics.winRate).toFixed(1)}%
             </span>
           </div>
         </div>
 
         {/* Trade Stats Block */}
-        <div className="rounded-3xl border border-[#f0e7cf] bg-white p-5 shadow-sm space-y-3 text-sm">
+        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-slate-500">Trade</span>
-            <span className="font-medium">{metrics.totalTrades}</span>
+            <span className="font-medium text-ink">{metrics.totalTrades}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Win</span>
-            <span className="font-medium text-profit">
+            <span className="font-medium" style={{ color: PROFIT }}>
               {Math.round(metrics.totalTrades * (metrics.winRate / 100))}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Loss</span>
-            <span className="font-medium text-loss">
+            <span className="font-medium" style={{ color: LOSS }}>
               {metrics.totalTrades -
                 Math.round(metrics.totalTrades * (metrics.winRate / 100))}
             </span>
@@ -253,7 +256,7 @@ export function DashboardCharts({
       </div>
 
       {/* Equity Curve */}
-      <div className="rounded-3xl border border-[#f0e7cf] bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-line bg-white p-6 shadow-sm">
         <p className="text-md font-medium text-slate-700 mb-4">Equity Curve</p>
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -263,28 +266,20 @@ export function DashboardCharts({
             >
               <defs>
                 <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--accent)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--accent)"
-                    stopOpacity={0}
-                  />
+                  <stop offset="5%" stopColor={ACCENT} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={ACCENT} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 12, fill: "#94a3b8" }}
                 tickMargin={10}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 tickFormatter={(val) => `₹${val}`}
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 12, fill: "#94a3b8" }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -294,8 +289,8 @@ export function DashboardCharts({
               <Area
                 type="monotone"
                 dataKey="equity"
-                stroke="var(--accent)"
-                strokeWidth={3}
+                stroke={ACCENT}
+                strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorEquity)"
               />
@@ -307,7 +302,7 @@ export function DashboardCharts({
       {/* Bottom Row Charts */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Portfolio Allocation % */}
-        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
+        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">
             Portfolio Allocation % (Open)
           </p>
@@ -332,14 +327,14 @@ export function DashboardCharts({
               >
                 <XAxis
                   dataKey="symbol"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: "#94a3b8" }}
                   tickMargin={5}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   tickFormatter={(val) => `${val.toFixed(0)}%`}
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: "#94a3b8" }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -348,7 +343,7 @@ export function DashboardCharts({
                 />
                 <Bar
                   dataKey="allocationPct"
-                  fill="var(--accent)"
+                  fill={ACCENT}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -357,7 +352,7 @@ export function DashboardCharts({
         </div>
 
         {/* PnL */}
-        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
+        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">PnL</p>
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -367,13 +362,13 @@ export function DashboardCharts({
               >
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: "#94a3b8" }}
                   tickMargin={5}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: "#94a3b8" }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -383,10 +378,10 @@ export function DashboardCharts({
                     "PnL",
                   ]}
                 />
-                <ReferenceLine y={0} stroke="#cbd5e1" />
+                <ReferenceLine y={0} stroke="#e2e5ea" />
                 <Bar
                   dataKey="pnlPct"
-                  fill="var(--accent)"
+                  fill={ACCENT}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -395,7 +390,7 @@ export function DashboardCharts({
         </div>
 
         {/* Winners per Month */}
-        <div className="rounded-3xl border border-line bg-panel p-5 shadow-sm">
+        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">
             # Winners per Month
           </p>
@@ -407,18 +402,22 @@ export function DashboardCharts({
               >
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: "#94a3b8" }}
                   tickMargin={5}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: "#94a3b8" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip />
-                <Bar dataKey="winners" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="winners"
+                  fill={ACCENT}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { TradeStatus } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
@@ -8,7 +9,6 @@ import {
   buildLeaderboardEntries,
   filterTradesByTag,
   getCompetitionWindowTrades,
-  getLastExitTime,
   groupTradesBySymbol,
 } from "./trade-utils";
 
@@ -22,12 +22,16 @@ type TradeFilters = {
   sort?: string;
 };
 
-const transactionInclude = {
+const TRANSACTION_INCLUDE = {
+  transactions: { orderBy: { dateTime: "asc" as const } },
+} as const;
+
+const TRANSACTION_INCLUDE_FULL = {
   transactions: { orderBy: { dateTime: "asc" as const } },
   images: true,
   competition: { select: { id: true, name: true } },
   user: { select: { id: true, name: true, email: true } },
-};
+} as const;
 
 function buildTradeWhere(
   userId: string,
@@ -41,12 +45,6 @@ function buildTradeWhere(
 
   if (filters.symbol) {
     where.symbol = { contains: filters.symbol.trim().toUpperCase() };
-  }
-
-  if (filters.minQty) {
-    where.transactions = {
-      some: { quantity: { gte: Number(filters.minQty) } },
-    };
   }
 
   if (filters.from || filters.to) {
@@ -63,7 +61,7 @@ function buildTradeWhere(
   return where;
 }
 
-export async function getCompetitions() {
+export const getCompetitions = cache(async function getCompetitions() {
   return prisma.competition.findMany({
     include: {
       creator: { select: { id: true, name: true } },
@@ -77,14 +75,14 @@ export async function getCompetitions() {
     },
     orderBy: { startDate: "desc" },
   });
-}
+});
 
-export async function getDashboardData(userId: string) {
+export const getDashboardData = cache(async function getDashboardData(userId: string) {
   const trades = await prisma.trade.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 500,
-    include: transactionInclude,
+    include: TRANSACTION_INCLUDE,
   });
 
   const closedTrades = trades.filter((t) => t.status === "CLOSED");
@@ -97,34 +95,36 @@ export async function getDashboardData(userId: string) {
     groupedTrades: groupTradesBySymbol(closedTrades),
     metrics: buildDashboardMetrics(trades),
   };
-}
+});
 
-export async function getJournalData(userId: string, filters: TradeFilters) {
-  const trades = filterTradesByTag(
-    await prisma.trade.findMany({
+export const getJournalData = cache(async function getJournalData(
+  userId: string,
+  filters: TradeFilters,
+) {
+  const [trades, user] = await Promise.all([
+    prisma.trade.findMany({
       where: buildTradeWhere(userId, filters),
       orderBy: [{ firstEntryAt: filters.sort === "ASC" ? "asc" : "desc" }],
-      include: transactionInclude,
+      take: 1000,
+      include: TRANSACTION_INCLUDE,
     }),
-    filters.tag,
-  );
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { portfolioCapital: true },
+    }),
+  ]);
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { portfolioCapital: true },
-  });
+  const filtered = filterTradesByTag(trades, filters.tag);
+  const capital = user?.portfolioCapital ?? 100000;
 
   return {
-    trades,
-    rows: buildJournalRows(trades, user?.portfolioCapital ?? 100000),
-    groupedRows: buildGroupedJournalRows(
-      trades,
-      user?.portfolioCapital ?? 100000,
-    ),
+    trades: filtered,
+    rows: buildJournalRows(filtered, capital),
+    groupedRows: buildGroupedJournalRows(filtered, capital),
   };
-}
+});
 
-export async function getTradesBySymbol(
+export const getTradesBySymbol = cache(async function getTradesBySymbol(
   userId: string,
   symbol: string,
   filters: Pick<TradeFilters, "from" | "to" | "tag">,
@@ -136,7 +136,8 @@ export async function getTradesBySymbol(
         symbol: symbol.toUpperCase(),
       },
       orderBy: { firstEntryAt: "desc" },
-      include: transactionInclude,
+      take: 500,
+      include: TRANSACTION_INCLUDE_FULL,
     }),
     filters.tag,
   );
@@ -146,17 +147,14 @@ export async function getTradesBySymbol(
     trades,
     metrics: buildDashboardMetrics(trades),
   };
-}
+});
 
-export async function getLeaderboard(competitionId: string) {
+export const getLeaderboard = cache(async function getLeaderboard(competitionId: string) {
   const competition = await prisma.competition.findUnique({
     where: { id: competitionId },
     include: {
       participants: {
-        select: {
-          userId: true,
-          user: true,
-        },
+        select: { userId: true, user: true },
       },
     },
   });
@@ -170,45 +168,19 @@ export async function getLeaderboard(competitionId: string) {
       ? await prisma.trade.findMany({
           where: {
             userId: { in: participantIds },
-            OR: [
-              { competitionId },
-              {
-                transactions: {
-                  some: {
-                    dateTime: {
-                      gte: competition.startDate,
-                      lte: competition.endDate,
-                    },
-                  },
-                },
-              },
-              {
-                firstEntryAt: {
-                  gte: competition.startDate,
-                  lte: competition.endDate,
-                },
-              },
-              {
-                status: "CLOSED",
-                updatedAt: {
-                  gte: competition.startDate,
-                  lte: competition.endDate,
-                },
-              },
-            ],
+            competitionId,
           },
           orderBy: { firstEntryAt: "asc" },
-          include: transactionInclude,
+          include: TRANSACTION_INCLUDE,
         })
       : [];
 
   const tradesByUserId = new Map<string, typeof trades>();
-  trades.forEach((trade) => {
-    if (!tradesByUserId.has(trade.userId)) {
-      tradesByUserId.set(trade.userId, []);
-    }
-    tradesByUserId.get(trade.userId)!.push(trade);
-  });
+  for (const trade of trades) {
+    const existing = tradesByUserId.get(trade.userId);
+    if (existing) existing.push(trade);
+    else tradesByUserId.set(trade.userId, [trade]);
+  }
 
   const entries = buildLeaderboardEntries(
     competition.participants.map((participant) => ({
@@ -220,45 +192,48 @@ export async function getLeaderboard(competitionId: string) {
     })),
   );
 
-  await prisma.$transaction(
-    entries.map((entry) =>
-      prisma.userCompetitionStat.upsert({
-        where: {
-          userId_competitionId: { userId: entry.userId, competitionId },
-        },
-        create: {
-          userId: entry.userId,
-          competitionId,
-          portfolioImpactPct: entry.portfolioImpactPct,
-          returnPercentage: entry.returnPercentage,
-          maxDrawdown: entry.maxDrawdown,
-          winRate: entry.winRate,
-          totalTrades: entry.totalTrades,
-          profitFactor: entry.profitFactor,
-        },
-        update: {
-          portfolioImpactPct: entry.portfolioImpactPct,
-          returnPercentage: entry.returnPercentage,
-          maxDrawdown: entry.maxDrawdown,
-          winRate: entry.winRate,
-          totalTrades: entry.totalTrades,
-          profitFactor: entry.profitFactor,
-        },
-      }),
-    ),
-  );
+  if (entries.length > 0) {
+    const now = Date.now();
+    await prisma.$transaction(
+      entries.map((entry) =>
+        prisma.userCompetitionStat.upsert({
+          where: {
+            userId_competitionId: { userId: entry.userId, competitionId },
+          },
+          create: {
+            userId: entry.userId,
+            competitionId,
+            portfolioImpactPct: entry.portfolioImpactPct,
+            returnPercentage: entry.returnPercentage,
+            maxDrawdown: entry.maxDrawdown,
+            winRate: entry.winRate,
+            totalTrades: entry.totalTrades,
+            profitFactor: entry.profitFactor,
+          },
+          update: {
+            portfolioImpactPct: entry.portfolioImpactPct,
+            returnPercentage: entry.returnPercentage,
+            maxDrawdown: entry.maxDrawdown,
+            winRate: entry.winRate,
+            totalTrades: entry.totalTrades,
+            profitFactor: entry.profitFactor,
+          },
+        }),
+      ),
+    );
+  }
 
   return { competition, entries };
-}
+});
 
-export async function getPendingUsers() {
+export const getPendingUsers = cache(async function getPendingUsers() {
   return prisma.user.findMany({
     where: { role: "TRADER", approvalStatus: "PENDING" },
     orderBy: { createdAt: "asc" },
   });
-}
+});
 
-export async function getAllTraders() {
+export const getAllTraders = cache(async function getAllTraders() {
   return prisma.user.findMany({
     where: { role: { in: ["TRADER", "SUPER_TRADER"] } },
     orderBy: { createdAt: "asc" },
@@ -273,54 +248,34 @@ export async function getAllTraders() {
       createdAt: true,
     },
   });
-}
+});
 
-export async function getTraderCompetitionTrades(
+export const getTraderCompetitionTrades = cache(async function getTraderCompetitionTrades(
   competitionId: string,
   userId: string,
 ) {
-  const competition = await prisma.competition.findUnique({
-    where: { id: competitionId },
-  });
-  if (!competition) return null;
+  const [competition, user] = await Promise.all([
+    prisma.competition.findUnique({ where: { id: competitionId } }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, portfolioCapital: true },
+    }),
+  ]);
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, name: true, portfolioCapital: true },
-  });
-  if (!user) return null;
+  if (!competition || !user) return null;
 
   const trades = await prisma.trade.findMany({
     where: {
       userId,
-      OR: [
-        { competitionId },
-        {
-          transactions: {
-            some: {
-              dateTime: {
-                gte: competition.startDate,
-                lte: competition.endDate,
-              },
-            },
-          },
-        },
-        {
-          firstEntryAt: {
-            gte: competition.startDate,
-            lte: competition.endDate,
-          },
-        },
-      ],
+      competitionId,
     },
     orderBy: { firstEntryAt: "desc" },
-    include: transactionInclude,
+    include: TRANSACTION_INCLUDE,
   });
 
-  // Strictly filter the DB results down to the exact window bounds
   return {
     competition,
     user,
     trades: getCompetitionWindowTrades(trades, competition),
   };
-}
+});

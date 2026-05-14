@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Edit2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -109,9 +108,8 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
   );
 }
 
-export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedTradeRow[]; showAmounts?: boolean }) {
+export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { rows: GroupedTradeRow[]; showAmounts?: boolean; onRefresh?: () => void }) {
 
-  const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [merging, setMerging] = useState(false);
@@ -196,7 +194,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
       });
-      if (res.ok) { setSelectedIds(new Set()); router.refresh(); }
+      if (res.ok) { setSelectedIds(new Set()); onRefresh?.(); }
       else { const d = await res.json(); alert(d.error || "Failed to delete."); }
     } catch { alert("Network error."); }
     finally { setDeletingIds(new Set()); }
@@ -212,7 +210,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [...selectedIds] }),
       });
-      if (res.ok) { setSelectedIds(new Set()); router.refresh(); }
+      if (res.ok) { setSelectedIds(new Set()); onRefresh?.(); }
       else { const d = await res.json(); alert(d.error || "Failed to merge."); }
     } catch { alert("Network error."); }
     finally { setMerging(false); }
@@ -258,7 +256,7 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-ink text-white text-[12px]">
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-800 text-white text-[12px]">
           <span className="text-slate-300">{selectedIds.size} selected</span>
           <button onClick={handleDeleteSelected} disabled={deletingIds.size > 0}
             className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 transition disabled:opacity-50 font-medium">
@@ -282,46 +280,46 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
       <div className="w-full overflow-x-auto scrollbar-hide">
         <table className="w-full whitespace-nowrap text-right text-[12px] text-slate-700">
           <thead>
-            <tr className="bg-ink text-white text-[10px] uppercase tracking-wider">
+            <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-line">
               <th className="px-2 py-3 text-center w-8">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
-                  className="h-3.5 w-3.5 rounded border-slate-500 accent-slate-400 cursor-pointer" />
+                  className="h-3.5 w-3.5 rounded border-slate-400 accent-slate-500 cursor-pointer" />
               </th>
               <SortTh sKey="symbol" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-left min-w-[130px]">Symbol</SortTh>
               <th className="px-3 py-3 text-center" colSpan={3}>Entry</th>
-              <th className="px-3 py-3 text-center border-l border-slate-700" colSpan={3}>Exit</th>
+              <th className="px-3 py-3 text-center border-l border-slate-300" colSpan={3}>Exit</th>
               <SortTh sKey="openCapital" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center border-l border-slate-700">Open Cap ₹</SortTh>
+                className="px-3 py-3 text-center border-l border-slate-300">Open Cap ₹</SortTh>
               <SortTh sKey="stopLossPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center border-l border-slate-700">SL %</SortTh>
+                className="px-3 py-3 text-center border-l border-slate-300">SL %</SortTh>
               <SortTh sKey="allocationPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center">Alloc %</SortTh>
               <SortTh sKey="ageDays" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center">Age</SortTh>
               <SortTh sKey="pnlPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center border-l border-slate-700">P&amp;L %</SortTh>
+                className="px-3 py-3 text-center border-l border-slate-300">P&amp;L %</SortTh>
               <SortTh sKey="pnlAmount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center">P&amp;L ₹</SortTh>
               <SortTh sKey="impactPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center">Impact %</SortTh>
               <th className="px-2 py-3 text-center w-8"></th>
             </tr>
-            <tr className="bg-slate-100 text-slate-500 text-[10px]">
+            <tr className="bg-white text-slate-400 text-[10px] border-b border-line">
               <th />
               <th className="px-3 py-1.5 text-left">L / S</th>
               <th className="px-3 py-1.5">Qty</th>
               <th className="px-3 py-1.5">Price</th>
               <SortTh sKey="entryDate" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-1.5">Date</SortTh>
-              <th className="px-3 py-1.5 border-l border-slate-700">Qty</th>
+              <th className="px-3 py-1.5 border-l border-slate-300">Qty</th>
               <th className="px-3 py-1.5">Price</th>
               <SortTh sKey="exitDate" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-1.5">Date</SortTh>
-              <th className="px-3 py-1.5 border-l border-slate-700" />
-              <th className="px-3 py-1.5 border-l border-slate-700" />
+              <th className="px-3 py-1.5 border-l border-slate-300" />
+              <th className="px-3 py-1.5 border-l border-slate-300" />
               <th className="px-3 py-1.5" /><th className="px-3 py-1.5" />
-              <th className="px-3 py-1.5 border-l border-slate-700" />
+              <th className="px-3 py-1.5 border-l border-slate-300" />
               <th className="px-3 py-1.5" /><th className="px-3 py-1.5" /><th />
             </tr>
           </thead>
@@ -442,10 +440,10 @@ export function JournalTable({ rows = [], showAmounts = true }: { rows: GroupedT
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>
                                <ClosingPriceInput
-                                 tradeId={t.id}
-                                 initialValue={t.closingPrice}
-                                 onUpdate={() => router.refresh()}
-                               />
+                                  tradeId={t.id}
+                                  initialValue={t.closingPrice}
+                                  onUpdate={() => onRefresh?.()}
+                                />
                             </td>
                             <td className="px-2 py-3 text-center align-middle" rowSpan={maxLegs}>
                               <Link href={`/trades/${encodeURIComponent(t.symbol)}/edit/${t.id}`}

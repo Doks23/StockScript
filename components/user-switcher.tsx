@@ -28,7 +28,7 @@ export function UserSwitcher({
           params.set("userId", event.target.value);
           router.push(`${pathname}?${params.toString()}`);
         }}
-        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-accent"
+        className="rounded-2xl border border-line bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-accent"
       >
         {users.map((user) => (
           <option key={user.id} value={user.id}>

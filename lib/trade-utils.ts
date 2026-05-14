@@ -550,8 +550,9 @@ export function buildGroupedJournalRows(
     const pnlPct = capital > 0 ? (displayPnl / capital) * 100 : 0;
 
     const openCapital = openQty > 0 ? weightedEntry * openQty : 0;
+    const capitalForAlloc = openQty > 0 ? openCapital : capital;
     const allocationPct =
-      portfolioCapital > 0 ? (openCapital / portfolioCapital) * 100 : 0;
+      portfolioCapital > 0 ? (capitalForAlloc / portfolioCapital) * 100 : 0;
     const impactPct =
       portfolioCapital > 0 ? (displayPnl / portfolioCapital) * 100 : 0;
 

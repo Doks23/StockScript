@@ -30,7 +30,7 @@ export function ApproveUserButton({ userId }: { userId: string }) {
 
           router.refresh();
         }}
-        className="inline-flex items-center justify-center rounded-full bg-[#a7770e] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8e6500] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center justify-center rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accentDeep disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Approving..." : "Approve trader"}
       </button>

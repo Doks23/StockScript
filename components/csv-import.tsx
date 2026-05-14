@@ -144,7 +144,7 @@ export function CSVImport({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+    <div className="rounded-2xl border border-line bg-white p-5 shadow-sm space-y-5">
       {/* Drop Zone */}
       <div
         onDragOver={(e) => {
@@ -327,7 +327,7 @@ export function CSVImport({
         <button
           onClick={handleImport}
           disabled={isSubmitting || !csvText.trim() || !!result}
-          className="rounded-xl bg-gradient-to-r from-[#d4a849] to-[#b18123] px-6 py-2.5 text-sm font-medium text-white transition hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+          className="rounded-xl bg-accent px-6 py-2.5 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Importing..." : "Import Trades"}
         </button>

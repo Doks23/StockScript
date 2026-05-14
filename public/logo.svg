@@ -1,0 +1,8 @@
+<svg viewBox="0 0 240 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M7 10C7 6 22 4 22 13 22 20 4 16 5 24 6 32 22 27 21 34" stroke="#0f1720" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M21 34L21 41" stroke="#0c8f6a" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <rect x="15.5" y="41" width="11" height="5" rx="2" fill="#0c8f6a"/>
+  <text x="46" y="33" font-family="'Space Grotesk', sans-serif" font-size="26" font-weight="700" fill="#0f1720">
+    <tspan>Stock</tspan><tspan fill="#0c8f6a">Script</tspan>
+  </text>
+</svg>

@@ -8,8 +8,8 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-[36px] border border-[#e2d6b1] bg-white/95 p-7 shadow-soft">
-        <p className="text-sm uppercase tracking-[0.24em] text-[#9d7a1f]">Admin Desk</p>
+      <section className="rounded-2xl border border-line bg-white p-7 shadow-sm">
+        <p className="text-sm uppercase tracking-wider text-accent">Admin Desk</p>
         <h1 className="mt-2 font-display text-4xl font-semibold text-ink">
           Manage Traders
         </h1>
@@ -18,7 +18,7 @@ export default async function AdminPage() {
         </p>
       </section>
 
-      <section className="overflow-hidden rounded-[32px] border border-[#e2d6b1] bg-white/95 shadow-soft">
+      <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
         <AdminTraderTable traders={traders} />
       </section>
     </div>

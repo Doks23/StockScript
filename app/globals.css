@@ -13,9 +13,9 @@ html {
 
 body {
   min-height: 100vh;
-  background: var(--color-page-bg);
-  color: var(--color-text-body);
-  font-family: "Inter", var(--font-body), sans-serif;
+  background: #f5f6f8;
+  color: var(--color-text-body, #475569);
+  font-family: var(--font-body), sans-serif;
 }
 
 * {

@@ -3,8 +3,6 @@ import { DM_Sans, IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
-export const dynamic = "force-dynamic";
-
 const display = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
@@ -25,6 +23,10 @@ export const metadata: Metadata = {
   title: "StockScript Journal",
   description:
     "Production-ready trading journal with competitions and return-based leaderboards.",
+  icons: {
+    icon: "/stockscript-logo.svg",
+    apple: "/stockscript-logo.svg",
+  },
 };
 
 export default function RootLayout({

@@ -48,7 +48,7 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
       </section>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 w-fit">
+      <div className="flex gap-1 rounded-2xl border border-line bg-canvas p-1 w-fit">
         <Link
           href="/competitions"
           className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
@@ -77,7 +77,7 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
             <CompetitionRequestList requests={pendingRequests} />
           )}
 
-          <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-line bg-white p-6 shadow-sm">
             <h2 className="font-display text-2xl font-semibold text-ink mb-4">All Competitions</h2>
             <div className="space-y-4">
               {competitions.length === 0 && (
@@ -91,7 +91,7 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
               {competitions.map((competition) => (
                 <div
                   key={competition.id}
-                  className="rounded-[24px] border border-slate-100 bg-slate-50/80 p-4"
+                  className="rounded-2xl border border-line bg-canvas p-4"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -104,7 +104,7 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
                     <div className="flex items-center gap-4">
                       <Link
                         href={`/leaderboard?competitionId=${competition.id}`}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                        className="text-sm font-medium text-accent hover:text-accentDeep"
                       >
                         View Leaderboard
                       </Link>
@@ -138,8 +138,8 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
           </section>
         </>
       ) : (
-        <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-          <div className="px-6 py-5 border-b border-slate-100">
+        <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+          <div className="px-6 py-5 border-b border-line">
             <h2 className="font-display text-2xl font-semibold text-ink">Trader Accounts</h2>
             <p className="mt-1 text-sm text-slate-500">
               Approve, reject, or remove trader accounts.

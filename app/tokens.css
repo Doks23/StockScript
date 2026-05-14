@@ -1,90 +1,84 @@
-/* ─── StockScript Design Tokens ─────────────────────────────────────────────
-   Single source of truth for every visual decision.
-   All hex values live here. Components reference only var(--...).
-   ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* ── Brand / Primary ─────────────────────────────────────── */
-  --color-primary:        #185FA5;
-  --color-primary-hover:  #14508E;
-  --color-primary-light:  #EBF3FB;
+  /* Brand — aligned with tailwind.config.ts */
+  --color-accent:        #0c8f6a;
+  --color-accent-hover:  #05563f;
+  --color-accent-light:  #e6f7f1;
+  --color-primary:        #0c8f6a;
+  --color-primary-hover:  #05563f;
+  --color-primary-light:  #e6f7f1;
 
-  /* ── Page & surfaces ─────────────────────────────────────── */
-  --color-page-bg:  #F7F8FA;
-  --color-surface:  #FFFFFF;
+  /* Page & surfaces */
+  --color-page-bg:  #f5f6f8;
+  --color-surface:  #ffffff;
 
-  /* ── Text hierarchy ──────────────────────────────────────── */
-  --color-text-heading:     #111827;
-  --color-text-body:        #374151;
-  --color-text-muted:       #6B7280;
-  --color-text-placeholder: #9CA3AF;
+  /* Text hierarchy */
+  --color-text-heading:     #0f1720;
+  --color-text-body:        #475569;
+  --color-text-muted:       #94a3b8;
+  --color-text-placeholder: #cbd5e1;
 
-  /* ── Borders ─────────────────────────────────────────────── */
-  --color-border:       #E2E5EA;
-  --color-border-light: #F1F3F5;
+  /* Borders */
+  --color-border:       #e2e5ea;
+  --color-border-light: #f1f5f9;
 
-  /* ── Semantic colours ────────────────────────────────────── */
-  --color-profit:      #1D9E75;
-  --color-profit-bg:   #F0FBF7;
-  --color-profit-text: #0E6B4F;
+  /* Semantic colours */
+  --color-profit:      #157f5b;
+  --color-profit-bg:   #f0fdf6;
+  --color-profit-text: #157f5b;
+  --color-loss:        #b33f40;
+  --color-loss-bg:     #fef2f2;
+  --color-loss-text:   #b33f40;
+  --color-warning:     #f28f3b;
+  --color-warning-bg:  #fff7ed;
+  --color-warning-text:#d97706;
+  --color-info:        #0c8f6a;
+  --color-info-bg:     #e6f7f1;
+  --color-info-text:   #0c8f6a;
 
-  --color-loss:      #D4537E;
-  --color-loss-bg:   #FDF2F5;
-  --color-loss-text: #9D1F47;
+  /* Chart series */
+  --chart-1: #0c8f6a;
+  --chart-2: #157f5b;
+  --chart-3: #f28f3b;
+  --chart-4: #b33f40;
 
-  --color-warning:      #EF9F27;
-  --color-warning-bg:   #FEF8EC;
-  --color-warning-text: #A0620D;
-
-  --color-info:      #378ADD;
-  --color-info-bg:   #EBF3FB;
-  --color-info-text: #1A4F82;
-
-  /* ── Chart series — MUST match exactly ──────────────────────
-     ['#378ADD', '#1D9E75', '#EF9F27', '#D4537E']
-     ─────────────────────────────────────────────────────────── */
-  --chart-1: #378ADD;
-  --chart-2: #1D9E75;
-  --chart-3: #EF9F27;
-  --chart-4: #D4537E;
-
-  /* ── Layout ──────────────────────────────────────────────── */
+  /* Layout */
   --sidebar-width:  220px;
   --topbar-height:  64px;
 
-  /* ── Card ────────────────────────────────────────────────── */
-  --card-radius: 12px;
-  --card-border: 1px solid #E2E5EA;
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* Card */
+  --card-radius: 16px;
+  --card-border: 1px solid #e2e5ea;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
 
-  /* ── Buttons ─────────────────────────────────────────────── */
+  /* Buttons */
   --btn-height: 36px;
-  --btn-radius: 8px;
+  --btn-radius: 12px;
 
-  /* ── Form inputs ─────────────────────────────────────────── */
+  /* Form inputs */
   --input-height: 36px;
-  --input-radius: 8px;
+  --input-radius: 12px;
 
-  /* ── Table ───────────────────────────────────────────────── */
-  --table-header-size:  12px;
+  /* Table */
+  --table-header-size:  11px;
   --table-row-height:   48px;
-  --table-divider:      0.5px solid #E2E5EA;
+  --table-divider:      1px solid #f1f5f9;
 
-  /* ── Badge palette ───────────────────────────────────────── */
-  --badge-success-bg:   #DCFCE7;
-  --badge-success-text: #15803D;
-  --badge-danger-bg:    #FEE2E2;
-  --badge-danger-text:  #DC2626;
-  --badge-warning-bg:   #FEF3C7;
-  --badge-warning-text: #D97706;
-  --badge-info-bg:      #DBEAFE;
-  --badge-info-text:    #1D4ED8;
-  --badge-neutral-bg:   #F1F5F9;
-  --badge-neutral-text: #64748B;
-  --badge-violet-bg:    #EDE9FE;
-  --badge-violet-text:  #7C3AED;
+  /* Badge palette */
+  --badge-success-bg:   #f0fdf4;
+  --badge-success-text: #166534;
+  --badge-danger-bg:    #fef2f2;
+  --badge-danger-text:  #991b1b;
+  --badge-warning-bg:   #fffbeb;
+  --badge-warning-text: #92400e;
+  --badge-info-bg:      #f0f9ff;
+  --badge-info-text:    #1e40af;
+  --badge-neutral-bg:   #f8fafc;
+  --badge-neutral-text: #64748b;
+  --badge-violet-bg:    #ede9fe;
+  --badge-violet-text:  #7c3aed;
 
-  /* ── Typography ──────────────────────────────────────────── */
-  --text-page-title-size:   20px;
+  /* Typography */
+  --text-page-title-size:   24px;
   --text-page-title-weight: 600;
   --text-card-label-size:   13px;
   --text-card-label-weight: 500;

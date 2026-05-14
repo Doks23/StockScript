@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <title>StockScript Journal</title>
+  <desc>Price action breakout chart fused with a pen nib — StockScript Journal logo mark</desc>
+
+  <!-- Outer ring -->
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#1a4731" stroke-width="3"/>
+  <!-- Inner filled circle -->
+  <circle cx="100" cy="100" r="82" fill="#1a4731"/>
+
+  <!-- Step-up price action chart -->
+  <polyline
+    points="44,128 62,128 62,110 82,110 82,88 104,88 124,70"
+    fill="none" stroke="#6dc99a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Breakout arrow tip -->
+  <polyline
+    points="116,62 124,70 116,78"
+    fill="none" stroke="#6dc99a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Gold pen nib at chart origin -->
+  <polygon points="44,140 58,128 44,116" fill="#c4922a"/>
+  <!-- Nib centre slit -->
+  <line x1="44" y1="140" x2="51" y2="128" stroke="#1a4731" stroke-width="1.5"/>
+</svg>

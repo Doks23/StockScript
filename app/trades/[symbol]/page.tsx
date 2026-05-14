@@ -48,11 +48,11 @@ export default async function TradeDetailPage({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-[20px] border border-[#e2d6b1] bg-white/95 px-6 py-4 shadow-soft flex items-center justify-between">
+      <section className="rounded-2xl border border-line bg-white px-6 py-4 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
             href="/trades"
-            className="text-sm text-[#8e6500] hover:text-[#6b4c00]"
+            className="text-sm text-slate-500 hover:text-accent"
           >
             ← Journal
           </Link>
@@ -87,17 +87,17 @@ export default async function TradeDetailPage({
         {data.trades.map((trade) => (
           <article
             key={trade.id}
-            className="rounded-[32px] border border-[#e2d6b1] bg-white/95 p-6 shadow-soft"
+            className="rounded-2xl border border-line bg-white p-6 shadow-sm"
           >
             <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="rounded-full bg-[#fff7dc] px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#7b5a00]">
+                    <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-accent">
                       {trade.status}
                     </span>
-                    <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-white">
-                      {trade.tradeType}
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${trade.tradeType === "LONG" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
+                      {trade.tradeType === "LONG" ? "Long" : "Short"}
                     </span>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
                       {trade.segment}
@@ -105,7 +105,7 @@ export default async function TradeDetailPage({
                   </div>
                   <Link
                     href={`/trades/${encodeURIComponent(trade.symbol)}/edit/${trade.id}`}
-                    className="rounded-full border border-[#eadfbe] bg-[#fffdfa] px-4 py-2 text-sm font-medium text-[#5f4b1f] hover:border-[#c59e32] hover:text-[#8d6500]"
+                    className="rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:border-accent hover:text-accent"
                   >
                     Edit Trade
                   </Link>
@@ -147,7 +147,7 @@ export default async function TradeDetailPage({
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[24px] border border-[#f0e7cf] bg-[#fff9ec] p-4">
+                  <div className="rounded-xl border border-line bg-canvas p-4">
                     <p className="text-sm text-slate-500">Execution Window</p>
                     <p className="mt-3 text-sm leading-7 text-slate-700">
                       Entry: {formatDateTime(getFirstEntryTime(trade))}
@@ -158,7 +158,7 @@ export default async function TradeDetailPage({
                         : "Still open"}
                     </p>
                   </div>
-                  <div className="rounded-[24px] border border-[#f0e7cf] bg-[#fff9ec] p-4">
+                  <div className="rounded-xl border border-line bg-canvas p-4">
                     <p className="text-sm text-slate-500">Notes & tags</p>
                     <p className="mt-3 text-sm leading-7 text-slate-700">
                       {trade.notes || "No notes added."}
@@ -167,7 +167,7 @@ export default async function TradeDetailPage({
                       {parseTags(trade.tags).map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500"
+                            className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500"
                         >
                           {tag}
                         </span>
@@ -210,7 +210,7 @@ export default async function TradeDetailPage({
                   {trade.images.map((image) => (
                     <div
                       key={image.id}
-                      className="overflow-hidden rounded-[24px] border border-[#eadfbe] bg-[#fff9ec]"
+                      className="overflow-hidden rounded-xl border border-line bg-canvas"
                     >
                       <div className="relative aspect-[4/3]">
                         <Image
@@ -223,7 +223,7 @@ export default async function TradeDetailPage({
                     </div>
                   ))}
                   {!trade.images.length ? (
-                    <div className="rounded-[24px] border border-dashed border-slate-300 bg-[#fff9ec] px-5 py-8 text-sm text-slate-500 sm:col-span-2">
+                    <div className="rounded-xl border border-dashed border-line bg-canvas px-5 py-8 text-sm text-slate-500 sm:col-span-2">
                       No chart screenshots attached yet.
                     </div>
                   ) : null}

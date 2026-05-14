@@ -95,7 +95,7 @@ export function TraderMaintenanceTable({ traders }: { traders: Trader[] }) {
                 </td>
                 <td className="px-5 py-4">
                   <span
-                    className={`inline-block rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${statusBadge[trader.approvalStatus] ?? "bg-slate-100 text-slate-600 border-slate-200"}`}
+                    className={`inline-block rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${statusBadge[trader.approvalStatus] ?? "bg-canvas text-slate-600 border-line"}`}
                   >
                     {trader.approvalStatus}
                   </span>

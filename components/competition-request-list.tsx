@@ -40,7 +40,7 @@ export function CompetitionRequestList({ requests }: { requests: RequestItem[] }
   };
 
   return (
-    <section className="rounded-[32px] border border-amber-200 bg-amber-50 p-6 shadow-soft">
+    <section className="rounded-2xl border border-line bg-white p-6 shadow-sm">
       <h2 className="font-display text-2xl font-semibold text-ink mb-4">Pending Requests</h2>
       <div className="space-y-3">
         {requests.map((request) => {
@@ -48,7 +48,7 @@ export function CompetitionRequestList({ requests }: { requests: RequestItem[] }
           return (
             <div
               key={request.id}
-              className="flex items-center justify-between rounded-[24px] border border-amber-100 bg-white px-4 py-3"
+              className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3"
             >
               <div className="flex-1">
                 <p className="font-medium text-ink">{request.user.name}</p>

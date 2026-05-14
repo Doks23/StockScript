@@ -207,7 +207,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
   return (
     <form
       action={handleSubmit}
-      className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="flex flex-col gap-5 rounded-2xl border border-line bg-white p-5 shadow-sm"
     >
       {/* Header row */}
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-4">
@@ -458,7 +458,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-xl bg-slate-900 px-8 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+          className="rounded-xl bg-accent px-8 py-2.5 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-60"
         >
           {isSubmitting
             ? "Saving..."

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -51,30 +52,18 @@ export async function destroySession() {
   cookies().delete(SESSION_COOKIE);
 }
 
+const getSessionUser = cache(async function getSessionUser(token: string) {
+  const session = await prisma.session.findFirst({
+    where: { token, expiresAt: { gt: new Date() } },
+    include: { user: true },
+  });
+  return session?.user ?? null;
+});
+
 export async function getCurrentUser() {
   const token = cookies().get(SESSION_COOKIE)?.value;
-
-  if (!token) {
-    return null;
-  }
-
-  const session = await prisma.session.findFirst({
-    where: {
-      token,
-      expiresAt: {
-        gt: new Date(),
-      },
-    },
-    include: {
-      user: true,
-    },
-  });
-
-  if (!session) {
-    return null;
-  }
-
-  return session.user;
+  if (!token) return null;
+  return getSessionUser(token);
 }
 
 export async function requireUser() {

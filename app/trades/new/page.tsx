@@ -15,8 +15,8 @@ export default async function TradeEntryPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-[20px] border border-[#e2d6b1] bg-white/95 px-6 py-4 shadow-soft">
-        <p className="text-sm uppercase tracking-[0.24em] text-[#9d7a1f] font-medium">Trade Entry</p>
+      <section className="rounded-2xl border border-line bg-white px-6 py-4 shadow-sm">
+        <p className="text-sm uppercase tracking-wider text-accent font-medium">Trade Entry</p>
       </section>
 
       <TradeEntryTabs

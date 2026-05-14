@@ -23,7 +23,7 @@ export function JoinButton({ competitionId }: JoinButtonProps) {
       type="button"
       onClick={handleClick}
       disabled={isPending}
-      className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="inline-flex items-center justify-center rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isPending ? "Requesting..." : "Request to Join"}
     </button>

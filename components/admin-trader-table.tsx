@@ -83,7 +83,7 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
     <div className="overflow-x-auto">
       <table className="min-w-full text-[13px]">
         <thead>
-          <tr className="bg-[linear-gradient(180deg,#d6b24f_0%,#9d7a1f_100%)] text-white text-[11px] uppercase tracking-wider">
+          <tr className="bg-ink text-white text-[11px] uppercase tracking-wider">
             <th className="px-5 py-3 text-left">Trader</th>
             <th className="px-5 py-3 text-left">Email</th>
             <th className="px-5 py-3 text-left">Email Verified</th>
@@ -129,7 +129,7 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
                         disabled={isBusy || !trader.emailVerifiedAt}
                         title={!trader.emailVerifiedAt ? "Email not verified" : undefined}
                         onClick={() => approve(trader.id)}
-                        className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accentDeep disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {busy[trader.id] === "approve" ? "Approving…" : "Approve"}
                       </button>

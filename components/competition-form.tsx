@@ -49,7 +49,7 @@ export function CompetitionForm() {
   return (
     <form
       action={handleSubmit}
-      className="grid gap-5 rounded-[32px] border border-white/70 bg-white/80 p-6 shadow-soft backdrop-blur lg:grid-cols-2"
+      className="grid gap-5 rounded-2xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur lg:grid-cols-2"
     >
       <label className="form-field lg:col-span-2">
         Competition Name

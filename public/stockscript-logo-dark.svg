@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <title>StockScript Journal — dark variant</title>
+  <desc>Dark background version of the StockScript logo mark</desc>
+
+  <!-- Dark background -->
+  <rect width="200" height="200" rx="20" fill="#0f1e17"/>
+
+  <!-- Outer ring -->
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#3d9e6e" stroke-width="2"/>
+  <!-- Inner circle -->
+  <circle cx="100" cy="100" r="82" fill="#162210"/>
+
+  <!-- Price action chart -->
+  <polyline
+    points="44,128 62,128 62,110 82,110 82,88 104,88 124,70"
+    fill="none" stroke="#6dc99a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Breakout arrow -->
+  <polyline
+    points="116,62 124,70 116,78"
+    fill="none" stroke="#6dc99a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Gold nib -->
+  <polygon points="44,140 58,128 44,116" fill="#e8c070"/>
+  <line x1="44" y1="140" x2="51" y2="128" stroke="#162210" stroke-width="1.5"/>
+</svg>
