@@ -457,9 +457,6 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                       </tr>
                     );
                   })}
-                  <tr className="h-1.5 bg-slate-50">
-                    <td colSpan={16} />
-                  </tr>
                 </React.Fragment>
               );
             })}

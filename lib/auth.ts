@@ -93,7 +93,7 @@ export async function requireActiveUser() {
 export async function requireAdmin() {
   const user = await requireActiveUser();
 
-  if (user.role !== "ADMIN") {
+  if (user.role !== "ADMIN" && user.role !== "SUPER_TRADER") {
     redirect("/dashboard");
   }
 
@@ -155,6 +155,7 @@ export async function verifyEmailToken(token: string) {
       },
       data: {
         emailVerifiedAt: new Date(),
+        isActive: true,
       },
     }),
   ]);

@@ -13,6 +13,10 @@ export async function POST(_: Request, { params }: RouteContext) {
   try {
     const user = await requireActiveUser();
 
+    if (user.role === "ADMIN") {
+      return NextResponse.json({ error: "Admins cannot join competitions." }, { status: 403 });
+    }
+
     const participation = await prisma.competitionParticipant.upsert({
       where: {
         competitionId_userId: {

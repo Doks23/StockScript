@@ -14,12 +14,15 @@ export async function POST(req: Request, { params }: RouteContext) {
 
     const trader = await prisma.user.findUnique({
       where: { email: String(email).trim().toLowerCase() },
-      select: { id: true, name: true, approvalStatus: true },
+      select: { id: true, name: true, role: true, approvalStatus: true },
     });
 
     if (!trader) return NextResponse.json({ error: "No user found with that email." }, { status: 404 });
     if (trader.approvalStatus !== "APPROVED") {
       return NextResponse.json({ error: "Trader account is not yet approved." }, { status: 400 });
+    }
+    if (trader.role === "ADMIN") {
+      return NextResponse.json({ error: "Admins cannot be added to competitions." }, { status: 403 });
     }
 
     if (user.role === "ADMIN") {

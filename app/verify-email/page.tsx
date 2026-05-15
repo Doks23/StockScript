@@ -19,21 +19,15 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
       </h1>
       <p className="mt-4 text-base leading-8 text-slate-600">
         {verifiedUser
-          ? `${verifiedUser.name}, your email is now verified. The admin must still approve your trader account before trade posting is enabled.`
-          : "Open the verification link generated during registration. Once verified, the account moves to admin approval."}
+          ? `${verifiedUser.name}, your email is now verified. You can log in to your account.`
+          : "Open the verification link generated during registration. Once verified, you can log in to your account."}
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
-          href={verifiedUser ? "/pending-approval" : "/register"}
+          href={verifiedUser ? "/login" : "/register"}
           className="rounded-xl bg-accent px-5 py-3 text-sm font-medium text-white hover:bg-accentDeep"
         >
-          {verifiedUser ? "Continue" : "Back to registration"}
-        </Link>
-        <Link
-          href="/login"
-          className="rounded-xl border border-line bg-white px-5 py-3 text-sm font-medium text-slate-600 hover:bg-canvas"
-        >
-          Login
+          {verifiedUser ? "Login to your account" : "Back to registration"}
         </Link>
       </div>
     </div>

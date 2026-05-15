@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { MetricCard } from "@/components/metric-card";
 import { requireActiveUser } from "@/lib/auth";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
-import { getDashboardData } from "@/lib/queries";
 import { PortfolioCapitalEditor } from "@/components/portfolio-capital-editor";
-import { DashboardCharts } from "@/components/dashboard-charts";
+import { DashboardPageClient } from "@/components/dashboard-page-client";
+import { getDashboardData } from "@/lib/queries";
 
 export default async function DashboardPage() {
   const user = await requireActiveUser();
@@ -40,72 +38,11 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <div className="space-y-8">
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1">
-
-          {/* General Stats */}
-          <div className="space-y-3">
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-medium">General</p>
-            <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
-              <MetricCard label="Closed Trades" value={String(dashboard.metrics.totalTrades)} />
-              <MetricCard label="Open Trades" value={String(dashboard.metrics.openTrades)} />
-            </section>
-          </div>
-
-          {/* Performance Stats */}
-          <div className="space-y-3">
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-medium">Performance</p>
-            <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
-              <MetricCard label="Win Rate" value={formatPercent(dashboard.metrics.winRate)} tone="profit" />
-              <MetricCard
-                label="Net Realized P&L"
-                value={formatCurrency(dashboard.metrics.totalRealizedPnl)}
-                tone={dashboard.metrics.totalRealizedPnl >= 0 ? "profit" : "loss"}
-              />
-              <MetricCard
-                label="Total P&L (MTM)"
-                value={formatCurrency(dashboard.metrics.totalMtmPnl)}
-                tone={dashboard.metrics.totalMtmPnl >= 0 ? "profit" : "loss"}
-              />
-              <MetricCard
-                label="ROI %"
-                value={formatPercent(dashboard.metrics.returnOnCapital)}
-                tone={dashboard.metrics.returnOnCapital >= 0 ? "profit" : "loss"}
-              />
-            </section>
-          </div>
-
-          {/* Risk & Efficiency */}
-          <div className="space-y-3">
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-medium">Risk & Efficiency</p>
-            <section className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              <MetricCard
-                label="Profit Factor"
-                value={formatNumber(dashboard.metrics.profitFactor)}
-                tone={dashboard.metrics.profitFactor >= 1 ? "profit" : "loss"}
-              />
-              <MetricCard
-                label="Risk:Reward"
-                value={formatNumber(dashboard.metrics.riskRewardRatio)}
-              />
-              <MetricCard
-                label="Max Drawdown"
-                value={formatPercent(dashboard.metrics.maxDrawdown)}
-                tone="loss"
-              />
-            </section>
-          </div>
-        </div>
-
-        <section>
-          <DashboardCharts
-            trades={dashboard.trades}
-            metrics={dashboard.metrics}
-            userCapital={user.portfolioCapital}
-            groupedTrades={dashboard.groupedTrades}
-          />
-        </section>
-      </div>
+      <DashboardPageClient
+        trades={dashboard.trades}
+        userCapital={user.portfolioCapital}
+        groupedTrades={dashboard.groupedTrades}
+      />
     </div>
   );
 }

@@ -158,6 +158,25 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       });
     }
 
+    const totalEntryQty = entryRows.reduce(
+      (s, r) => s + (Number(r.quantity) || 0),
+      0,
+    );
+    const totalExitQty = exitRows.reduce(
+      (s, r) => s + (Number(r.quantity) || 0),
+      0,
+    );
+
+    if (totalExitQty > totalEntryQty) {
+      const label =
+        tradeType === "LONG" ? "sell" : "buy";
+      setError(
+        `Exit qty (${totalExitQty}) exceeds entry qty (${totalEntryQty}). More ${label} than ${tradeType === "LONG" ? "buy" : "sell"}.`,
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     if (transactions.length === 0) {
       setError("At least one transaction is required.");
       setIsSubmitting(false);

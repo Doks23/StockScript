@@ -20,10 +20,32 @@ const statusBadge: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700 border-amber-200",
 };
 
-const roleBadge: Record<string, string> = {
-  TRADER: "bg-slate-100 text-slate-600 border-slate-200",
-  SUPER_TRADER: "bg-violet-100 text-violet-700 border-violet-200",
-};
+function Toggle({
+  enabled,
+  loading,
+  onClick,
+}: {
+  enabled: boolean;
+  loading?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={loading}
+      onClick={onClick}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+        enabled ? "bg-accent" : "bg-slate-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${
+          enabled ? "translate-x-[18px]" : "translate-x-[2px]"
+        }`}
+      />
+    </button>
+  );
+}
 
 export function AdminTraderTable({ traders }: { traders: Trader[] }) {
   const router = useRouter();
@@ -60,21 +82,6 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
     });
   }
 
-  function approve(id: string) {
-    callApi(id, `/api/admin/users/${id}/approve`, "POST", "approve");
-  }
-  function reject(id: string) {
-    callApi(id, `/api/admin/users/${id}/reject`, "POST", "reject");
-  }
-  function toggleRole(id: string, currentRole: string) {
-    const newRole = currentRole === "SUPER_TRADER" ? "TRADER" : "SUPER_TRADER";
-    callApi(id, `/api/admin/users/${id}/role`, "PATCH", "role", { role: newRole });
-  }
-  function remove(id: string, name: string) {
-    if (!confirm(`Delete trader "${name}"? This cannot be undone.`)) return;
-    callApi(id, `/api/admin/users/${id}`, "DELETE", "delete");
-  }
-
   if (traders.length === 0) {
     return <p className="py-12 text-center text-slate-400 italic">No traders registered yet.</p>;
   }
@@ -86,9 +93,9 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
           <tr className="bg-ink text-white text-[11px] uppercase tracking-wider">
             <th className="px-5 py-3 text-left">Trader</th>
             <th className="px-5 py-3 text-left">Email</th>
-            <th className="px-5 py-3 text-left">Email Verified</th>
+            <th className="px-5 py-3 text-left">Verified</th>
             <th className="px-5 py-3 text-left">Status</th>
-            <th className="px-5 py-3 text-left">Role</th>
+            <th className="px-5 py-3 text-left">Super Trader</th>
             <th className="px-5 py-3 text-left">Actions</th>
           </tr>
         </thead>
@@ -99,13 +106,29 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
             return (
               <tr key={trader.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-5 py-4 font-semibold text-slate-800">{trader.name}</td>
-                <td className="px-5 py-4 text-slate-600">{trader.email}</td>
+                <td className="px-5 py-4 text-slate-600 max-w-[200px] truncate">{trader.email}</td>
                 <td className="px-5 py-4">
-                  {trader.emailVerifiedAt ? (
-                    <span className="text-emerald-600 text-xs font-medium">Verified</span>
-                  ) : (
-                    <span className="text-amber-600 text-xs font-medium">Pending</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Toggle
+                      enabled={!!trader.emailVerifiedAt}
+                      loading={busy[trader.id] === "email"}
+                      onClick={() =>
+                        callApi(
+                          trader.id,
+                          `/api/admin/users/${trader.id}/email-verify`,
+                          "POST",
+                          "email",
+                        )
+                      }
+                    />
+                    <span
+                      className={`text-xs font-medium ${
+                        trader.emailVerifiedAt ? "text-emerald-600" : "text-amber-600"
+                      }`}
+                    >
+                      {trader.emailVerifiedAt ? "Verified" : "Unverified"}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-5 py-4">
                   <span
@@ -115,54 +138,73 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
                   </span>
                 </td>
                 <td className="px-5 py-4">
-                  <span
-                    className={`inline-block rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${roleBadge[trader.role] ?? "bg-slate-100 text-slate-600 border-slate-200"}`}
-                  >
-                    {trader.role === "SUPER_TRADER" ? "Super Trader" : "Trader"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Toggle
+                      enabled={trader.role === "SUPER_TRADER"}
+                      loading={busy[trader.id] === "role"}
+                      onClick={() =>
+                        callApi(trader.id, `/api/admin/users/${trader.id}/role`, "PATCH", "role", {
+                          role: trader.role === "SUPER_TRADER" ? "TRADER" : "SUPER_TRADER",
+                        })
+                      }
+                    />
+                    <span
+                      className={`text-xs font-medium ${
+                        trader.role === "SUPER_TRADER" ? "text-violet-600" : "text-slate-500"
+                      }`}
+                    >
+                      {trader.role === "SUPER_TRADER" ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-5 py-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {trader.approvalStatus !== "APPROVED" && (
-                      <button
-                        type="button"
-                        disabled={isBusy || !trader.emailVerifiedAt}
-                        title={!trader.emailVerifiedAt ? "Email not verified" : undefined}
-                        onClick={() => approve(trader.id)}
-                        className="rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accentDeep disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {busy[trader.id] === "approve" ? "Approving…" : "Approve"}
-                      </button>
+                  <div className="flex items-center gap-2">
+                    {trader.approvalStatus === "PENDING" && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() =>
+                            callApi(trader.id, `/api/admin/users/${trader.id}/approve`, "POST", "approve")
+                          }
+                          className="rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-accentDeep disabled:opacity-50"
+                        >
+                          {busy[trader.id] === "approve" ? "..." : "Approve"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() =>
+                            callApi(trader.id, `/api/admin/users/${trader.id}/reject`, "POST", "reject")
+                          }
+                          className="rounded-full bg-amber-500 px-3 py-1 text-[11px] font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                        >
+                          {busy[trader.id] === "reject" ? "..." : "Reject"}
+                        </button>
+                      </>
                     )}
-                    {trader.approvalStatus !== "REJECTED" && (
+                    {trader.approvalStatus === "APPROVED" && (
                       <button
                         type="button"
                         disabled={isBusy}
-                        onClick={() => reject(trader.id)}
-                        className="rounded-full bg-amber-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() =>
+                          callApi(trader.id, `/api/admin/users/${trader.id}/reject`, "POST", "reject")
+                        }
+                        className="rounded-full bg-amber-500 px-3 py-1 text-[11px] font-medium text-white hover:bg-amber-600 disabled:opacity-50"
                       >
-                        {busy[trader.id] === "reject" ? "Rejecting…" : "Reject"}
+                        {busy[trader.id] === "reject" ? "..." : "Revoke"}
                       </button>
                     )}
                     <button
                       type="button"
                       disabled={isBusy}
-                      onClick={() => toggleRole(trader.id, trader.role)}
-                      className="rounded-full border border-violet-300 bg-white px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        if (!confirm(`Delete trader "${trader.name}"? This cannot be undone.`)) return;
+                        callApi(trader.id, `/api/admin/users/${trader.id}`, "DELETE", "delete");
+                      }}
+                      className="rounded-full border border-red-200 bg-white px-3 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                     >
-                      {busy[trader.id] === "role"
-                        ? "Updating…"
-                        : trader.role === "SUPER_TRADER"
-                          ? "→ Trader"
-                          : "→ Super Trader"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => remove(trader.id, trader.name)}
-                      className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {busy[trader.id] === "delete" ? "Deleting…" : "Delete"}
+                      {busy[trader.id] === "delete" ? "..." : "Delete"}
                     </button>
                   </div>
                   {err && <p className="mt-1 text-xs text-red-600">{err}</p>}

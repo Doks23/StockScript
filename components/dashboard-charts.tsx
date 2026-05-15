@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import {
   AreaChart,
@@ -28,16 +28,14 @@ export function DashboardCharts({
   metrics,
   userCapital,
   groupedTrades,
+  showAmounts = true,
 }: {
   trades: any[];
   metrics: any;
   userCapital: number;
   groupedTrades: any[];
+  showAmounts?: boolean;
 }) {
-  const [timeRange, setTimeRange] = useState<"10" | "1w" | "1m" | "3m" | "all">(
-    "10",
-  );
-
   const { equityCurve, recentStats, monthlyTotals } = useMemo(() => {
     const sorted = [...trades].sort(
       (a, b) =>
@@ -136,34 +134,9 @@ export function DashboardCharts({
       <div className="grid gap-4 md:grid-cols-3">
         {/* Recent Performance */}
         <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-sm uppercase tracking-wider text-slate-500">
-              Recent Performance
-            </p>
-            <div className="flex bg-canvas p-1 rounded-full gap-1">
-              {(["10", "1w", "1m", "3m", "all"] as const).map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setTimeRange(range)}
-                  className={`px-3 py-1 text-[10px] font-medium rounded-full transition-all duration-200 ${
-                    timeRange === range
-                      ? "bg-white text-ink shadow-sm"
-                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  {range === "10"
-                    ? "Last 10"
-                    : range === "1w"
-                      ? "1w"
-                      : range === "1m"
-                        ? "1m"
-                        : range === "3m"
-                          ? "3m"
-                          : "All"}
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="text-sm uppercase tracking-wider text-slate-500 mb-4">
+            Recent Performance
+          </p>
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
               <ArrowUp className="w-8 h-8 text-profit" />
@@ -247,9 +220,9 @@ export function DashboardCharts({
           <div className="flex justify-between">
             <span className="text-slate-500">Pnl</span>
             <span
-              className={`font-medium ${metrics.totalNetPnl >= 0 ? "text-profit" : "text-loss"}`}
+              className={`font-medium ${metrics.totalMtmPnl >= 0 ? "text-profit" : "text-loss"}`}
             >
-              {formatCurrency(metrics.totalNetPnl)}
+              {showAmounts ? formatCurrency(metrics.totalMtmPnl) : "•••"}
             </span>
           </div>
         </div>
@@ -278,7 +251,7 @@ export function DashboardCharts({
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={(val) => `₹${val}`}
+                tickFormatter={(val) => showAmounts ? `₹${val}` : ""}
                 tick={{ fontSize: 12, fill: "#94a3b8" }}
                 axisLine={false}
                 tickLine={false}
@@ -345,6 +318,7 @@ export function DashboardCharts({
                   dataKey="allocationPct"
                   fill={ACCENT}
                   radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -383,6 +357,7 @@ export function DashboardCharts({
                   dataKey="pnlPct"
                   fill={ACCENT}
                   radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -417,6 +392,7 @@ export function DashboardCharts({
                   dataKey="winners"
                   fill={ACCENT}
                   radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
                 />
               </BarChart>
             </ResponsiveContainer>

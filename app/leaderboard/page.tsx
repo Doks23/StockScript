@@ -4,6 +4,7 @@ import { requireActiveUser } from "@/lib/auth";
 import { formatDateValue, formatPercent } from "@/lib/format";
 import { getCompetitions, getLeaderboard } from "@/lib/queries";
 import { JoinButton } from "@/components/join-button";
+import { CompetitionSelect } from "@/components/competition-select";
 
 type LeaderboardPageProps = {
   searchParams: { competitionId?: string };
@@ -36,29 +37,16 @@ export default async function LeaderboardPage({
     <div className="space-y-6">
       {/* Competition selector */}
       <section className="rounded-2xl border border-line bg-white/80 p-5 shadow-sm backdrop-blur">
-        <form className="flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[200px]">
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
             <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Competition
             </label>
-            <select
-              name="competitionId"
-              defaultValue={selectedCompetitionId}
-              className="form-input w-full"
-            >
-              {competitions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <CompetitionSelect
+              competitions={competitions}
+              selectedId={selectedCompetitionId ?? ""}
+            />
           </div>
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accentDeep transition"
-          >
-            Load
-          </button>
           {selectedCompetition &&
             (alreadyJoined ? (
               <button
@@ -79,13 +67,13 @@ export default async function LeaderboardPage({
             ) : (
               <JoinButton competitionId={selectedCompetition.id} />
             ))}
-        </form>
+        </div>
       </section>
 
       {leaderboard ? (
         <>
           {/* Competition stats */}
-          <section className="grid gap-4 md:grid-cols-3">
+          <section className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
               <p className="text-xs uppercase tracking-wider text-slate-500">
                 Window
@@ -101,14 +89,6 @@ export default async function LeaderboardPage({
               </p>
               <p className="mt-2 text-3xl font-bold text-slate-800">
                 {leaderboard.entries.length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
-              <p className="text-xs uppercase tracking-wider text-slate-500">
-                Ranking Basis
-              </p>
-              <p className="mt-2 text-sm text-slate-600 leading-6">
-                Total P&amp;L ÷ max capital deployed (Portfolio Impact %).
               </p>
             </div>
           </section>
@@ -178,7 +158,6 @@ export default async function LeaderboardPage({
                     <th className="px-5 py-3 text-right">PnL %</th>
                     <th className="px-5 py-3 text-right">Win Rate</th>
                     <th className="px-5 py-3 text-right">Trades</th>
-                    <th className="px-5 py-3 text-right">Max DD %</th>
                     <th className="px-5 py-3 text-center">Trades Detail</th>
                   </tr>
                 </thead>
@@ -213,9 +192,6 @@ export default async function LeaderboardPage({
                       <td className="px-5 py-4 text-right text-slate-600">
                         {entry.totalTrades}
                       </td>
-                      <td className="px-5 py-4 text-right text-slate-600">
-                        {formatPercent(entry.maxDrawdown)}
-                      </td>
                       <td className="px-5 py-4 text-center">
                         <Link
                           href={`/leaderboard/${selectedCompetitionId}/${entry.userId}`}
@@ -229,7 +205,7 @@ export default async function LeaderboardPage({
                   {leaderboard.entries.length === 0 && (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="py-12 text-center text-slate-400"
                       >
                         No qualifying traders yet.

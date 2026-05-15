@@ -26,6 +26,10 @@ export async function POST(req: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "Request not found." }, { status: 404 });
     }
 
+    if (request.user.role === "ADMIN") {
+      return NextResponse.json({ error: "Admins cannot participate in competitions." }, { status: 403 });
+    }
+
     if (request.competitionId !== params.id) {
       return NextResponse.json({ error: "Mismatch." }, { status: 400 });
     }

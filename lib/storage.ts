@@ -29,9 +29,9 @@ function getS3Client() {
   };
 }
 
-export async function uploadTradeImage(file: File) {
-  const extensionSafeName = sanitizeFilename(file.name || "chart.png");
-  const fileKey = `trade-images/${randomUUID()}-${extensionSafeName}`;
+async function uploadFile(file: File, prefix: string) {
+  const extensionSafeName = sanitizeFilename(file.name || "file.png");
+  const fileKey = `${prefix}/${randomUUID()}-${extensionSafeName}`;
   const bytes = Buffer.from(await file.arrayBuffer());
   const s3 = getS3Client();
 
@@ -60,4 +60,12 @@ export async function uploadTradeImage(file: File) {
   await writeFile(fullPath, bytes);
 
   return `/uploads/${filename}`;
+}
+
+export async function uploadTradeImage(file: File) {
+  return uploadFile(file, "trade-images");
+}
+
+export async function uploadAvatar(file: File) {
+  return uploadFile(file, "avatars");
 }

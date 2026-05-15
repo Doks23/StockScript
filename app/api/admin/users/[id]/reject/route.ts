@@ -19,7 +19,16 @@ export async function POST(_: Request, { params }: RouteContext) {
       data: { approvalStatus: "REJECTED", isActive: false },
     });
 
-    return NextResponse.json({ user: updated });
+    return NextResponse.json({
+      user: {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+        approvalStatus: updated.approvalStatus,
+        isActive: updated.isActive,
+      },
+    });
   } catch (error) {
     return handleApiError(error, "Unable to reject trader.");
   }

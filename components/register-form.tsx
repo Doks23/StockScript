@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function RegisterForm() {
+  const router = useRouter();
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState<null | { verificationUrl: string }>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setError("");
-    setSuccess(null);
     setIsSubmitting(true);
 
     const response = await fetch("/api/auth/register", {
@@ -33,10 +33,7 @@ export function RegisterForm() {
       return;
     }
 
-    setSuccess({
-      verificationUrl: result.verificationUrl,
-    });
-    setIsSubmitting(false);
+    router.push("/pending-approval");
   }
 
   return (
@@ -48,7 +45,7 @@ export function RegisterForm() {
         <p className="text-sm uppercase tracking-[0.22em] text-accent">Register</p>
         <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Create trader account</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">
-          Your email must be verified first. After that, the admin approves the trader account before trade posting is enabled.
+          Create your account. An admin will approve it before you can start trading.
         </p>
       </div>
 
@@ -71,18 +68,6 @@ export function RegisterForm() {
         <p className="rounded-2xl border border-loss/30 bg-loss/10 px-4 py-3 text-sm text-loss">
           {error}
         </p>
-      ) : null}
-
-      {success ? (
-        <div className="space-y-3 rounded-2xl border border-profit/25 bg-profit/10 px-4 py-4 text-sm text-slate-700">
-          <p>Your account has been created. Verify the email to continue.</p>
-          <Link
-            href={success.verificationUrl}
-            className="inline-flex rounded-full bg-accent px-4 py-2 font-medium text-white"
-          >
-            Verify email now
-          </Link>
-        </div>
       ) : null}
 
       <button

@@ -66,6 +66,7 @@ export const getCompetitions = cache(async function getCompetitions() {
     include: {
       creator: { select: { id: true, name: true } },
       participants: {
+        where: { user: { role: { not: "ADMIN" } } },
         select: { userId: true, user: { select: { id: true, name: true, email: true } } },
       },
       requests: {
@@ -154,6 +155,7 @@ export const getLeaderboard = cache(async function getLeaderboard(competitionId:
     where: { id: competitionId },
     include: {
       participants: {
+        where: { user: { role: { not: "ADMIN" } } },
         select: { userId: true, user: true },
       },
     },

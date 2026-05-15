@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createEmailVerificationToken, getVerificationUrl } from "@/lib/auth";
+
 import { handleApiError } from "@/lib/api-error";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
@@ -17,22 +17,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 400 });
     }
 
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         name: payload.name,
         email: payload.email.toLowerCase(),
         emailVerifiedAt: new Date(),
         passwordHash: await hashPassword(payload.password),
         role: "TRADER",
-        approvalStatus: "APPROVED",
-        isActive: true,
+        approvalStatus: "PENDING",
+        isActive: false,
       },
     });
 
-    const token = await createEmailVerificationToken(user.id, user.email);
-    const verificationUrl = getVerificationUrl(token);
-
-    return NextResponse.json({ userId: user.id, verificationUrl }, { status: 201 });
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     return handleApiError(error, "Unable to register account.");
   }

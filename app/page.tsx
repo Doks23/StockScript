@@ -8,10 +8,6 @@ export default async function Home() {
     redirect("/login");
   }
 
-  if (!user.emailVerifiedAt) {
-    redirect("/verify-email");
-  }
-
   if (!user.isActive) {
     redirect("/pending-approval");
   }

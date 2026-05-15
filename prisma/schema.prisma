@@ -65,6 +65,8 @@ model User {
   approvedBy              String?
   isActive                Boolean                  @default(false)
   portfolioCapital        Float                    @default(100000)
+  avatarUrl               String?
+  bio                     String?
   trades                  Trade[]
   competitionsCreated     Competition[]            @relation("CompetitionsCreated")
   competitionParticipants CompetitionParticipant[]

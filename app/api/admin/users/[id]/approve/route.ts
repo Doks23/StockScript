@@ -14,10 +14,6 @@ export async function POST(_: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "Trader not found." }, { status: 404 });
     }
 
-    if (!user.emailVerifiedAt) {
-      return NextResponse.json({ error: "Trader must verify email first." }, { status: 400 });
-    }
-
     const approved = await prisma.user.update({
       where: { id: params.id },
       data: {
@@ -28,7 +24,16 @@ export async function POST(_: Request, { params }: RouteContext) {
       },
     });
 
-    return NextResponse.json({ user: approved });
+    return NextResponse.json({
+      user: {
+        id: approved.id,
+        name: approved.name,
+        email: approved.email,
+        role: approved.role,
+        approvalStatus: approved.approvalStatus,
+        isActive: approved.isActive,
+      },
+    });
   } catch (error) {
     return handleApiError(error, "Unable to approve trader.");
   }

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   BarChart3,
@@ -6,6 +7,7 @@ import {
   Medal,
   PencilLine,
   Shield,
+  User,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { LogoutButton } from "./logout-button";
@@ -15,6 +17,7 @@ const traderNavigation = [
   { href: "/trades", label: "Journal", icon: BarChart3 },
   { href: "/trades/new", label: "New Trade", icon: PencilLine },
   { href: "/leaderboard", label: "Leaderboard", icon: Medal },
+  { href: "/account", label: "Account", icon: User },
 ];
 
 const superTraderNavigation = [
@@ -47,10 +50,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 href={user ? "/dashboard" : "/login"}
                 className="inline-flex items-center gap-3"
               >
-                <img
+                <Image
                   src="/stockscript-logo-horizontal.svg"
                   alt="StockScript"
-                  className="h-14"
+                  width={420}
+                  height={80}
+                  className="h-14 w-auto"
+                  unoptimized
                 />
               </Link>
             </div>
