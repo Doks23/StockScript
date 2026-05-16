@@ -16,15 +16,15 @@ export async function POST(request: Request) {
       where: { email: payload.email.toLowerCase() },
     });
 
+    let resetUrl: string | null = null;
+
     if (user) {
-      await createPasswordResetToken(user.id);
+      const token = await createPasswordResetToken(user.id);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      resetUrl = `${baseUrl}/reset-password?token=${token}`;
     }
 
-    // Always return the same response to prevent email enumeration
-    return NextResponse.json(
-      { message: "If an account exists with this email, a password reset link will be sent." },
-      { status: 200 }
-    );
+    return NextResponse.json({ resetUrl }, { status: 200 });
   } catch (error) {
     return handleApiError(error, "Unable to process password reset request.");
   }

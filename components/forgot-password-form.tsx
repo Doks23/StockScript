@@ -5,12 +5,12 @@ import { useState } from "react";
 
 export function ForgotPasswordForm() {
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [resetUrl, setResetUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setError("");
-    setSuccess("");
+    setResetUrl("");
     setIsSubmitting(true);
 
     const response = await fetch("/api/auth/forgot-password", {
@@ -31,7 +31,7 @@ export function ForgotPasswordForm() {
       return;
     }
 
-    setSuccess("If an account exists with this email, a password reset link will be sent.");
+    setResetUrl(result.resetUrl || "No account found with that email.");
     setIsSubmitting(false);
   }
 
@@ -59,10 +59,20 @@ export function ForgotPasswordForm() {
         </p>
       ) : null}
 
-      {success ? (
-        <p className="rounded-2xl border border-profit/30 bg-profit/10 px-4 py-3 text-sm text-profit">
-          {success}
-        </p>
+      {resetUrl ? (
+        <div className="space-y-3 rounded-2xl border border-profit/25 bg-profit/10 px-4 py-4 text-sm text-slate-700">
+          <p>Your password reset link is ready:</p>
+          {resetUrl.startsWith("http") ? (
+            <Link
+              href={resetUrl}
+              className="inline-flex rounded-full bg-accent px-4 py-2 font-medium text-white"
+            >
+              Reset password now
+            </Link>
+          ) : (
+            <p className="text-slate-500">{resetUrl}</p>
+          )}
+        </div>
       ) : null}
 
       <button

@@ -199,6 +199,17 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
                       type="button"
                       disabled={isBusy}
                       onClick={() => {
+                        if (!confirm(`Reset password for "${trader.name}" to "Trader@123"?`)) return;
+                        callApi(trader.id, `/api/admin/users/${trader.id}/reset-password`, "POST", "reset");
+                      }}
+                      className="rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      {busy[trader.id] === "reset" ? "..." : "Reset Pwd"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => {
                         if (!confirm(`Delete trader "${trader.name}"? This cannot be undone.`)) return;
                         callApi(trader.id, `/api/admin/users/${trader.id}`, "DELETE", "delete");
                       }}
