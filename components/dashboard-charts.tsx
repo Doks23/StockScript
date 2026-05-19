@@ -16,6 +16,17 @@ import {
   Bar,
   ReferenceLine,
 } from "recharts";
+
+// Use these to compute the gradient stop offset where the area crosses zero.
+function computeZeroOffset(data: { equity: number }[]) {
+  if (!data.length) return 1;
+  const values = data.map((d) => d.equity);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  if (max <= 0) return 0;
+  if (min >= 0) return 1;
+  return max / (max - min);
+}
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { calculateOpenPnl } from "@/lib/trade-utils";
 
@@ -184,7 +195,12 @@ export function DashboardCharts({
                     />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  formatter={(value: any, name: any) => [
+                    `${Number(value).toFixed(1)}%`,
+                    name,
+                  ]}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -238,9 +254,31 @@ export function DashboardCharts({
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
               <defs>
-                <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={ACCENT} stopOpacity={0.25} />
-                  <stop offset="95%" stopColor={ACCENT} stopOpacity={0} />
+                <linearGradient id="colorEquityFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={PROFIT} stopOpacity={0.25} />
+                  <stop
+                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
+                    stopColor={PROFIT}
+                    stopOpacity={0.02}
+                  />
+                  <stop
+                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
+                    stopColor={LOSS}
+                    stopOpacity={0.02}
+                  />
+                  <stop offset="100%" stopColor={LOSS} stopOpacity={0.25} />
+                </linearGradient>
+                <linearGradient id="colorEquityStroke" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={PROFIT} />
+                  <stop
+                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
+                    stopColor={PROFIT}
+                  />
+                  <stop
+                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
+                    stopColor={LOSS}
+                  />
+                  <stop offset="100%" stopColor={LOSS} />
                 </linearGradient>
               </defs>
               <XAxis
@@ -256,16 +294,18 @@ export function DashboardCharts({
                 axisLine={false}
                 tickLine={false}
               />
+              <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="3 3" />
               <Tooltip
                 formatter={(value: any) => formatCurrency(Number(value))}
               />
               <Area
                 type="monotone"
                 dataKey="equity"
-                stroke={ACCENT}
+                stroke="url(#colorEquityStroke)"
                 strokeWidth={2}
                 fillOpacity={1}
-                fill="url(#colorEquity)"
+                fill="url(#colorEquityFill)"
+                baseValue={0}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -355,10 +395,17 @@ export function DashboardCharts({
                 <ReferenceLine y={0} stroke="#e2e5ea" />
                 <Bar
                   dataKey="pnlPct"
-                  fill={ACCENT}
                   radius={[4, 4, 0, 0]}
                   maxBarSize={40}
-                />
+                >
+                  {monthlyTotals.map((m: any, idx: number) => (
+                    <Cell
+                      key={`pnl-cell-${idx}`}
+                      fill={m.pnlPct >= 0 ? PROFIT : LOSS}
+                      fillOpacity={0.55}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
