@@ -90,8 +90,8 @@ export default async function TradeDetailPage({
             key={trade.id}
             className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-6"
           >
-            <div className="grid gap-4 sm:gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-              <div>
+            <div className="flex flex-col gap-4 sm:gap-6 xl:grid xl:grid-cols-[1.15fr_0.85fr]">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-accent">
