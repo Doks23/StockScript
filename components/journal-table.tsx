@@ -6,10 +6,13 @@ import Link from "next/link";
 import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 
-const fmtNum = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
-const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${fmtNum.format(n)}%`;
-const fmtAmt = (n: number) => fmtNum.format(n);
-const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtNum.format(n);
+const fmtAmtIntl = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
+const fmtPriceIntl = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+const fmtPctNoSign = (n: number) => `${n.toFixed(1)}%`;
+const fmtAmt = (n: number) => fmtAmtIntl.format(n);
+const fmtPrice = (n: number) => fmtPriceIntl.format(n);
+const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtAmtIntl.format(n);
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
 
@@ -87,19 +90,20 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
 
   if (!isEditing) {
     return (
-      <div
+      <button
+        type="button"
         onClick={() => setIsEditing(true)}
-        className="cursor-pointer hover:text-blue-600 transition text-slate-400 italic"
+        className="cursor-pointer rounded text-[11px] tabular-nums text-slate-600 italic hover:text-blue-600 transition"
       >
-        {value || "set price"}
-      </div>
+        {value || "set"}
+      </button>
     );
   }
 
   return (
     <input
       autoFocus
-      className="w-full min-w-[80px] px-2 py-1 rounded border border-blue-400 outline-none bg-blue-50 text-slate-800 tabular-nums text-center"
+      className="w-[70px] rounded border border-blue-400 bg-blue-50 px-1.5 py-0.5 text-[11px] tabular-nums text-slate-800 outline-none"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
@@ -226,7 +230,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
           <span className="text-slate-400 font-medium">{rows.length} trades</span>
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Alloc:</span>
-            <span className="font-semibold text-slate-700">{fmtAmt(totals.totalAlloc)}%</span>
+            <span className="font-semibold text-slate-700">{fmtPctNoSign(totals.totalAlloc)}</span>
           </div>
           {totals.realizedPnl !== 0 && (
             <div className="flex items-center gap-1">
@@ -248,7 +252,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Impact:</span>
             <span className={`font-semibold ${pnlColor(totals.totalImpact)}`}>
-              {totals.totalImpact >= 0 ? "+" : ""}{fmtAmt(totals.totalImpact)}%
+              {fmtPct(totals.totalImpact)}
             </span>
           </div>
         </div>
@@ -277,7 +281,176 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
         </div>
       )}
 
-      <div className="w-full overflow-x-auto scrollbar-hide">
+      {/* Mobile card list */}
+      <div className="space-y-2 lg:hidden">
+        {sortedRows.map((t) => {
+          const isClosed = t.derivedStatus === "CLOSED";
+          const isSelected = selectedIds.has(t.id);
+          const isDeleting = deletingIds.has(t.id);
+          const accent = !isClosed
+            ? "border-l-blue-400"
+            : t.pnlAmount > 0
+            ? "border-l-emerald-500"
+            : t.pnlAmount < 0
+            ? "border-l-red-400"
+            : "border-l-slate-200";
+          const firstEntry = t.entryLegs[0];
+          const lastExit = t.exitLegs?.[t.exitLegs.length - 1];
+          return (
+            <div
+              key={t.id}
+              className={`rounded-2xl border border-line border-l-4 ${accent} bg-white p-3 shadow-sm ${
+                isSelected ? "ring-2 ring-blue-300" : ""
+              } ${isDeleting ? "opacity-40" : ""}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleOne(t.id)}
+                    className="h-4 w-4 shrink-0 rounded border-slate-300 accent-slate-700"
+                  />
+                  <span
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold ${
+                      t.tradeType === "LONG"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
+                    {t.tradeType === "LONG" ? "L" : "S"}
+                  </span>
+                  <Link
+                    href={`/trades/${encodeURIComponent(t.symbol)}`}
+                    className="truncate text-[13px] font-semibold uppercase tracking-wide text-slate-800"
+                  >
+                    {t.symbol}
+                  </Link>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      isClosed
+                        ? "bg-slate-100 text-slate-500"
+                        : "bg-blue-100 text-blue-700"
+                    }`}
+                  >
+                    {isClosed ? "CLOSED" : "OPEN"}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {!isClosed && (
+                    <div className="flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                        EOD
+                      </span>
+                      <ClosingPriceInput
+                        tradeId={t.id}
+                        initialValue={t.closingPrice}
+                        onUpdate={() => onRefresh?.()}
+                      />
+                    </div>
+                  )}
+                  <Link
+                    href={`/trades/${encodeURIComponent(t.symbol)}/edit/${t.id}`}
+                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <Edit2 size={14} />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Entry</span>
+                  <span className="font-medium tabular-nums text-slate-700">
+                    {firstEntry?.price ? fmtPrice(firstEntry.price) : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Exit</span>
+                  <span className="font-medium tabular-nums text-slate-700">
+                    {lastExit?.price ? fmtPrice(lastExit.price) : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Qty</span>
+                  <span className="font-medium tabular-nums text-slate-700">
+                    {showAmounts ? fmtQty(t.entryLegs.reduce((s, l) => s + (l.qty || 0), 0)) : "•••"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Alloc</span>
+                  <span className="font-medium tabular-nums text-slate-700">
+                    {fmtPctNoSign(t.allocationPct)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Age</span>
+                  <span
+                    className={`font-medium tabular-nums ${
+                      t.ageDays > 30 ? "text-amber-600" : "text-slate-700"
+                    }`}
+                  >
+                    {t.ageDays}d
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">SL</span>
+                  <span className="font-medium tabular-nums text-red-500">
+                    {t.stopLossPct !== null ? fmtPctNoSign(t.stopLossPct) : "—"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                    P&amp;L
+                  </span>
+                  <span
+                    className={`text-base font-semibold tabular-nums ${pnlColor(t.pnlAmount)}`}
+                  >
+                    {t.pnlAmount !== 0 ? fmtPct(t.pnlPct) : "—"}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                    Amount
+                  </span>
+                  <span
+                    className={`text-base font-semibold tabular-nums ${pnlColor(t.pnlAmount)}`}
+                  >
+                    {!showAmounts
+                      ? "•••"
+                      : t.pnlAmount !== 0
+                      ? `${t.pnlAmount > 0 ? "+" : ""}${fmtAmt(t.pnlAmount)}`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                    Impact
+                  </span>
+                  <span
+                    className={`text-base font-semibold tabular-nums ${pnlColor(t.impactPct)}`}
+                  >
+                    {t.impactPct !== 0
+                      ? fmtPct(t.impactPct)
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          );
+        })}
+        {rows.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-line bg-white py-12 text-center text-sm text-slate-400">
+            No trades found. Import a CSV or add a trade manually.
+          </div>
+        )}
+      </div>
+
+      <div className="hidden w-full overflow-x-auto scrollbar-hide lg:block">
         <table className="w-full whitespace-nowrap text-right text-[12px] text-slate-700">
           <thead>
             <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-line">
@@ -385,7 +558,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                             : eLeg?.qty ? fmtQty(eLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
-                          {eLeg?.price ? fmtAmt(eLeg.price) : <span className="text-slate-300">—</span>}
+                          {eLeg?.price ? fmtPrice(eLeg.price) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-3 py-3 text-right text-slate-500 text-[11px]">
                           {eLeg?.dateTime ? fmtDate(eLeg.dateTime) : <span className="text-slate-300">—</span>}
@@ -397,7 +570,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                             : xLeg?.qty > 0 ? fmtQty(xLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
-                          {xLeg?.price > 0 ? fmtAmt(xLeg.price) : <span className="text-slate-300">—</span>}
+                          {xLeg?.price > 0 ? fmtPrice(xLeg.price) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-3 py-3 text-right text-slate-500 text-[11px]">
                           {xLeg?.dateTime ? fmtDate(xLeg.dateTime) : <span className="text-slate-300">—</span>}
@@ -412,11 +585,11 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>
                               {t.stopLossPct !== null
-                                ? <span className="text-red-500 font-medium">{fmtAmt(t.stopLossPct)}%</span>
+                                ? <span className="text-red-500 font-medium">{fmtPctNoSign(t.stopLossPct)}</span>
                                 : <span className="text-slate-300">—</span>}
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
-                              {fmtAmt(t.allocationPct)}%
+                              {fmtPctNoSign(t.allocationPct)}
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums align-middle" rowSpan={maxLegs}>
                               <span className={t.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}>
@@ -435,7 +608,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                             </td>
                             <td className={`px-3 py-3 text-right tabular-nums font-medium align-middle ${pnlColor(t.impactPct)}`} rowSpan={maxLegs}>
                               {t.impactPct !== 0
-                                ? `${t.impactPct > 0 ? "+" : ""}${fmtAmt(t.impactPct)}%`
+                                ? fmtPct(t.impactPct)
                                 : <span className="text-slate-300">—</span>}
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>

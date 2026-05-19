@@ -39,12 +39,12 @@ export function LoginForm() {
   return (
     <form
       action={handleSubmit}
-      className="space-y-5 rounded-[32px] border border-line bg-panel p-8 shadow-soft"
+      className="space-y-4 rounded-3xl border border-line bg-panel p-5 shadow-soft sm:space-y-5 sm:rounded-[32px] sm:p-8"
     >
       <div>
-        <p className="text-sm uppercase tracking-[0.22em] text-accent">Login</p>
-        <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Trader access</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-600">
+        <p className="text-xs uppercase tracking-[0.22em] text-accent sm:text-sm">Login</p>
+        <h1 className="mt-2 font-display text-2xl font-semibold text-ink sm:mt-3 sm:text-4xl">Trader access</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600 sm:mt-3 sm:leading-7">
           Sign in with your trader ID email and password. Verified and approved traders can enter trades immediately.
         </p>
       </div>

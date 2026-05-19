@@ -27,14 +27,16 @@ export function PortfolioCapitalEditor({ initialCapital }: { initialCapital: num
 
   if (!isEditing) {
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-slate-500">Portfolio Capital</p>
-          <p className="mt-2 text-xl font-display font-semibold text-ink">{formatCurrency(initialCapital)}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500 sm:text-sm">Portfolio Capital</p>
+          <p className="mt-1 truncate font-display text-lg font-semibold text-ink sm:mt-2 sm:text-xl">
+            {formatCurrency(initialCapital)}
+          </p>
         </div>
         <button
           onClick={() => setIsEditing(true)}
-          className="rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600 transition hover:bg-slate-200"
+          className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200 sm:text-sm"
         >
           Edit
         </button>

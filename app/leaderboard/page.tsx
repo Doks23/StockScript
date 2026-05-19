@@ -34,10 +34,10 @@ export default async function LeaderboardPage({
   const rankIcons = [Medal, TrendingUp, Award];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Competition selector */}
-      <section className="rounded-2xl border border-line bg-white/80 p-5 shadow-sm backdrop-blur">
-        <div className="flex flex-wrap items-end gap-4">
+      <section className="rounded-2xl border border-line bg-white/80 p-4 shadow-sm backdrop-blur sm:p-5">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
           <div>
             <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Competition
@@ -73,21 +73,21 @@ export default async function LeaderboardPage({
       {leaderboard ? (
         <>
           {/* Competition stats */}
-          <section className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
-              <p className="text-xs uppercase tracking-wider text-slate-500">
+          <section className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2">
+            <div className="rounded-2xl border border-line bg-white p-3 shadow-sm sm:p-5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 sm:text-xs">
                 Window
               </p>
-              <p className="mt-2 text-lg font-semibold text-slate-800">
+              <p className="mt-1.5 text-sm font-semibold text-slate-800 sm:mt-2 sm:text-lg">
                 {formatDateValue(leaderboard.competition.startDate)} →{" "}
                 {formatDateValue(leaderboard.competition.endDate)}
               </p>
             </div>
-            <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
-              <p className="text-xs uppercase tracking-wider text-slate-500">
+            <div className="rounded-2xl border border-line bg-white p-3 shadow-sm sm:p-5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 sm:text-xs">
                 Qualified Traders
               </p>
-              <p className="mt-2 text-3xl font-bold text-slate-800">
+              <p className="mt-1 text-2xl font-bold text-slate-800 sm:mt-2 sm:text-3xl">
                 {leaderboard.entries.length}
               </p>
             </div>
@@ -95,7 +95,7 @@ export default async function LeaderboardPage({
 
           {/* Top 3 podium */}
           {leaderboard.entries.length > 0 && (
-            <section className="grid gap-4 md:grid-cols-3">
+            <section className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
               {leaderboard.entries.slice(0, 3).map((entry, i) => {
                 const Icon = rankIcons[i] ?? Award;
                 const medalColor =
@@ -107,7 +107,7 @@ export default async function LeaderboardPage({
                 return (
                   <article
                     key={entry.userId}
-                    className="rounded-2xl border border-line bg-white p-5 shadow-sm"
+                    className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-5"
                   >
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-canvas px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-600">
@@ -146,8 +146,52 @@ export default async function LeaderboardPage({
             </section>
           )}
 
-          {/* Full rankings table */}
-          <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+          {/* Mobile rankings card list */}
+          <section className="space-y-2 sm:hidden">
+            {leaderboard.entries.map((entry) => (
+              <Link
+                key={entry.userId}
+                href={`/leaderboard/${selectedCompetitionId}/${entry.userId}`}
+                className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-sm active:bg-canvas"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
+                  {entry.rank}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-800">
+                    {entry.userName}
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-3 text-[11px] text-slate-500">
+                    <span>Win {formatPercent(entry.winRate)}</span>
+                    <span>•</span>
+                    <span>{entry.totalTrades} trades</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p
+                    className={`text-base font-bold tabular-nums ${
+                      entry.portfolioImpactPct >= 0
+                        ? "text-emerald-600"
+                        : "text-red-500"
+                    }`}
+                  >
+                    {formatPercent(entry.portfolioImpactPct)}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400">
+                    Impact
+                  </p>
+                </div>
+              </Link>
+            ))}
+            {leaderboard.entries.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-line bg-white py-10 text-center text-sm text-slate-400">
+                No qualifying traders yet.
+              </div>
+            )}
+          </section>
+
+          {/* Full rankings table (desktop) */}
+          <section className="hidden overflow-hidden rounded-2xl border border-line bg-white shadow-sm sm:block">
             <div className="overflow-x-auto">
               <table className="min-w-full text-[13px]">
                 <thead>

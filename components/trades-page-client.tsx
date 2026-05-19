@@ -33,7 +33,8 @@ type SearchResult = {
   metrics: Metrics;
 };
 
-const fmtNum = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+const fmtAmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-500" : "text-slate-400";
 
 function TradesPageContent() {
@@ -99,9 +100,9 @@ function TradesPageContent() {
   const totalPages = data?.totalPages || 1;
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-2xl border border-line bg-panel px-5 py-3 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
+    <div className="space-y-3 sm:space-y-4">
+      <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-5 sm:py-3">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-4">
           <JournalFilters
             values={filters}
             onChange={onFilterChange}
@@ -110,10 +111,11 @@ function TradesPageContent() {
           <button
             onClick={() => fetchData(filters, page)}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-sm text-slate-600 hover:bg-canvas transition disabled:opacity-50 shrink-0"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-3 sm:py-1.5"
+            aria-label="Refresh"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Refresh
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </section>
@@ -123,20 +125,20 @@ function TradesPageContent() {
           <span className="text-slate-400 font-medium">{metrics.totalTrades} trades</span>
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Alloc:</span>
-            <span className="font-semibold text-slate-700">{fmtNum.format(metrics.totalAlloc)}%</span>
+            <span className="font-semibold text-slate-700">{fmtPct(metrics.totalAlloc)}</span>
           </div>
           {metrics.totalPnl !== 0 && (
             <div className="flex items-center gap-1">
               <span className="text-slate-500">MTM:</span>
               <span className={`font-semibold ${pnlColor(metrics.totalPnl)}`}>
-                {metrics.totalPnl >= 0 ? "+" : ""}{fmtNum.format(metrics.totalPnl)}
+                {metrics.totalPnl >= 0 ? "+" : ""}{fmtAmt.format(metrics.totalPnl)}
               </span>
             </div>
           )}
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Impact:</span>
             <span className={`font-semibold ${pnlColor(metrics.totalImpact)}`}>
-              {metrics.totalImpact >= 0 ? "+" : ""}{fmtNum.format(metrics.totalImpact)}%
+              {metrics.totalImpact >= 0 ? "+" : ""}{fmtPct(metrics.totalImpact)}
             </span>
           </div>
         </div>
@@ -150,7 +152,7 @@ function TradesPageContent() {
       )}
 
       {data && (
-        <section className="overflow-hidden rounded-2xl border border-line bg-panel shadow-sm p-3">
+        <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
           <JournalTable rows={data.trades} showAmounts={!filters.hideAmounts} onRefresh={() => fetchData(filters, page)} />
         </section>
       )}

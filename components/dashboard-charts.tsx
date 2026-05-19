@@ -129,30 +129,30 @@ export function DashboardCharts({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Top row */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
         {/* Recent Performance */}
-        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
-          <p className="text-sm uppercase tracking-wider text-slate-500 mb-4">
+        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
+          <p className="text-xs uppercase tracking-wider text-slate-500 mb-3 sm:text-sm sm:mb-4">
             Recent Performance
           </p>
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
-              <ArrowUp className="w-8 h-8 text-profit" />
-              <span className="text-3xl font-display font-semibold text-profit">
+              <ArrowUp className="w-6 h-6 text-profit sm:w-8 sm:h-8" />
+              <span className="text-2xl font-display font-semibold text-profit sm:text-3xl">
                 {recentStats.winners}
               </span>
             </div>
             <span className="text-xl text-slate-300">|</span>
             <div className="flex items-center gap-2">
-              <ArrowDown className="w-8 h-8 text-loss" />
-              <span className="text-3xl font-display font-semibold text-loss">
+              <ArrowDown className="w-6 h-6 text-loss sm:w-8 sm:h-8" />
+              <span className="text-2xl font-display font-semibold text-loss sm:text-3xl">
                 {recentStats.losers}
               </span>
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t border-line flex justify-between text-sm text-slate-500">
+          <div className="mt-3 pt-3 border-t border-line flex justify-between text-xs text-slate-500 sm:mt-4 sm:pt-4 sm:text-sm">
             <span className="text-slate-400">Sample Size</span>
             <span className="font-medium text-ink">
               {recentStats.total} trades
@@ -161,11 +161,11 @@ export function DashboardCharts({
         </div>
 
         {/* Batting Average */}
-        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm flex flex-col items-center">
-          <p className="text-sm uppercase tracking-wider text-slate-500 mb-2 self-start">
+        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm flex flex-col items-center sm:rounded-3xl sm:p-5">
+          <p className="text-xs uppercase tracking-wider text-slate-500 mb-2 self-start sm:text-sm">
             Batting Average
           </p>
-          <div className="h-32 w-full mt-2">
+          <div className="h-28 w-full mt-2 sm:h-32">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -199,7 +199,7 @@ export function DashboardCharts({
         </div>
 
         {/* Trade Stats Block */}
-        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm space-y-3 text-sm">
+        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm space-y-2.5 text-sm sm:col-span-2 md:col-span-1 sm:rounded-3xl sm:p-5 sm:space-y-3">
           <div className="flex justify-between">
             <span className="text-slate-500">Trade</span>
             <span className="font-medium text-ink">{metrics.totalTrades}</span>
@@ -229,9 +229,9 @@ export function DashboardCharts({
       </div>
 
       {/* Equity Curve */}
-      <div className="rounded-3xl border border-line bg-white p-6 shadow-sm">
-        <p className="text-md font-medium text-slate-700 mb-4">Equity Curve</p>
-        <div className="h-[280px] w-full">
+      <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <p className="text-sm font-medium text-slate-700 mb-3 sm:text-md sm:mb-4">Equity Curve</p>
+        <div className="h-[220px] w-full sm:h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={equityCurve}
@@ -273,10 +273,10 @@ export function DashboardCharts({
       </div>
 
       {/* Bottom Row Charts */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Portfolio Allocation % */}
-        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-slate-700 mb-4">
+        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
+          <p className="text-sm font-medium text-slate-700 mb-3 sm:mb-4">
             Portfolio Allocation % (Open)
           </p>
           <div className="h-48 w-full">
@@ -306,7 +306,7 @@ export function DashboardCharts({
                   tickLine={false}
                 />
                 <YAxis
-                  tickFormatter={(val) => `${val.toFixed(0)}%`}
+                  tickFormatter={(val) => `${val.toFixed(1)}%`}
                   tick={{ fontSize: 10, fill: "#94a3b8" }}
                   axisLine={false}
                   tickLine={false}
@@ -326,8 +326,8 @@ export function DashboardCharts({
         </div>
 
         {/* PnL */}
-        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-slate-700 mb-4">PnL</p>
+        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
+          <p className="text-sm font-medium text-slate-700 mb-3 sm:mb-4">PnL</p>
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -365,8 +365,8 @@ export function DashboardCharts({
         </div>
 
         {/* Winners per Month */}
-        <div className="rounded-3xl border border-line bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-slate-700 mb-4">
+        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
+          <p className="text-sm font-medium text-slate-700 mb-3 sm:mb-4">
             # Winners per Month
           </p>
           <div className="h-48 w-full">

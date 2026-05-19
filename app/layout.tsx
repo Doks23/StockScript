@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
@@ -27,6 +27,13 @@ export const metadata: Metadata = {
     icon: "/stockscript-logo.svg",
     apple: "/stockscript-logo.svg",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0c8f6a",
 };
 
 export default function RootLayout({

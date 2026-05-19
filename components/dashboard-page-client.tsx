@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { MetricCard } from "./metric-card";
 import { DashboardCharts } from "./dashboard-charts";
 import { buildDashboardMetrics } from "@/lib/trade-utils";
-import { formatCurrency, formatPercent, formatNumber } from "@/lib/format";
+import { formatCurrency, formatPercent, formatRatio } from "@/lib/format";
 
 type Period = "10" | "1w" | "1m" | "3m" | "all" | "custom";
 
@@ -83,17 +83,17 @@ export function DashboardPageClient({
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex bg-canvas p-1 rounded-full border border-line gap-1">
+        <div className="-mx-1 flex w-full gap-1 overflow-x-auto rounded-full border border-line bg-canvas p-1 scrollbar-hide sm:mx-0 sm:w-auto">
           {PERIOD_TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setPeriod(tab.key)}
-              className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                 period === tab.key
                   ? "bg-white text-ink shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"
+                  : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"
               }`}
             >
               {tab.label}
@@ -101,26 +101,26 @@ export function DashboardPageClient({
           ))}
         </div>
         {period === "custom" && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <input
               type="date"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs text-slate-600 bg-white"
+              className="flex-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs text-slate-600 sm:flex-none"
             />
             <span className="text-xs text-slate-400">to</span>
             <input
               type="date"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs text-slate-600 bg-white"
+              className="flex-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs text-slate-600 sm:flex-none"
             />
           </div>
         )}
         <button
           type="button"
           onClick={() => setShowAmounts((v) => !v)}
-          className="ml-auto flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 transition"
+          className="ml-auto flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs text-slate-500 transition hover:text-slate-700"
           title={showAmounts ? "Hide amounts" : "Show amounts"}
         >
           {showAmounts ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -128,7 +128,7 @@ export function DashboardPageClient({
         </button>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+      <div className="grid gap-3 grid-cols-2 sm:gap-4 md:grid-cols-3">
         <MetricCard
           label="Closed Trades"
           value={String(metrics.totalTrades)}
@@ -151,7 +151,7 @@ export function DashboardPageClient({
         />
         <MetricCard
           label="Profit Factor"
-          value={formatNumber(metrics.profitFactor)}
+          value={formatRatio(metrics.profitFactor)}
           tone={metrics.profitFactor >= 1 ? "profit" : "loss"}
         />
       </div>

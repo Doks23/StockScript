@@ -226,22 +226,22 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
   return (
     <form
       action={handleSubmit}
-      className="flex flex-col gap-5 rounded-2xl border border-line bg-white p-5 shadow-sm"
+      className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-3 shadow-sm sm:gap-5 sm:p-5"
     >
       {/* Header row */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-4">
+      <div className="grid grid-cols-2 gap-2 border-b border-slate-100 pb-4 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
         <input
           name="symbol"
           placeholder="SYMBOL"
           required
           defaultValue={initialData?.symbol || ""}
-          className="form-input uppercase w-[140px] font-bold text-lg"
+          className="form-input col-span-2 uppercase font-bold text-lg sm:w-[140px]"
         />
         <select
           name="status"
           value={status}
           onChange={(e) => setStatus(e.target.value as "OPEN" | "CLOSED")}
-          className="form-input w-[110px] bg-slate-50"
+          className="form-input bg-slate-50 sm:w-[110px]"
         >
           <option value="OPEN">🟢 OPEN</option>
           <option value="CLOSED">🔴 CLOSED</option>
@@ -250,7 +250,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           name="tradeType"
           value={tradeType}
           onChange={(e) => setTradeType(e.target.value)}
-          className="form-input w-[100px] bg-slate-50"
+          className="form-input bg-slate-50 sm:w-[100px]"
         >
           {tradeTypeOptions.map((o) => (
             <option key={o.value} value={o.value}>
@@ -261,7 +261,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         <select
           name="segment"
           defaultValue={initialData?.segment || "EQUITY"}
-          className="form-input w-[110px] bg-slate-50"
+          className="form-input bg-slate-50 sm:w-[110px]"
         >
           {segmentOptions.map((o) => (
             <option key={o.value} value={o.value}>
@@ -273,7 +273,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           <select
             name="competitionId"
             defaultValue={initialData?.competitionId || ""}
-            className="form-input w-[160px] bg-slate-50"
+            className="form-input bg-slate-50 sm:w-[160px]"
           >
             <option value="">No Competition</option>
             {competitions.map((c) => (
@@ -287,12 +287,12 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           name="tags"
           placeholder="Tags (e.g. breakout)"
           defaultValue={initialData?.tags || ""}
-          className="form-input flex-1 min-w-[120px]"
+          className="form-input col-span-2 sm:flex-1 sm:min-w-[120px]"
         />
       </div>
 
       {/* Transactions grid */}
-      <div className="grid lg:grid-cols-2 gap-6 bg-slate-50/50 rounded-xl p-4 border border-slate-100">
+      <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-3 sm:gap-6 sm:p-4 lg:grid-cols-2">
         {/* ENTRY transactions */}
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
@@ -307,7 +307,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
               <Plus className="h-3 w-3" /> Add
             </button>
           </div>
-          <div className="grid grid-cols-[3fr_2fr_2fr_auto] gap-2 text-[10px] text-slate-400 px-1">
+          <div className="hidden sm:grid grid-cols-[3fr_2fr_2fr_auto] gap-2 text-[10px] text-slate-400 px-1">
             <span>Date & Time</span>
             <span>Price</span>
             <span>Qty</span>
@@ -316,39 +316,48 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           {entryRows.map((row, i) => (
             <div
               key={i}
-              className="grid grid-cols-[3fr_2fr_2fr_auto] gap-2 items-center"
+              className="flex flex-col gap-1.5 sm:grid sm:grid-cols-[3fr_2fr_2fr_auto] sm:gap-2 sm:items-center bg-white rounded-lg border border-slate-100 p-2 sm:p-0 sm:bg-transparent sm:border-0"
             >
-              <input
-                type="datetime-local"
-                value={row.dateTime}
-                onChange={(e) => updateEntryRow(i, "dateTime", e.target.value)}
-                required={i === 0}
-                className="form-input text-xs h-9"
-              />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Price"
-                value={row.price}
-                onChange={(e) => updateEntryRow(i, "price", e.target.value)}
-                required={i === 0}
-                className="form-input text-sm h-9"
-              />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Qty"
-                value={row.quantity}
-                onChange={(e) => updateEntryRow(i, "quantity", e.target.value)}
-                required={i === 0}
-                className="form-input text-sm h-9"
-              />
+              <div className="flex items-center gap-2 sm:contents">
+                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Date & Time</span>
+                <input
+                  type="datetime-local"
+                  value={row.dateTime}
+                  onChange={(e) => updateEntryRow(i, "dateTime", e.target.value)}
+                  required={i === 0}
+                  className="form-input text-xs h-9 flex-1 sm:flex-none"
+                />
+              </div>
+              <div className="flex items-center gap-2 sm:contents">
+                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Price</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Price"
+                  value={row.price}
+                  onChange={(e) => updateEntryRow(i, "price", e.target.value)}
+                  required={i === 0}
+                  className="form-input text-sm h-9 flex-1 sm:flex-none"
+                />
+              </div>
+              <div className="flex items-center gap-2 sm:contents">
+                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Qty</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Qty"
+                  value={row.quantity}
+                  onChange={(e) => updateEntryRow(i, "quantity", e.target.value)}
+                  required={i === 0}
+                  className="form-input text-sm h-9 flex-1 sm:flex-none"
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => removeEntryRow(i)}
-                className="text-slate-300 hover:text-red-400 transition"
+                className="self-end sm:self-center text-slate-300 hover:text-red-400 transition sm:ml-0"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -370,7 +379,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
               <Plus className="h-3 w-3" /> Add
             </button>
           </div>
-          <div className="grid grid-cols-[3fr_2fr_2fr_auto] gap-2 text-[10px] text-slate-400 px-1">
+          <div className="hidden sm:grid grid-cols-[3fr_2fr_2fr_auto] gap-2 text-[10px] text-slate-400 px-1">
             <span>Date & Time</span>
             <span>Price</span>
             <span>Qty</span>
@@ -379,39 +388,48 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           {exitRows.map((row, i) => (
             <div
               key={i}
-              className="grid grid-cols-[3fr_2fr_2fr_auto] gap-2 items-center"
+              className="flex flex-col gap-1.5 sm:grid sm:grid-cols-[3fr_2fr_2fr_auto] sm:gap-2 sm:items-center bg-white rounded-lg border border-slate-100 p-2 sm:p-0 sm:bg-transparent sm:border-0"
             >
-              <input
-                type="datetime-local"
-                value={row.dateTime}
-                onChange={(e) => updateExitRow(i, "dateTime", e.target.value)}
-                required={status === "CLOSED" && i === 0}
-                className="form-input text-xs h-9"
-              />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Price"
-                value={row.price}
-                onChange={(e) => updateExitRow(i, "price", e.target.value)}
-                required={status === "CLOSED" && i === 0}
-                className="form-input text-sm h-9"
-              />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Qty"
-                value={row.quantity}
-                onChange={(e) => updateExitRow(i, "quantity", e.target.value)}
-                required={status === "CLOSED" && i === 0}
-                className="form-input text-sm h-9"
-              />
+              <div className="flex items-center gap-2 sm:contents">
+                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Date & Time</span>
+                <input
+                  type="datetime-local"
+                  value={row.dateTime}
+                  onChange={(e) => updateExitRow(i, "dateTime", e.target.value)}
+                  required={status === "CLOSED" && i === 0}
+                  className="form-input text-xs h-9 flex-1 sm:flex-none"
+                />
+              </div>
+              <div className="flex items-center gap-2 sm:contents">
+                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Price</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Price"
+                  value={row.price}
+                  onChange={(e) => updateExitRow(i, "price", e.target.value)}
+                  required={status === "CLOSED" && i === 0}
+                  className="form-input text-sm h-9 flex-1 sm:flex-none"
+                />
+              </div>
+              <div className="flex items-center gap-2 sm:contents">
+                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Qty</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Qty"
+                  value={row.quantity}
+                  onChange={(e) => updateExitRow(i, "quantity", e.target.value)}
+                  required={status === "CLOSED" && i === 0}
+                  className="form-input text-sm h-9 flex-1 sm:flex-none"
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => removeExitRow(i)}
-                className="text-slate-300 hover:text-red-400 transition"
+                className="self-end sm:self-center text-slate-300 hover:text-red-400 transition sm:ml-0"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -421,8 +439,8 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       </div>
 
       {/* Auxiliary fields */}
-      <div className="flex flex-wrap gap-4 items-center">
-        <label className="flex items-center gap-2 text-sm text-slate-500 whitespace-nowrap">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
           Stop Loss
           <input
             name="stopLoss"
@@ -430,10 +448,10 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
             step="0.01"
             min="0"
             defaultValue={initialData?.stopLoss ?? ""}
-            className="form-input w-[100px] h-9"
+            className="form-input h-9 w-full sm:w-[100px]"
           />
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-500 whitespace-nowrap">
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
           Charges
           <input
             name="charges"
@@ -441,11 +459,11 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
             step="0.01"
             min="0"
             defaultValue={initialData?.charges ?? "0"}
-            className="form-input w-[100px] h-9"
+            className="form-input h-9 w-full sm:w-[100px]"
           />
         </label>
         <label
-          className="flex items-center gap-2 text-sm text-slate-500 whitespace-nowrap"
+          className="col-span-2 flex flex-col gap-1.5 text-xs text-slate-500 sm:col-span-1 sm:flex-row sm:items-center sm:gap-2 sm:text-sm"
           title="End of day Mark to Market"
         >
           EOD Closing Price
@@ -455,7 +473,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
             step="0.01"
             min="0"
             defaultValue={initialData?.closingPrice ?? ""}
-            className="form-input w-[100px] h-9"
+            className="form-input h-9 w-full sm:w-[100px]"
           />
         </label>
       </div>
@@ -468,16 +486,16 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         className="form-input resize-y text-sm"
       />
 
-      <div className="flex items-center justify-between mt-2 pt-4 border-t border-slate-100">
+      <div className="mt-2 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
         {error ? (
-          <p className="text-sm text-red-500 font-medium">{error}</p>
+          <p className="text-sm font-medium text-red-500">{error}</p>
         ) : (
           <div />
         )}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-xl bg-accent px-8 py-2.5 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-60"
+          className="w-full rounded-xl bg-accent px-8 py-3 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-60 sm:w-auto sm:py-2.5"
         >
           {isSubmitting
             ? "Saving..."

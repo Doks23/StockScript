@@ -39,12 +39,12 @@ export function RegisterForm() {
   return (
     <form
       action={handleSubmit}
-      className="space-y-5 rounded-[32px] border border-line bg-panel p-8 shadow-soft"
+      className="space-y-4 rounded-3xl border border-line bg-panel p-5 shadow-soft sm:space-y-5 sm:rounded-[32px] sm:p-8"
     >
       <div>
-        <p className="text-sm uppercase tracking-[0.22em] text-accent">Register</p>
-        <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Create trader account</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-600">
+        <p className="text-xs uppercase tracking-[0.22em] text-accent sm:text-sm">Register</p>
+        <h1 className="mt-2 font-display text-2xl font-semibold text-ink sm:mt-3 sm:text-4xl">Create trader account</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600 sm:mt-3 sm:leading-7">
           Create your account. An admin will approve it before you can start trading.
         </p>
       </div>

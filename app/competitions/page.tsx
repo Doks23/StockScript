@@ -30,12 +30,12 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       {/* Header */}
-      <section className="flex items-center justify-between">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Admin</p>
-          <h1 className="mt-2 font-display text-4xl font-semibold text-ink">Competitions</h1>
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500 sm:text-sm">Admin</p>
+          <h1 className="mt-1 font-display text-2xl font-semibold text-ink sm:mt-2 sm:text-4xl">Competitions</h1>
         </div>
         {activeTab === "competitions" && isAdmin && (
           <Link
@@ -77,8 +77,8 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
             <CompetitionRequestList requests={pendingRequests} />
           )}
 
-          <section className="rounded-2xl border border-line bg-white p-6 shadow-sm">
-            <h2 className="font-display text-2xl font-semibold text-ink mb-4">All Competitions</h2>
+          <section className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="mb-4 font-display text-xl font-semibold text-ink sm:text-2xl">All Competitions</h2>
             <div className="space-y-4">
               {competitions.length === 0 && (
                 <p className="py-8 text-center text-slate-400 italic">
@@ -93,10 +93,10 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
                   key={competition.id}
                   className="rounded-2xl border border-line bg-canvas p-4"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-ink">{competition.name}</h3>
-                      <p className="text-sm text-slate-500">
+                      <h3 className="text-base font-semibold text-ink sm:text-lg">{competition.name}</h3>
+                      <p className="text-xs text-slate-500 sm:text-sm">
                         {formatDateValue(competition.startDate)} to{" "}
                         {formatDateValue(competition.endDate)}
                       </p>

@@ -11,29 +11,34 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { LogoutButton } from "./logout-button";
+import { MobileNav, type NavSpec } from "./mobile-nav";
 
-const traderNavigation = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/trades", label: "Journal", icon: BarChart3 },
-  { href: "/trades/new", label: "New Trade", icon: PencilLine },
-  { href: "/leaderboard", label: "Leaderboard", icon: Medal },
-  { href: "/account", label: "Account", icon: User },
+type NavItem = NavSpec & {
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const traderNavigation: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", iconKey: "dashboard", icon: LayoutDashboard },
+  { href: "/trades", label: "Journal", iconKey: "journal", icon: BarChart3 },
+  { href: "/trades/new", label: "New Trade", iconKey: "newTrade", icon: PencilLine },
+  { href: "/leaderboard", label: "Leaderboard", iconKey: "leaderboard", icon: Medal },
+  { href: "/account", label: "Account", iconKey: "account", icon: User },
 ];
 
-const superTraderNavigation = [
+const superTraderNavigation: NavItem[] = [
   ...traderNavigation,
-  { href: "/competitions", label: "Competitions", icon: Flag },
+  { href: "/competitions", label: "Competitions", iconKey: "competitions", icon: Flag },
 ];
 
-const adminNavigation = [
+const adminNavigation: NavItem[] = [
   ...traderNavigation,
-  { href: "/competitions", label: "Competitions", icon: Flag },
-  { href: "/admin", label: "Admin", icon: Shield },
+  { href: "/competitions", label: "Competitions", iconKey: "competitions", icon: Flag },
+  { href: "/admin", label: "Admin", iconKey: "admin", icon: Shield },
 ];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  const navigation =
+  const navigation: NavItem[] =
     user?.role === "ADMIN"
       ? adminNavigation
       : user?.role === "SUPER_TRADER"
@@ -42,10 +47,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-canvas">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-        <header className="animate-reveal rounded-2xl border border-line bg-white/80 px-5 py-4 shadow-sm backdrop-blur xl:px-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-3 pb-24 pt-3 sm:px-6 sm:pb-10 sm:pt-4 lg:px-8">
+        <header className="animate-reveal rounded-2xl border border-line bg-white/80 px-3 py-2.5 shadow-sm backdrop-blur sm:px-5 sm:py-4 xl:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center justify-between">
               <Link
                 href={user ? "/dashboard" : "/login"}
                 className="inline-flex items-center gap-3"
@@ -55,19 +60,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   alt="StockScript"
                   width={420}
                   height={80}
-                  className="h-14 w-auto"
+                  className="h-9 w-auto sm:h-14"
                   unoptimized
                 />
               </Link>
+              {user && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-accent lg:hidden">
+                  {user.role}
+                </span>
+              )}
             </div>
 
-            <div className="flex flex-col gap-4 lg:items-end">
+            <div className="hidden flex-col gap-4 lg:flex lg:items-end">
               {user ? (
                 <>
                   <nav className="flex flex-wrap gap-2">
                     {navigation.map((item) => {
                       const Icon = item.icon;
-
                       return (
                         <Link
                           key={item.href}
@@ -111,8 +120,19 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="mt-8 flex-1">{children}</main>
+        <main className="mt-4 flex-1 sm:mt-8">{children}</main>
       </div>
+
+      {user && (
+        <MobileNav
+          items={navigation.map(({ href, label, iconKey }) => ({
+            href,
+            label,
+            iconKey,
+          }))}
+          user={{ name: user.name, role: user.role }}
+        />
+      )}
     </div>
   );
 }

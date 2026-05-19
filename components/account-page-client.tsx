@@ -112,17 +112,17 @@ export function AccountPageClient({ user }: { user: any }) {
   }
 
   return (
-    <div className="space-y-8 max-w-2xl">
-      <h1 className="font-display text-2xl font-semibold text-ink tracking-tight">
+    <div className="max-w-2xl space-y-5 sm:space-y-8">
+      <h1 className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
         Account
       </h1>
 
       {/* Avatar */}
-      <section className="rounded-3xl border border-line bg-white p-6 shadow-sm">
-        <h2 className="text-sm uppercase tracking-wider text-slate-500 mb-5">
+      <section className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <h2 className="mb-4 text-xs uppercase tracking-wider text-slate-500 sm:mb-5 sm:text-sm">
           Profile Photo
         </h2>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <div className="relative h-20 w-20 rounded-full overflow-hidden border border-line bg-canvas">
             {avatarUrl ? (
               <Image
@@ -175,8 +175,8 @@ export function AccountPageClient({ user }: { user: any }) {
       </section>
 
       {/* Personal Info */}
-      <section className="rounded-3xl border border-line bg-white p-6 shadow-sm">
-        <h2 className="text-sm uppercase tracking-wider text-slate-500 mb-5">
+      <section className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <h2 className="mb-4 text-xs uppercase tracking-wider text-slate-500 sm:mb-5 sm:text-sm">
           Personal Info
         </h2>
         <div className="space-y-4">
@@ -218,8 +218,8 @@ export function AccountPageClient({ user }: { user: any }) {
       </section>
 
       {/* Change Password */}
-      <section className="rounded-3xl border border-line bg-white p-6 shadow-sm">
-        <h2 className="text-sm uppercase tracking-wider text-slate-500 mb-5">
+      <section className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <h2 className="mb-4 text-xs uppercase tracking-wider text-slate-500 sm:mb-5 sm:text-sm">
           Change Password
         </h2>
         <div className="space-y-4">
@@ -269,8 +269,8 @@ export function AccountPageClient({ user }: { user: any }) {
       </section>
 
       {/* Account Details */}
-      <section className="rounded-3xl border border-line bg-white p-6 shadow-sm">
-        <h2 className="text-sm uppercase tracking-wider text-slate-500 mb-5">
+      <section className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <h2 className="mb-4 text-xs uppercase tracking-wider text-slate-500 sm:mb-5 sm:text-sm">
           Account Details
         </h2>
         <div className="space-y-3 text-sm">

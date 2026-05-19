@@ -9,6 +9,7 @@ import {
   formatDateTime,
   formatNumber,
   formatPercent,
+  formatPrice,
 } from "@/lib/format";
 import { getTradesBySymbol } from "@/lib/queries";
 import {
@@ -47,22 +48,22 @@ export default async function TradeDetailPage({
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl border border-line bg-white px-6 py-4 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="space-y-5 sm:space-y-8">
+      <section className="flex items-center justify-between rounded-2xl border border-line bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Link
             href="/trades"
             className="text-sm text-slate-500 hover:text-accent"
           >
             ← Journal
           </Link>
-          <h1 className="font-display text-xl font-semibold text-ink uppercase">
+          <h1 className="font-display text-lg font-semibold uppercase text-ink sm:text-xl">
             {data.symbol}
           </h1>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <MetricCard
           label="Closed Trades"
           value={String(data.metrics.totalTrades)}
@@ -83,13 +84,13 @@ export default async function TradeDetailPage({
         />
       </section>
 
-      <section className="space-y-6">
+      <section className="space-y-4 sm:space-y-6">
         {data.trades.map((trade) => (
           <article
             key={trade.id}
-            className="rounded-2xl border border-line bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-6"
           >
-            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="grid gap-4 sm:gap-6 xl:grid-cols-[1.15fr_0.85fr]">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
@@ -111,18 +112,18 @@ export default async function TradeDetailPage({
                   </Link>
                 </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   <div className="info-chip">
                     <p className="info-label">Entry</p>
                     <p className="info-value">
-                      {formatNumber(getWeightedEntryPrice(trade))}
+                      {formatPrice(getWeightedEntryPrice(trade))}
                     </p>
                   </div>
                   <div className="info-chip">
                     <p className="info-label">Exit</p>
                     <p className="info-value">
                       {getWeightedExitPrice(trade) > 0
-                        ? formatNumber(getWeightedExitPrice(trade))
+                        ? formatPrice(getWeightedExitPrice(trade))
                         : "--"}
                     </p>
                   </div>
@@ -130,7 +131,7 @@ export default async function TradeDetailPage({
                     <p className="info-label">Closing Price</p>
                     <p className="info-value">
                       {trade.closingPrice
-                        ? formatNumber(trade.closingPrice)
+                        ? formatPrice(trade.closingPrice)
                         : "--"}
                     </p>
                   </div>
@@ -138,9 +139,9 @@ export default async function TradeDetailPage({
                     <p className="info-label">Marked Price</p>
                     <p className="info-value">
                       {trade.closingPrice
-                        ? formatNumber(trade.closingPrice)
+                        ? formatPrice(trade.closingPrice)
                         : getWeightedExitPrice(trade) > 0
-                          ? formatNumber(getWeightedExitPrice(trade))
+                          ? formatPrice(getWeightedExitPrice(trade))
                           : "--"}
                     </p>
                   </div>
@@ -176,7 +177,7 @@ export default async function TradeDetailPage({
                   </div>
                 </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-4">
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
                   <div className="info-chip">
                     <p className="info-label">Qty</p>
                     <p className="info-value">

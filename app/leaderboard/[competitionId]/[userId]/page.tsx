@@ -18,8 +18,11 @@ import {
 } from "@/lib/trade-utils";
 import type { EntryLeg } from "@/lib/trade-utils";
 
-const fmtNum = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
-const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtNum.format(n);
+const fmtAmtIntl = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
+const fmtPriceIntl = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPrice = (n: number) => fmtPriceIntl.format(n);
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtAmtIntl.format(n);
 const fmtDate = (d: Date | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
 
@@ -148,7 +151,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
                             {eLeg?.qty ? fmtQty(eLeg.qty) : <span className="text-slate-300">—</span>}
                           </td>
                           <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
-                            {eLeg?.price ? fmtNum.format(eLeg.price) : <span className="text-slate-300">—</span>}
+                            {eLeg?.price ? fmtPrice(eLeg.price) : <span className="text-slate-300">—</span>}
                           </td>
                           <td className="px-3 py-3 text-right text-slate-500 text-[11px]">
                             {eLeg?.dateTime ? fmtDate(eLeg.dateTime) : <span className="text-slate-300">—</span>}
@@ -158,7 +161,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
                             {xLeg?.qty > 0 ? fmtQty(xLeg.qty) : <span className="text-slate-300">—</span>}
                           </td>
                           <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
-                            {xLeg?.price > 0 ? fmtNum.format(xLeg.price) : <span className="text-slate-300">—</span>}
+                            {xLeg?.price > 0 ? fmtPrice(xLeg.price) : <span className="text-slate-300">—</span>}
                           </td>
                           <td className="px-3 py-3 text-right text-slate-500 text-[11px]">
                             {xLeg?.dateTime ? fmtDate(xLeg.dateTime) : <span className="text-slate-300">—</span>}
@@ -168,12 +171,12 @@ export default async function TraderDrillDownPage({ params }: Props) {
                             <>
                               <td className={`px-3 py-3 text-right font-semibold border-l border-line ${pnlColor}`} rowSpan={maxLegs}>
                                 {tradePnlPct !== 0
-                                  ? `${tradePnlPct > 0 ? "+" : ""}${fmtNum.format(tradePnlPct)}%`
+                                  ? `${tradePnlPct > 0 ? "+" : ""}${fmtPct(tradePnlPct)}`
                                   : <span className="text-slate-300">—</span>}
                               </td>
                               <td className={`px-3 py-3 text-right font-semibold ${pnlColor}`} rowSpan={maxLegs}>
                                 {portfolioImpactPct !== 0
-                                  ? `${portfolioImpactPct > 0 ? "+" : ""}${fmtNum.format(portfolioImpactPct)}%`
+                                  ? `${portfolioImpactPct > 0 ? "+" : ""}${fmtPct(portfolioImpactPct)}`
                                   : <span className="text-slate-300">—</span>}
                               </td>
                             </>
