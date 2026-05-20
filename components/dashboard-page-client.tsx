@@ -19,6 +19,12 @@ const PERIOD_TABS: { key: Period; label: string }[] = [
   { key: "custom", label: "Custom" },
 ];
 
+function pnlTone(value: number) {
+  if (value > 0) return "profit";
+  if (value < 0) return "loss";
+  return "default";
+}
+
 export function DashboardPageClient({
   trades,
   userCapital,
@@ -142,12 +148,12 @@ export function DashboardPageClient({
         <MetricCard
           label="Net Realized P&L"
           value={showAmounts ? formatCurrency(metrics.totalRealizedPnl) : "•••"}
-          tone={metrics.totalRealizedPnl >= 0 ? "profit" : "loss"}
+          tone={pnlTone(metrics.totalRealizedPnl)}
         />
         <MetricCard
           label="Total P&L (MTM)"
           value={showAmounts ? formatCurrency(metrics.totalMtmPnl) : "•••"}
-          tone={metrics.totalMtmPnl >= 0 ? "profit" : "loss"}
+          tone={pnlTone(metrics.totalMtmPnl)}
         />
         <MetricCard
           label="Profit Factor"

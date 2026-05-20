@@ -32,6 +32,7 @@ import { calculateOpenPnl } from "@/lib/trade-utils";
 
 const ACCENT = "#0c8f6a";
 const PROFIT = "#157f5b";
+const PROFIT_LIGHT = "#8ee6bd";
 const LOSS = "#b33f40";
 
 export function DashboardCharts({
@@ -356,7 +357,7 @@ export function DashboardCharts({
                 />
                 <Bar
                   dataKey="allocationPct"
-                  fill={ACCENT}
+                  fill={PROFIT_LIGHT}
                   radius={[4, 4, 0, 0]}
                   maxBarSize={40}
                 />
@@ -437,7 +438,7 @@ export function DashboardCharts({
                 <Tooltip />
                 <Bar
                   dataKey="winners"
-                  fill={ACCENT}
+                  fill={PROFIT_LIGHT}
                   radius={[4, 4, 0, 0]}
                   maxBarSize={40}
                 />

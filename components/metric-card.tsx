@@ -17,6 +17,12 @@ export function MetricCard({
       : tone === "loss"
         ? "from-loss/12 to-white"
         : "from-accent/12 to-white";
+  const valueClass =
+    tone === "profit"
+      ? "text-profit"
+      : tone === "loss"
+        ? "text-loss"
+        : "text-ink";
 
   return (
     <article
@@ -25,7 +31,9 @@ export function MetricCard({
       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:text-sm sm:tracking-[0.2em]">
         {label}
       </p>
-      <p className="mt-2 font-display text-lg font-semibold text-ink sm:mt-4 sm:text-3xl">
+      <p
+        className={`mt-2 font-display text-lg font-semibold ${valueClass} sm:mt-4 sm:text-3xl`}
+      >
         {value}
       </p>
       {detail ? (

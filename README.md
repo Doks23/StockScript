@@ -40,20 +40,6 @@ npm run db:seed
 npm run dev
 ```
 
-## Seeded credentials
-
-- Admin:
-  - Email: `admin@stockscript.dev`
-  - Password: `Admin@12345`
-- Approved traders:
-  - `aarav@stockscript.dev`
-  - `mira@stockscript.dev`
-  - `kabir@stockscript.dev`
-  - Password for all seeded traders: `Trader@123`
-- One additional trader is seeded in pending approval state:
-  - `riya@stockscript.dev`
-  - Password: `Trader@123`
-
 ## Pricing rules
 
 - Closed trades use `exit_price` for realized P&L

@@ -535,7 +535,7 @@ export function buildGroupedJournalRows(
     const lastExit = getLastExitTime(trade);
 
     const openQty = Math.max(0, totalEntryQty - exitQ);
-    const isActuallyClosed = openQty <= 0;
+    const isActuallyClosed = openQty === 0;
     const derivedStatus: "OPEN" | "CLOSED" = isActuallyClosed
       ? "CLOSED"
       : "OPEN";
