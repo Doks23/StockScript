@@ -8,6 +8,7 @@ import {
   buildGroupedJournalRows,
   buildLeaderboardEntries,
   filterTradesByTag,
+  getCompetitionDateWindow,
   getCompetitionWindowTrades,
   groupTradesBySymbol,
 } from "./trade-utils";
@@ -164,13 +165,38 @@ export const getLeaderboard = cache(async function getLeaderboard(competitionId:
   if (!competition) return null;
 
   const participantIds = competition.participants.map((p) => p.userId);
+  const competitionWindow = getCompetitionDateWindow(competition);
 
   const trades =
     participantIds.length > 0
       ? await prisma.trade.findMany({
           where: {
             userId: { in: participantIds },
-            competitionId,
+            OR: [
+              {
+                firstEntryAt: {
+                  gte: competitionWindow.startDate,
+                  lte: competitionWindow.endDate,
+                },
+              },
+              {
+                status: "CLOSED",
+                updatedAt: {
+                  gte: competitionWindow.startDate,
+                  lte: competitionWindow.endDate,
+                },
+              },
+              {
+                transactions: {
+                  some: {
+                    dateTime: {
+                      gte: competitionWindow.startDate,
+                      lte: competitionWindow.endDate,
+                    },
+                  },
+                },
+              },
+            ],
           },
           orderBy: { firstEntryAt: "asc" },
           include: TRANSACTION_INCLUDE,
@@ -266,10 +292,36 @@ export const getTraderCompetitionTrades = cache(async function getTraderCompetit
 
   if (!competition || !user) return null;
 
+  const competitionWindow = getCompetitionDateWindow(competition);
+
   const trades = await prisma.trade.findMany({
     where: {
       userId,
-      competitionId,
+      OR: [
+        {
+          firstEntryAt: {
+            gte: competitionWindow.startDate,
+            lte: competitionWindow.endDate,
+          },
+        },
+        {
+          status: "CLOSED",
+          updatedAt: {
+            gte: competitionWindow.startDate,
+            lte: competitionWindow.endDate,
+          },
+        },
+        {
+          transactions: {
+            some: {
+              dateTime: {
+                gte: competitionWindow.startDate,
+                lte: competitionWindow.endDate,
+              },
+            },
+          },
+        },
+      ],
     },
     orderBy: { firstEntryAt: "desc" },
     include: TRANSACTION_INCLUDE,

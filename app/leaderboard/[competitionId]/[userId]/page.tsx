@@ -7,22 +7,14 @@ import { format } from "date-fns";
 import { formatPercent } from "@/lib/format";
 import { getTraderCompetitionTrades } from "@/lib/queries";
 import {
-  getEntryTransactions,
-  getExitTransactions,
-  getWeightedEntryPrice,
-  getWeightedExitPrice,
-  getTotalEntryQty,
-  getFirstEntryTime,
-  getLastExitTime,
   buildDashboardMetrics,
+  buildGroupedJournalRows,
 } from "@/lib/trade-utils";
-import type { EntryLeg } from "@/lib/trade-utils";
 
-const fmtAmtIntl = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 const fmtPriceIntl = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPrice = (n: number) => fmtPriceIntl.format(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
-const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtAmtIntl.format(n);
+const fmtPctNoSign = (n: number) => `${n.toFixed(1)}%`;
 const fmtDate = (d: Date | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
 
@@ -36,6 +28,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
   const { competition, user: trader, trades } = data;
   const portfolioCapital = trader.portfolioCapital ?? 100000;
   const metrics = buildDashboardMetrics(trades);
+  const rows = buildGroupedJournalRows(trades, portfolioCapital);
 
   const totalPnlPct = metrics.returnOnCapital;
 
@@ -81,51 +74,43 @@ export default async function TraderDrillDownPage({ params }: Props) {
             <thead>
               <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-line">
                 <th className="px-3 py-3 text-left min-w-[130px]">Symbol</th>
-                <th className="px-3 py-3 text-center" colSpan={3}>Entry</th>
-                <th className="px-3 py-3 text-center border-l border-slate-300" colSpan={3}>Exit</th>
+                <th className="px-3 py-3 text-center" colSpan={2}>Entry</th>
+                <th className="px-3 py-3 text-center border-l border-slate-300" colSpan={2}>Exit</th>
+                <th className="px-3 py-3 text-center border-l border-slate-300">SL %</th>
+                <th className="px-3 py-3 text-center">Alloc %</th>
+                <th className="px-3 py-3 text-center">Age</th>
                 <th className="px-3 py-3 text-center border-l border-slate-300">P&amp;L %</th>
                 <th className="px-3 py-3 text-center">Impact %</th>
               </tr>
               <tr className="bg-white text-slate-400 text-[10px] border-b border-line">
                 <th className="px-3 py-1.5 text-left">L / S</th>
-                <th className="px-3 py-1.5">Qty</th>
                 <th className="px-3 py-1.5">Price</th>
                 <th className="px-3 py-1.5">Date</th>
-                <th className="px-3 py-1.5 border-l border-slate-300">Qty</th>
-                <th className="px-3 py-1.5">Price</th>
+                <th className="px-3 py-1.5 border-l border-slate-300">Price</th>
                 <th className="px-3 py-1.5">Date</th>
+                <th className="px-3 py-1.5 border-l border-slate-300" />
+                <th className="px-3 py-1.5" />
+                <th className="px-3 py-1.5" />
                 <th className="px-3 py-1.5 border-l border-slate-300" />
                 <th className="px-3 py-1.5" />
               </tr>
             </thead>
 
             <tbody className="divide-y divide-line">
-              {trades.map((trade) => {
-                const entries = getEntryTransactions(trade);
-                const exits = getExitTransactions(trade);
-                const entryLegs: EntryLeg[] = entries.map((t) => ({
-                  qty: t.quantity,
-                  price: t.price,
-                  dateTime: new Date(t.dateTime),
-                }));
-                const exitLegs: EntryLeg[] = exits.map((t) => ({
-                  qty: t.quantity,
-                  price: t.price,
-                  dateTime: new Date(t.dateTime),
-                }));
-                const maxLegs = Math.max(entryLegs.length, exitLegs.length, 1);
-
-                const capital = trade.capitalUsed || getWeightedEntryPrice(trade) * getTotalEntryQty(trade);
-                const tradePnlPct = capital > 0 ? (trade.netPnl / capital) * 100 : 0;
-                const portfolioImpactPct = portfolioCapital > 0
-                  ? (trade.netPnl / portfolioCapital) * 100 : 0;
-                const pnlColor = trade.netPnl > 0 ? "text-emerald-600" : trade.netPnl < 0 ? "text-red-500" : "text-slate-400";
+              {rows.map((trade) => {
+                const maxLegs = Math.max(trade.entryLegs.length, trade.exitLegs.length, 1);
+                const pnlColor =
+                  trade.pnlAmount > 0
+                    ? "text-emerald-600"
+                    : trade.pnlAmount < 0
+                    ? "text-red-500"
+                    : "text-slate-400";
 
                 return (
                   <React.Fragment key={trade.id}>
                     {Array.from({ length: maxLegs }).map((_, idx) => {
-                      const eLeg = entryLegs[idx];
-                      const xLeg = exitLegs[idx];
+                      const eLeg = trade.entryLegs[idx];
+                      const xLeg = trade.exitLegs[idx];
                       const isFirst = idx === 0;
 
                       return (
@@ -147,9 +132,6 @@ export default async function TraderDrillDownPage({ params }: Props) {
                             </td>
                           )}
 
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                            {eLeg?.qty ? fmtQty(eLeg.qty) : <span className="text-slate-300">—</span>}
-                          </td>
                           <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
                             {eLeg?.price ? fmtPrice(eLeg.price) : <span className="text-slate-300">—</span>}
                           </td>
@@ -157,10 +139,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
                             {eLeg?.dateTime ? fmtDate(eLeg.dateTime) : <span className="text-slate-300">—</span>}
                           </td>
 
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-600 border-l border-line">
-                            {xLeg?.qty > 0 ? fmtQty(xLeg.qty) : <span className="text-slate-300">—</span>}
-                          </td>
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
+                          <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium border-l border-line">
                             {xLeg?.price > 0 ? fmtPrice(xLeg.price) : <span className="text-slate-300">—</span>}
                           </td>
                           <td className="px-3 py-3 text-right text-slate-500 text-[11px]">
@@ -169,14 +148,27 @@ export default async function TraderDrillDownPage({ params }: Props) {
 
                           {isFirst && (
                             <>
+                              <td className="px-3 py-3 text-right tabular-nums font-medium border-l border-line" rowSpan={maxLegs}>
+                                {trade.stopLossPct !== null
+                                  ? <span className="text-red-500">{fmtPctNoSign(trade.stopLossPct)}</span>
+                                  : <span className="text-slate-300">—</span>}
+                              </td>
+                              <td className="px-3 py-3 text-right tabular-nums text-slate-600" rowSpan={maxLegs}>
+                                {fmtPctNoSign(trade.allocationPct)}
+                              </td>
+                              <td className="px-3 py-3 text-right tabular-nums" rowSpan={maxLegs}>
+                                <span className={trade.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}>
+                                  {trade.ageDays}
+                                </span>
+                              </td>
                               <td className={`px-3 py-3 text-right font-semibold border-l border-line ${pnlColor}`} rowSpan={maxLegs}>
-                                {tradePnlPct !== 0
-                                  ? `${tradePnlPct > 0 ? "+" : ""}${fmtPct(tradePnlPct)}`
+                                {trade.pnlPct !== 0
+                                  ? `${trade.pnlPct > 0 ? "+" : ""}${fmtPct(trade.pnlPct)}`
                                   : <span className="text-slate-300">—</span>}
                               </td>
                               <td className={`px-3 py-3 text-right font-semibold ${pnlColor}`} rowSpan={maxLegs}>
-                                {portfolioImpactPct !== 0
-                                  ? `${portfolioImpactPct > 0 ? "+" : ""}${fmtPct(portfolioImpactPct)}`
+                                {trade.impactPct !== 0
+                                  ? `${trade.impactPct > 0 ? "+" : ""}${fmtPct(trade.impactPct)}`
                                   : <span className="text-slate-300">—</span>}
                               </td>
                             </>
@@ -187,7 +179,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
                   </React.Fragment>
                 );
               })}
-              {trades.length === 0 && (
+              {rows.length === 0 && (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-slate-400 text-sm">
                     No qualifying trades in this competition window.

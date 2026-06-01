@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-function toDateTimeValue(date: Date) {
+function toDateValue(date: Date) {
   const timezoneOffset = date.getTimezoneOffset();
   return new Date(date.getTime() - timezoneOffset * 60 * 1000)
     .toISOString()
-    .slice(0, 16);
+    .slice(0, 10);
 }
 
 export function CompetitionForm() {
@@ -65,9 +65,9 @@ export function CompetitionForm() {
         Start Date
         <input
           name="startDate"
-          type="datetime-local"
+          type="date"
           required
-          defaultValue={toDateTimeValue(new Date())}
+          defaultValue={toDateValue(new Date())}
           className="form-input"
         />
       </label>
@@ -76,9 +76,9 @@ export function CompetitionForm() {
         End Date
         <input
           name="endDate"
-          type="datetime-local"
+          type="date"
           required
-          defaultValue={toDateTimeValue(
+          defaultValue={toDateValue(
             new Date(Date.now() + 1000 * 60 * 60 * 24 * 14),
           )}
           className="form-input"

@@ -711,24 +711,63 @@ export function filterTradesByTag<T extends { tags: string }>(
   );
 }
 
+function startOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+}
+
+function endOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
+export function getCompetitionDateWindow(
+  competition: Pick<Competition, "startDate" | "endDate">,
+) {
+  return {
+    startDate: startOfUtcDay(competition.startDate),
+    endDate: endOfUtcDay(competition.endDate),
+  };
+}
+
+export function parseCompetitionDateRange(startDate: string, endDate: string) {
+  return {
+    startDate: startOfUtcDay(new Date(startDate)),
+    endDate: endOfUtcDay(new Date(endDate)),
+  };
+}
+
 export function getCompetitionWindowTrades(
   trades: TradeWithTxns[],
   competition: Pick<Competition, "startDate" | "endDate">,
 ) {
+  const competitionWindow = getCompetitionDateWindow(competition);
+
   return trades.filter((trade) => {
     const firstEntry = getFirstEntryTime(trade);
     const lastExit = getLastExitTime(trade);
 
     const startsInWindow =
-      firstEntry >= competition.startDate && firstEntry <= competition.endDate;
+      firstEntry >= competitionWindow.startDate &&
+      firstEntry <= competitionWindow.endDate;
     const endsInWindow =
       lastExit &&
-      lastExit >= competition.startDate &&
-      lastExit <= competition.endDate;
+      lastExit >= competitionWindow.startDate &&
+      lastExit <= competitionWindow.endDate;
     const closedInWindow =
       trade.status === "CLOSED" &&
-      trade.updatedAt >= competition.startDate &&
-      trade.updatedAt <= competition.endDate;
+      trade.updatedAt >= competitionWindow.startDate &&
+      trade.updatedAt <= competitionWindow.endDate;
 
     return startsInWindow || endsInWindow || closedInWindow;
   });

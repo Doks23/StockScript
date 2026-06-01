@@ -3,7 +3,7 @@ import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { getCompetitions } from "@/lib/queries";
 import { prisma } from "@/lib/prisma";
-import { competitionPayloadSchema } from "@/lib/trade-utils";
+import { competitionPayloadSchema, parseCompetitionDateRange } from "@/lib/trade-utils";
 
 export async function GET() {
   await requireActiveUser();
@@ -19,12 +19,16 @@ export async function POST(request: Request) {
     }
     const json = await request.json();
     const payload = competitionPayloadSchema.parse(json);
+    const competitionDates = parseCompetitionDateRange(
+      payload.startDate,
+      payload.endDate,
+    );
 
     const competition = await prisma.competition.create({
       data: {
         name: payload.name,
-        startDate: new Date(payload.startDate),
-        endDate: new Date(payload.endDate),
+        startDate: competitionDates.startDate,
+        endDate: competitionDates.endDate,
         visibility: payload.visibility,
         createdBy: user.id,
         participants: {

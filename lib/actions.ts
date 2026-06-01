@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/auth";
 
-import { competitionPayloadSchema } from "./trade-utils"; // Keep this import
+import { competitionPayloadSchema, parseCompetitionDateRange } from "./trade-utils"; // Keep this import
 
 export async function updateRequestStatus(formData: FormData) {
   const id = formData.get("requestId") as string;
@@ -88,11 +88,16 @@ export async function createCompetition(formData: FormData) {
     throw new Error("Invalid competition data: " + parsed.error.message);
   }
 
+  const competitionDates = parseCompetitionDateRange(
+    parsed.data.startDate,
+    parsed.data.endDate,
+  );
+
   await prisma.competition.create({
     data: {
       name: parsed.data.name,
-      startDate: new Date(parsed.data.startDate),
-      endDate: new Date(parsed.data.endDate),
+      startDate: competitionDates.startDate,
+      endDate: competitionDates.endDate,
       visibility: parsed.data.visibility,
       createdBy: user.id,
     },
