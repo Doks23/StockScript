@@ -14,6 +14,7 @@ import {
 import { getTradesBySymbol } from "@/lib/queries";
 import {
   parseTags,
+  calculateTradePnl,
   getWeightedEntryPrice,
   getWeightedExitPrice,
   getTotalEntryQty,
@@ -57,6 +58,15 @@ export default async function TradeDetailPage({
     notFound();
   }
 
+  const tradesWithPnl = data.trades.map((trade) => {
+    const pnl = calculateTradePnl(trade);
+    return { ...trade, _realizedPnl: pnl.realizedPnl };
+  });
+  const totalRealizedPnl = tradesWithPnl.reduce(
+    (sum, t) => sum + t._realizedPnl,
+    0,
+  );
+
   return (
     <div className="space-y-5 sm:space-y-8">
       <section className="flex items-center justify-between rounded-2xl border border-line bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
@@ -89,13 +99,13 @@ export default async function TradeDetailPage({
         />
         <MetricCard
           label="Net Realized P&L"
-          value={formatCurrency(data.metrics.totalRealizedPnl)}
-          tone={data.metrics.totalRealizedPnl >= 0 ? "profit" : "loss"}
+          value={formatCurrency(totalRealizedPnl)}
+          tone={totalRealizedPnl >= 0 ? "profit" : "loss"}
         />
       </section>
 
       <section className="space-y-4 sm:space-y-6">
-        {data.trades.map((trade) => (
+        {tradesWithPnl.map((trade) => (
           <article
             key={trade.id}
             className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-6"
@@ -207,9 +217,9 @@ export default async function TradeDetailPage({
                   <div className="info-chip">
                     <p className="info-label">Realized P&L</p>
                     <p
-                      className={`info-value ${trade.netPnl >= 0 ? "text-profit" : "text-loss"}`}
+                      className={`info-value ${trade._realizedPnl >= 0 ? "text-profit" : "text-loss"}`}
                     >
-                      {formatCurrency(trade.netPnl)}
+                      {formatCurrency(trade._realizedPnl)}
                     </p>
                   </div>
                 </div>

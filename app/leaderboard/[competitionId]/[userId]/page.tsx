@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { formatPercent } from "@/lib/format";
 import { getTraderCompetitionTrades } from "@/lib/queries";
 import {
-  buildDashboardMetrics,
+  buildGroupedJournalMetrics,
   buildGroupedJournalRows,
 } from "@/lib/trade-utils";
 
@@ -17,6 +17,12 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 const fmtPctNoSign = (n: number) => `${n.toFixed(1)}%`;
 const fmtDate = (d: Date | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
+const hasPnlData = (row: ReturnType<typeof buildGroupedJournalRows>[number]) =>
+  row.derivedStatus === "CLOSED" ||
+  row.exitQty > 0 ||
+  !!(row.closingPrice && row.closingPrice > 0);
+const isPartiallyClosed = (row: ReturnType<typeof buildGroupedJournalRows>[number]) =>
+  row.derivedStatus === "OPEN" && row.exitQty > 0;
 
 type Props = { params: { competitionId: string; userId: string } };
 
@@ -27,10 +33,8 @@ export default async function TraderDrillDownPage({ params }: Props) {
 
   const { competition, user: trader, trades } = data;
   const portfolioCapital = trader.portfolioCapital ?? 100000;
-  const metrics = buildDashboardMetrics(trades);
   const rows = buildGroupedJournalRows(trades, portfolioCapital);
-
-  const totalPnlPct = metrics.returnOnCapital;
+  const metrics = buildGroupedJournalMetrics(rows, portfolioCapital);
 
   return (
     <div className="space-y-6">
@@ -48,11 +52,12 @@ export default async function TraderDrillDownPage({ params }: Props) {
       </section>
 
       {/* Portfolio summary */}
-      <section className="grid gap-4 sm:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {[
-          { label: "Closed Trades", value: String(metrics.totalTrades) },
+          { label: "Closed Trades", value: String(metrics.closedTrades) },
           { label: "Win Rate", value: formatPercent(metrics.winRate), positive: metrics.winRate > 50 },
-          { label: "Portfolio Return %", value: formatPercent(totalPnlPct), positive: totalPnlPct >= 0 },
+          { label: "Return on Capital", value: formatPercent(metrics.returnOnCapital), positive: metrics.returnOnCapital >= 0 },
+          { label: "Portfolio Return", value: formatPercent(metrics.portfolioReturn), positive: metrics.portfolioReturn >= 0 },
           { label: "Profit Factor", value: metrics.profitFactor.toFixed(2), positive: metrics.profitFactor >= 1 },
         ].map((card) => (
           <div key={card.label} className="rounded-2xl border border-line bg-white p-4 shadow-sm">
@@ -99,12 +104,12 @@ export default async function TraderDrillDownPage({ params }: Props) {
             <tbody className="divide-y divide-line">
               {rows.map((trade) => {
                 const maxLegs = Math.max(trade.entryLegs.length, trade.exitLegs.length, 1);
-                const pnlColor =
-                  trade.pnlAmount > 0
-                    ? "text-emerald-600"
-                    : trade.pnlAmount < 0
-                    ? "text-red-500"
-                    : "text-slate-400";
+                const showPnl = hasPnlData(trade);
+                const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-500" : "text-slate-400";
+                const isPartial = isPartiallyClosed(trade);
+                const borderStyle = trade.derivedStatus === "OPEN"
+                  ? "border-l-4 border-l-blue-400"
+                  : "";
 
                 return (
                   <React.Fragment key={trade.id}>
@@ -115,7 +120,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
 
                       return (
                         <tr key={`${trade.id}-${idx}`}
-                          className={`hover:bg-slate-50 transition-colors ${isFirst ? "" : "border-l-4 border-l-transparent"}`}>
+                          className={`transition-colors ${isPartial ? "bg-amber-50/40" : "hover:bg-slate-50"} ${isFirst ? borderStyle : "border-l-4 border-l-transparent"}`}>
 
                           {isFirst && (
                             <td className="px-3 py-3 text-left align-middle" rowSpan={maxLegs}>
@@ -161,13 +166,31 @@ export default async function TraderDrillDownPage({ params }: Props) {
                                   {trade.ageDays}
                                 </span>
                               </td>
-                              <td className={`px-3 py-3 text-right font-semibold border-l border-line ${pnlColor}`} rowSpan={maxLegs}>
-                                {trade.pnlPct !== 0
-                                  ? `${trade.pnlPct > 0 ? "+" : ""}${fmtPct(trade.pnlPct)}`
-                                  : <span className="text-slate-300">—</span>}
+                              <td className={`px-3 py-3 text-right align-middle border-l border-line ${pnlColor(trade.pnlAmount)}`} rowSpan={maxLegs}>
+                                {!showPnl ? (
+                                  <span className="text-slate-300">—</span>
+                                ) : trade.derivedStatus === "CLOSED" ? (
+                                  <span className="font-semibold tabular-nums">{`${trade.pnlPct >= 0 ? "+" : ""}${fmtPct(trade.pnlPct)}`}</span>
+                                ) : trade.realizedPnl === 0 ? (
+                                  <span className="font-semibold tabular-nums">
+                                    {`${trade.unrealizedPnl >= 0 ? "+" : ""}${fmtPct(trade.unrealizedPnl / (trade.capital || 1) * 100)}`}
+                                    <span className="text-[9px] text-slate-400 ml-0.5">MTM</span>
+                                  </span>
+                                ) : (
+                                  <span className="tabular-nums leading-tight">
+                                    <span className={`block font-semibold text-[11px] ${pnlColor(trade.realizedPnl)}`}>
+                                      {`${trade.realizedPnl >= 0 ? "+" : ""}${fmtPct(trade.realizedPnl / (trade.capital || 1) * 100)}`}
+                                    </span>
+                                    {trade.unrealizedPnl !== 0 && (
+                                      <span className={`block text-[10px] ${pnlColor(trade.unrealizedPnl)} opacity-60`}>
+                                        {`U:${trade.unrealizedPnl >= 0 ? "+" : ""}${fmtPct(trade.unrealizedPnl / (trade.capital || 1) * 100)}`}
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
                               </td>
-                              <td className={`px-3 py-3 text-right font-semibold ${pnlColor}`} rowSpan={maxLegs}>
-                                {trade.impactPct !== 0
+                              <td className={`px-3 py-3 text-right font-semibold ${pnlColor(trade.impactPct)}`} rowSpan={maxLegs}>
+                                {showPnl
                                   ? `${trade.impactPct > 0 ? "+" : ""}${fmtPct(trade.impactPct)}`
                                   : <span className="text-slate-300">—</span>}
                               </td>

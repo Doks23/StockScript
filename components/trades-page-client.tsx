@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters } from "@/components/journal-filters";
 import { useRouter } from "next/navigation";
@@ -89,6 +89,17 @@ function TradesPageContent() {
     setFilters((prev) => ({ ...prev, ...update }));
   }, []);
 
+  const handleDownload = useCallback(() => {
+    const sp = new URLSearchParams();
+    if (filters.symbol) sp.set("symbol", filters.symbol);
+    if (filters.from) sp.set("from", filters.from);
+    if (filters.to) sp.set("to", filters.to);
+    sp.set("status", filters.status);
+    const a = document.createElement("a");
+    a.href = `/api/trades/export?${sp.toString()}`;
+    a.click();
+  }, [filters]);
+
   const onFilterDebounced = useCallback((update: Partial<Filters>) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -108,6 +119,14 @@ function TradesPageContent() {
             onChange={onFilterChange}
             onDebouncedChange={onFilterDebounced}
           />
+          <button
+            onClick={handleDownload}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-3 sm:py-1.5"
+            aria-label="Download CSV"
+          >
+            <Download size={15} />
+            <span className="hidden sm:inline">CSV</span>
+          </button>
           <button
             onClick={() => fetchData(filters, page)}
             disabled={loading}

@@ -15,7 +15,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const json = await request.json();
     const parsed = tradePayloadSchema.parse(json);
     const payload = normalizeTradePayload(parsed);
-    const metrics = calculateTradeMetrics(payload);
 
     const existingTrade = await prisma.trade.findUnique({
       where: { id: params.id, userId: user.id },
@@ -48,6 +47,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     const { tradeType: derivedTradeType, firstEntryAt, status: derivedStatus } =
       deriveTradeTypeAndStatus(txPayload);
+
+    // Compute metrics using the derived status so netPnl is correct regardless
+    // of what the user picked in the status dropdown.
+    const metrics = calculateTradeMetrics({ ...payload, status: derivedStatus });
 
     const trade = await prisma.$transaction(async (tx) => {
       await tx.transaction.deleteMany({ where: { tradeId: existingTrade.id } });

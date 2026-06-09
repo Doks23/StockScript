@@ -15,6 +15,10 @@ const fmtPrice = (n: number) => fmtPriceIntl.format(n);
 const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtAmtIntl.format(n);
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
+const hasPnlData = (row: GroupedTradeRow) =>
+  row.derivedStatus === "CLOSED" || row.exitQty > 0 || !!(row.closingPrice && row.closingPrice > 0);
+const isPartiallyClosed = (row: GroupedTradeRow) =>
+  row.derivedStatus === "OPEN" && row.exitQty > 0;
 
 function splitAttr(value?: string | null) {
   if (!value) return [];
@@ -207,16 +211,17 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
   }, [rows, sortKey, sortDir]);
 
   const totals = useMemo(() => {
-    const realizedRows = rows.filter((r) => r.derivedStatus === "CLOSED");
+    const closedRows = rows.filter((r) => r.derivedStatus === "CLOSED");
     const openRows = rows.filter((r) => r.derivedStatus === "OPEN");
-    const realizedPnl = realizedRows.reduce((s, r) => s + r.pnlAmount, 0);
-    const openPnl = openRows.reduce((s, r) => s + r.pnlAmount, 0);
+    const realizedPnl = closedRows.reduce((s, r) => s + r.realizedPnl, 0) +
+      openRows.reduce((s, r) => s + r.realizedPnl, 0);
+    const unrealizedPnl = openRows.reduce((s, r) => s + r.unrealizedPnl, 0);
     const totalCapital = rows.reduce((s, r) => s + r.capital, 0);
     const totalAlloc = rows.reduce((s, r) => s + r.allocationPct, 0);
     const totalImpact = rows.reduce((s, r) => s + r.impactPct, 0);
-    const totalPnl = realizedPnl + openPnl;
+    const totalPnl = realizedPnl + unrealizedPnl;
     const totalPnlPct = totalCapital > 0 ? (totalPnl / totalCapital) * 100 : 0;
-    return { realizedPnl, openPnl, totalPnl, totalPnlPct, totalAlloc, totalImpact };
+    return { realizedPnl, unrealizedPnl, totalPnl, totalPnlPct, totalAlloc, totalImpact };
   }, [rows]);
 
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
@@ -279,20 +284,19 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
             <span className="text-slate-500">Alloc:</span>
             <span className="font-semibold text-slate-700">{fmtPctNoSign(totals.totalAlloc)}</span>
           </div>
-          {totals.realizedPnl !== 0 && (
+          {(totals.realizedPnl !== 0 || totals.unrealizedPnl !== 0) && (
             <div className="flex items-center gap-1">
-              <span className="text-slate-500">Realized:</span>
+              <span className="text-slate-500">R:</span>
               <span className={`font-semibold ${pnlColor(totals.realizedPnl)}`}>
-                {showAmounts && <>{totals.realizedPnl >= 0 ? "+" : ""}{fmtAmt(totals.realizedPnl)} </>}
-                <span className="opacity-70">({fmtPct(totals.totalPnlPct)})</span>
+                {showAmounts ? `${totals.realizedPnl >= 0 ? "+" : ""}${fmtAmt(totals.realizedPnl)}` : "•••"}
               </span>
             </div>
           )}
-          {totals.openPnl !== 0 && (
+          {totals.unrealizedPnl !== 0 && (
             <div className="flex items-center gap-1">
-              <span className="text-slate-500">MTM:</span>
-              <span className={`font-semibold ${pnlColor(totals.openPnl)}`}>
-                {showAmounts && <>{totals.openPnl >= 0 ? "+" : ""}{fmtAmt(totals.openPnl)} </>}
+              <span className="text-slate-500">U:</span>
+              <span className={`font-semibold ${pnlColor(totals.unrealizedPnl)}`}>
+                {showAmounts ? `${totals.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(totals.unrealizedPnl)}` : "•••"}
               </span>
             </div>
           )}
@@ -334,6 +338,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
           const isClosed = t.derivedStatus === "CLOSED";
           const isSelected = selectedIds.has(t.id);
           const isDeleting = deletingIds.has(t.id);
+          const isPartial = isPartiallyClosed(t);
           const accent = !isClosed
             ? "border-l-blue-400"
             : t.pnlAmount > 0
@@ -343,10 +348,11 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
             : "border-l-slate-200";
           const firstEntry = t.entryLegs[0];
           const lastExit = t.exitLegs?.[t.exitLegs.length - 1];
+          const showPnl = hasPnlData(t);
           return (
             <div
               key={t.id}
-              className={`rounded-2xl border border-line border-l-4 ${accent} bg-white p-3 shadow-sm ${
+              className={`rounded-2xl border border-line border-l-4 ${accent} ${isPartial ? "bg-amber-50/50" : "bg-white"} p-3 shadow-sm ${
                 isSelected ? "ring-2 ring-blue-300" : ""
               } ${isDeleting ? "opacity-40" : ""}`}
             >
@@ -452,30 +458,64 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5">
+              <div className="mt-3 flex items-start justify-between border-t border-line pt-2.5">
                 <div className="flex flex-col">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">
                     P&amp;L
                   </span>
-                  <span
-                    className={`text-base font-semibold tabular-nums ${pnlColor(t.pnlAmount)}`}
-                  >
-                    {t.pnlAmount !== 0 ? fmtPct(t.pnlPct) : "—"}
-                  </span>
+                  {!showPnl ? (
+                    <span className="text-base font-semibold tabular-nums text-slate-300">—</span>
+                  ) : t.derivedStatus === "CLOSED" ? (
+                    <span className={`text-base font-semibold tabular-nums ${pnlColor(t.realizedPnl)}`}>
+                      {fmtPct(t.pnlPct)}
+                    </span>
+                  ) : t.unrealizedPnl !== 0 && t.realizedPnl === 0 ? (
+                    <span className={`text-base font-semibold tabular-nums ${pnlColor(t.unrealizedPnl)}`}>
+                      {fmtPct(t.unrealizedPnl / t.capital * 100)}
+                      <span className="text-[9px] text-slate-400 ml-1">MTM</span>
+                    </span>
+                  ) : (
+                    <span className="tabular-nums leading-tight">
+                      <span className={`block text-base font-semibold ${pnlColor(t.realizedPnl)}`}>
+                        {fmtPct(t.realizedPnl / (t.capital || 1) * 100)}
+                      </span>
+                      {t.unrealizedPnl !== 0 && (
+                        <span className={`block text-[11px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
+                          {`U: ${fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}`}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">
                     Amount
                   </span>
-                  <span
-                    className={`text-base font-semibold tabular-nums ${pnlColor(t.pnlAmount)}`}
-                  >
-                    {!showAmounts
-                      ? "•••"
-                      : t.pnlAmount !== 0
-                      ? `${t.pnlAmount > 0 ? "+" : ""}${fmtAmt(t.pnlAmount)}`
-                      : "—"}
-                  </span>
+                  {!showAmounts ? (
+                    <span className="text-base font-semibold tabular-nums text-slate-300">•••</span>
+                  ) : !showPnl ? (
+                    <span className="text-base font-semibold tabular-nums text-slate-300">—</span>
+                  ) : t.derivedStatus === "CLOSED" ? (
+                    <span className={`text-base font-semibold tabular-nums ${pnlColor(t.realizedPnl)}`}>
+                      {`${t.realizedPnl >= 0 ? "+" : ""}${fmtAmt(t.realizedPnl)}`}
+                    </span>
+                  ) : t.unrealizedPnl !== 0 && t.realizedPnl === 0 ? (
+                    <span className={`text-base font-semibold tabular-nums ${pnlColor(t.unrealizedPnl)}`}>
+                      {`${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
+                      <span className="text-[9px] text-slate-400 ml-1">MTM</span>
+                    </span>
+                  ) : (
+                    <span className="tabular-nums leading-tight text-right">
+                      <span className={`block text-base font-semibold ${pnlColor(t.realizedPnl)}`}>
+                        {`${t.realizedPnl >= 0 ? "+" : ""}${fmtAmt(t.realizedPnl)}`}
+                      </span>
+                      {t.unrealizedPnl !== 0 && (
+                        <span className={`block text-[11px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
+                          {`U: ${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">
@@ -484,7 +524,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                   <span
                     className={`text-base font-semibold tabular-nums ${pnlColor(t.impactPct)}`}
                   >
-                    {t.impactPct !== 0
+                    {showPnl
                       ? fmtPct(t.impactPct)
                       : "—"}
                   </span>
@@ -553,8 +593,10 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
               const isClosed = t.derivedStatus === "CLOSED";
               const isDeleting = deletingIds.has(t.id);
               const isSelected = selectedIds.has(t.id);
+              const showPnl = hasPnlData(t);
               const maxLegs = Math.max(t.entryLegs.length, t.exitLegs?.length || 0, 1);
 
+              const isPartial = isPartiallyClosed(t);
               const borderColor = !isClosed
                 ? "border-l-4 border-l-blue-400"
                 : t.pnlAmount > 0
@@ -565,6 +607,8 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
 
               const rowBg = isSelected
                 ? "bg-blue-50"
+                : isPartial
+                ? "bg-amber-50/40"
                 : !isClosed
                 ? "bg-blue-50/20"
                 : "bg-white";
@@ -648,18 +692,52 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                                 {t.ageDays}
                               </span>
                             </td>
-                            <td className={`px-3 py-3 text-right font-semibold align-middle tabular-nums border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
-                              {t.pnlAmount !== 0 ? fmtPct(t.pnlPct) : <span className="text-slate-300">—</span>}
+                            <td className={`px-3 py-3 text-right align-middle border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                              {!showPnl ? (
+                                <span className="text-slate-300">—</span>
+                              ) : t.derivedStatus === "CLOSED" || (t.unrealizedPnl === 0) ? (
+                                <span className="font-semibold tabular-nums">{fmtPct(t.pnlPct)}</span>
+                              ) : t.realizedPnl === 0 ? (
+                                <span className="font-semibold tabular-nums">
+                                  {fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}
+                                  <span className="text-[9px] text-slate-400 ml-0.5">MTM</span>
+                                </span>
+                              ) : (
+                                <span className="tabular-nums leading-tight">
+                                  <span className={`block font-semibold text-[11px] ${pnlColor(t.realizedPnl)}`}>
+                                    {fmtPct(t.realizedPnl / (t.capital || 1) * 100)}
+                                  </span>
+                                  <span className={`block text-[10px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
+                                    U:{fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}
+                                  </span>
+                                </span>
+                              )}
                             </td>
-                            <td className={`px-3 py-3 text-right font-semibold align-middle tabular-nums ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
-                              {!showAmounts
-                                ? <span className="text-slate-300">•••</span>
-                                : t.pnlAmount !== 0
-                                ? `${t.pnlAmount > 0 ? "+" : ""}${fmtAmt(t.pnlAmount)}`
-                                : <span className="text-slate-300">—</span>}
+                            <td className={`px-3 py-3 text-right align-middle tabular-nums ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                              {!showAmounts ? (
+                                <span className="text-slate-300">•••</span>
+                              ) : !showPnl ? (
+                                <span className="text-slate-300">—</span>
+                              ) : t.derivedStatus === "CLOSED" || (t.unrealizedPnl === 0) ? (
+                                <span className="font-semibold">{`${t.realizedPnl >= 0 ? "+" : ""}${fmtAmt(t.realizedPnl)}`}</span>
+                              ) : t.realizedPnl === 0 ? (
+                                <span className="font-semibold">
+                                  {`${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
+                                  <span className="text-[9px] text-slate-400 ml-0.5">MTM</span>
+                                </span>
+                              ) : (
+                                <span className="tabular-nums leading-tight">
+                                  <span className={`block font-semibold text-[11px] ${pnlColor(t.realizedPnl)}`}>
+                                    {`${t.realizedPnl >= 0 ? "+" : ""}${fmtAmt(t.realizedPnl)}`}
+                                  </span>
+                                  <span className={`block text-[10px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
+                                    U:{`${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
+                                  </span>
+                                </span>
+                              )}
                             </td>
                             <td className={`px-3 py-3 text-right tabular-nums font-medium align-middle ${pnlColor(t.impactPct)}`} rowSpan={maxLegs}>
-                              {t.impactPct !== 0
+                              {showPnl
                                 ? fmtPct(t.impactPct)
                                 : <span className="text-slate-300">—</span>}
                             </td>

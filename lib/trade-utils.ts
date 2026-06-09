@@ -292,7 +292,10 @@ export function calculateTradeMetrics(trade: {
   return { realizedPnl: grossPnl - charges, capitalUsed };
 }
 
-export function calculateOpenPnl(trade: TradeWithTxns): number {
+export function calculateTradePnl(trade: TradeWithTxns): {
+  realizedPnl: number;
+  unrealizedPnl: number;
+} {
   const entryP = getWeightedEntryPrice(trade);
   const entryQ = getTotalEntryQty(trade);
   const exitP = getWeightedExitPrice(trade);
@@ -302,29 +305,42 @@ export function calculateOpenPnl(trade: TradeWithTxns): number {
   const remainingQ = Math.max(0, entryQ - exitQ);
   let realizedPnl = 0;
   let unrealizedPnl = 0;
+  const isActuallyClosed = remainingQ === 0;
 
-  if (exitQ > 0) {
-    if (trade.tradeType === "LONG") {
-      realizedPnl = (exitP - entryP) * exitQ;
-    } else {
-      realizedPnl = (entryP - exitP) * exitQ;
+  if (isActuallyClosed) {
+    const pnlQty = exitQ > 0 ? exitQ : entryQ;
+    const grossPnl =
+      trade.tradeType === "LONG"
+        ? (exitP - entryP) * pnlQty
+        : (entryP - exitP) * pnlQty;
+    realizedPnl = grossPnl - charges;
+  } else {
+    if (exitQ > 0) {
+      const grossRealized =
+        trade.tradeType === "LONG"
+          ? (exitP - entryP) * exitQ
+          : (entryP - exitP) * exitQ;
+      realizedPnl = grossRealized - charges;
+    }
+
+    const closingP =
+      trade.closingPrice && trade.closingPrice > 0 ? trade.closingPrice : 0;
+
+    if (remainingQ > 0 && closingP > 0) {
+      if (trade.tradeType === "LONG") {
+        unrealizedPnl = (closingP - entryP) * remainingQ;
+      } else {
+        unrealizedPnl = (entryP - closingP) * remainingQ;
+      }
     }
   }
 
-  const closingP =
-    trade.closingPrice && trade.closingPrice > 0 ? trade.closingPrice : 0;
+  return { realizedPnl, unrealizedPnl };
+}
 
-  if (remainingQ > 0 && closingP > 0) {
-    if (trade.tradeType === "LONG") {
-      unrealizedPnl = (closingP - entryP) * remainingQ;
-    } else {
-      unrealizedPnl = (entryP - closingP) * remainingQ;
-    }
-  }
-
-  const result = realizedPnl + unrealizedPnl - charges;
-
-  return result;
+export function calculateOpenPnl(trade: TradeWithTxns): number {
+  const { realizedPnl, unrealizedPnl } = calculateTradePnl(trade);
+  return realizedPnl + unrealizedPnl;
 }
 
 export function calculateWinRate(trades: Pick<Trade, "netPnl">[]) {
@@ -548,6 +564,8 @@ export type GroupedTradeRow = {
   exitDateTime: Date | null;
   pnlPct: number;
   pnlAmount: number;
+  realizedPnl: number;
+  unrealizedPnl: number;
   capital: number;
   allocationPct: number;
   ageDays: number;
@@ -595,11 +613,9 @@ export function buildGroupedJournalRows(
       ? "CLOSED"
       : "OPEN";
 
-    // IMPORTANT: If the trade is actually open (qty doesn't match),
-    // always use calculateOpenPnl regardless of the DB status flag.
-    const displayPnl = isActuallyClosed
-      ? trade.netPnl
-      : calculateOpenPnl(trade);
+    // Compute split P&L from transactions (not from stale stored netPnl).
+    const { realizedPnl, unrealizedPnl } = calculateTradePnl(trade);
+    const displayPnl = realizedPnl + unrealizedPnl;
 
     const capital = trade.capitalUsed || weightedEntry * totalEntryQty;
     const pnlPct = capital > 0 ? (displayPnl / capital) * 100 : 0;
@@ -635,6 +651,8 @@ export function buildGroupedJournalRows(
       exitDateTime: lastExit,
       pnlPct,
       pnlAmount: displayPnl,
+      realizedPnl,
+      unrealizedPnl,
       capital,
       allocationPct,
       ageDays,
@@ -650,6 +668,32 @@ export function buildGroupedJournalRows(
       growthAreas: trade.growthAreas,
     };
   });
+}
+
+export function buildGroupedJournalMetrics(
+  rows: GroupedTradeRow[],
+  portfolioCapital: number = 100000,
+) {
+  // Only fully closed trades count towards win rate, profit factor, etc.
+  const fullyClosedRows = rows.filter((row) => row.derivedStatus === "CLOSED");
+  const winningRows = fullyClosedRows.filter((row) => row.realizedPnl > 0);
+  const grossProfit = winningRows.reduce((sum, row) => sum + row.realizedPnl, 0);
+  const grossLoss = Math.abs(
+    fullyClosedRows
+      .filter((row) => row.realizedPnl < 0)
+      .reduce((sum, row) => sum + row.realizedPnl, 0),
+  );
+  const totalPnl = rows.reduce((sum, row) => sum + row.pnlAmount, 0);
+  const totalCapital = rows.reduce((sum, row) => sum + row.capital, 0);
+
+  return {
+    closedTrades: fullyClosedRows.length,
+    winRate: fullyClosedRows.length > 0 ? (winningRows.length / fullyClosedRows.length) * 100 : 0,
+    profitFactor: grossLoss === 0 ? (grossProfit > 0 ? grossProfit : 0) : grossProfit / grossLoss,
+    returnOnCapital: totalCapital > 0 ? (totalPnl / totalCapital) * 100 : 0,
+    portfolioReturn: portfolioCapital > 0 ? (totalPnl / portfolioCapital) * 100 : 0,
+    totalPnl,
+  };
 }
 
 export function buildJournalRows(
@@ -723,28 +767,19 @@ export function buildLeaderboardEntries(entries: LeaderboardInput[]) {
         return null;
       }
 
-      const totalNetPnl = trades.reduce((s, t) => {
-        const pnl = t.status === "CLOSED" ? t.netPnl : calculateOpenPnl(t);
-        return s + pnl;
-      }, 0);
-      const totalCapitalUsed = trades.reduce((s, t) => s + t.capitalUsed, 0);
+      const rows = buildGroupedJournalRows(trades, user.portfolioCapital);
+      const metrics = buildGroupedJournalMetrics(rows, user.portfolioCapital);
       const maxCapitalDeployed = calculateMaxCapitalDeployed(trades);
-      const returnPercentage =
-        totalCapitalUsed > 0 ? (totalNetPnl / totalCapitalUsed) * 100 : 0;
-      const portfolioImpactPct =
-        user.portfolioCapital > 0
-          ? (totalNetPnl / user.portfolioCapital) * 100
-          : 0;
 
       return {
         userId: user.id,
         userName: user.name,
-        returnPercentage,
-        portfolioImpactPct,
+        returnPercentage: metrics.returnOnCapital,
+        portfolioImpactPct: metrics.portfolioReturn,
         maxDrawdown: calculateMaxDrawdown(trades, maxCapitalDeployed),
-        winRate: calculateWinRate(trades),
-        totalTrades: trades.length,
-        profitFactor: calculateProfitFactor(trades),
+        winRate: metrics.winRate,
+        totalTrades: metrics.closedTrades,
+        profitFactor: metrics.profitFactor,
       } as LeaderboardEntry;
     })
     .filter((entry): entry is LeaderboardEntry => entry !== null)
