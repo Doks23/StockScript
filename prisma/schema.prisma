@@ -54,6 +54,11 @@ model Trade {
   status        TradeStatus   @default(OPEN)
   tags          String        @default("")
   notes         String        @default("")
+  setup         String?
+  planFollowed  Boolean?
+  exitTrigger   String?
+  proficiency   String?
+  growthAreas   String?
   firstEntryAt  DateTime?
   lockedAt      DateTime?
   createdAt     DateTime      @default(now())

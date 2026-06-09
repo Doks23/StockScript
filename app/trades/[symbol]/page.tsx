@@ -32,6 +32,16 @@ type TradeDetailPageProps = {
   };
 };
 
+function compactAttribute(value?: string | null) {
+  if (!value) return "--";
+  const values = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (values.length <= 1) return values[0] || "--";
+  return `${values[0]} +${values.length - 1}`;
+}
+
 export default async function TradeDetailPage({
   params,
   searchParams,
@@ -200,6 +210,43 @@ export default async function TradeDetailPage({
                       className={`info-value ${trade.netPnl >= 0 ? "text-profit" : "text-loss"}`}
                     >
                       {formatCurrency(trade.netPnl)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                  <div className="rounded-lg border border-line bg-white px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Setup</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700" title={trade.setup || ""}>
+                      {compactAttribute(trade.setup)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-line bg-white px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Plan Followed?</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-700">
+                      {trade.planFollowed === null
+                        ? "--"
+                        : trade.planFollowed
+                          ? "Yes"
+                          : "No"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-line bg-white px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Exit Trigger</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700" title={trade.exitTrigger || ""}>
+                      {compactAttribute(trade.exitTrigger)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-line bg-white px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Proficiency</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700" title={trade.proficiency || ""}>
+                      {compactAttribute(trade.proficiency)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-line bg-white px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Growth Areas</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700" title={trade.growthAreas || ""}>
+                      {compactAttribute(trade.growthAreas)}
                     </p>
                   </div>
                 </div>

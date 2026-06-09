@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { segmentOptions, tradeTypeOptions } from "@/lib/constants";
+import Link from "next/link";
+import {
+  exitTriggerOptions,
+  growthAreaOptions,
+  proficiencyOptions,
+  segmentOptions,
+  setupOptions,
+  tradeTypeOptions,
+} from "@/lib/constants";
 import { Plus, Trash2 } from "lucide-react";
 
 type TxRow = { price: string; quantity: string; dateTime: string };
@@ -33,6 +41,11 @@ export type InitialTradeData = {
   charges: number;
   closingPrice: number | null;
   competitionId: string | null;
+  setup: string | null;
+  planFollowed: boolean | null;
+  exitTrigger: string | null;
+  proficiency: string | null;
+  growthAreas: string | null;
   transactions: Transaction[];
 };
 
@@ -77,6 +90,22 @@ function buildInitialTxRows(
     quantity: String(t.quantity),
     dateTime: toLocalDT(t.dateTime),
   }));
+}
+
+function getMultiSelectValues(formData: FormData, name: string) {
+  return formData
+    .getAll(name)
+    .map((value) => String(value).trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function splitInitialValues(value?: string | null) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function TradeForm({ competitions, initialData }: TradeFormProps) {
@@ -183,6 +212,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       return;
     }
 
+    const planFollowedValue = String(formData.get("planFollowed") || "");
     const payload = {
       symbol: String(formData.get("symbol") || ""),
       segment: String(formData.get("segment") || "EQUITY"),
@@ -190,6 +220,14 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       status: String(formData.get("status") || "OPEN"),
       tags: String(formData.get("tags") || ""),
       notes: String(formData.get("notes") || ""),
+      setup: getMultiSelectValues(formData, "setup"),
+      planFollowed:
+        planFollowedValue === ""
+          ? null
+          : planFollowedValue === "true",
+      exitTrigger: getMultiSelectValues(formData, "exitTrigger"),
+      proficiency: getMultiSelectValues(formData, "proficiency"),
+      growthAreas: getMultiSelectValues(formData, "growthAreas"),
       stopLoss: formData.get("stopLoss")
         ? Number(formData.get("stopLoss"))
         : null,
@@ -438,6 +476,86 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         </div>
       </div>
 
+      <div className="grid gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500">
+          Setup
+          <select
+            name="setup"
+            multiple
+            defaultValue={splitInitialValues(initialData?.setup)}
+            className="form-input min-h-[88px] bg-slate-50 text-sm"
+          >
+            {setupOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500">
+          Plan Followed?
+          <select
+            name="planFollowed"
+            defaultValue={
+              initialData?.planFollowed === null ||
+              initialData?.planFollowed === undefined
+                ? ""
+                : String(initialData.planFollowed)
+            }
+            className="form-input h-9 bg-slate-50 text-sm"
+          >
+            <option value="">Not set</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500">
+          Exit Trigger
+          <select
+            name="exitTrigger"
+            multiple
+            defaultValue={splitInitialValues(initialData?.exitTrigger)}
+            className="form-input min-h-[88px] bg-slate-50 text-sm"
+          >
+            {exitTriggerOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500">
+          Proficiency
+          <select
+            name="proficiency"
+            multiple
+            defaultValue={splitInitialValues(initialData?.proficiency)}
+            className="form-input min-h-[88px] bg-slate-50 text-sm"
+          >
+            {proficiencyOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500">
+          Growth Areas
+          <select
+            name="growthAreas"
+            multiple
+            defaultValue={splitInitialValues(initialData?.growthAreas)}
+            className="form-input min-h-[88px] bg-slate-50 text-sm"
+          >
+            {growthAreaOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {/* Auxiliary fields */}
       <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
         <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
@@ -492,17 +610,27 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         ) : (
           <div />
         )}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-xl bg-accent px-8 py-3 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-60 sm:w-auto sm:py-2.5"
-        >
-          {isSubmitting
-            ? "Saving..."
-            : initialData
-              ? "Save changes"
-              : "Log Trade"}
-        </button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+          {initialData && (
+            <Link
+              href={`/trades/${encodeURIComponent(initialData.symbol)}`}
+              className="w-full rounded-xl border border-line bg-white px-8 py-3 text-center text-sm font-medium text-slate-600 transition hover:bg-canvas sm:w-auto sm:py-2.5"
+            >
+              Cancel
+            </Link>
+          )}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-accent px-8 py-3 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-60 sm:w-auto sm:py-2.5"
+          >
+            {isSubmitting
+              ? "Saving..."
+              : initialData
+                ? "Save changes"
+                : "Log Trade"}
+          </button>
+        </div>
       </div>
     </form>
   );

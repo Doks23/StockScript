@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 const BROKER_OPTIONS = [
+  { key: "stockymind", label: "StockyMind Journal" },
   { key: "auto", label: "Auto-Detect" },
   { key: "generic", label: "Generic CSV" },
   { key: "zerodha", label: "Zerodha (Trade Book)" },
@@ -42,8 +43,9 @@ export function CSVImport({
 }) {
   const router = useRouter();
   const [csvText, setCsvText] = useState("");
+  const [excelFile, setExcelFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
-  const [brokerKey, setBrokerKey] = useState("auto");
+  const [brokerKey, setBrokerKey] = useState("stockymind");
   const [segment, setSegment] = useState("EQUITY");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +69,18 @@ export function CSVImport({
     setFileName(file.name);
     setResult(null);
     setError("");
+    setCsvText("");
+    setExcelFile(null);
+    setShowPreview(false);
+
+    if (file.name.toLowerCase().endsWith(".xlsx")) {
+      setExcelFile(file);
+      setBrokerKey("stockymind");
+      return;
+    }
+
+    if (brokerKey === "stockymind") setBrokerKey("auto");
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -74,25 +88,36 @@ export function CSVImport({
       setShowPreview(true);
     };
     reader.readAsText(file);
-  }, []);
+  }, [brokerKey]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
       const file = e.dataTransfer.files?.[0];
-      if (file && (file.name.endsWith(".csv") || file.type === "text/csv")) {
+      const lowerName = file?.name.toLowerCase() || "";
+      if (
+        file &&
+        (lowerName.endsWith(".csv") ||
+          lowerName.endsWith(".xlsx") ||
+          file.type === "text/csv")
+      ) {
         handleFileRead(file);
       } else {
-        setError("Please upload a CSV file.");
+        setError("Please upload a CSV or StockyMind Excel file.");
       }
     },
     [handleFileRead],
   );
 
   async function handleImport() {
-    if (!csvText.trim()) {
-      setError("No CSV data to import.");
+    if (!csvText.trim() && !excelFile) {
+      setError("No import file loaded.");
+      return;
+    }
+
+    if (brokerKey === "stockymind" && !excelFile) {
+      setError("Please upload a StockyMind Journal .xlsx file.");
       return;
     }
 
@@ -101,15 +126,26 @@ export function CSVImport({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/trades/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          csvText,
-          brokerKey: brokerKey === "auto" ? undefined : brokerKey,
-          segment,
-        }),
-      });
+      let response: Response;
+      if (excelFile) {
+        const formData = new FormData();
+        formData.append("file", excelFile);
+        formData.append("segment", segment);
+        response = await fetch("/api/trades/import", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        response = await fetch("/api/trades/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            csvText,
+            brokerKey: brokerKey === "auto" ? undefined : brokerKey,
+            segment,
+          }),
+        });
+      }
 
       const data = await response.json();
 
@@ -137,6 +173,7 @@ export function CSVImport({
 
   function handleClear() {
     setCsvText("");
+    setExcelFile(null);
     setFileName("");
     setResult(null);
     setError("");
@@ -162,12 +199,12 @@ export function CSVImport({
         <Upload className="h-8 w-8 text-slate-400" />
         <div className="text-center">
           <p className="text-sm font-medium text-slate-700">
-            Drop your broker CSV here, or{" "}
+            Drop your CSV or StockyMind Excel here, or{" "}
             <label className="cursor-pointer text-[#b18123] hover:text-[#886219] font-semibold">
               browse
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -177,7 +214,7 @@ export function CSVImport({
             </label>
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Supports Zerodha, Groww, Angel One, Dhan, or generic CSV/TSV format
+            Supports StockyMind Journal Excel, Zerodha, Groww, Angel One, Dhan, or generic CSV/TSV
           </p>
         </div>
 
@@ -185,7 +222,9 @@ export function CSVImport({
           <div className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-sm text-slate-700 shadow-sm">
             <FileText className="h-4 w-4 text-[#b18123]" />
             <span className="font-medium">{fileName}</span>
-            <span className="text-slate-400">({totalDataRows} rows)</span>
+            <span className="text-slate-400">
+              {excelFile ? "(StockyMind Journal)" : `(${totalDataRows} rows)`}
+            </span>
             <button
               onClick={handleClear}
               className="ml-1 text-slate-400 hover:text-red-500"
@@ -320,16 +359,22 @@ export function CSVImport({
       {/* Actions */}
       <div className="flex items-center justify-between pt-2 border-t border-slate-100">
         <p className="text-xs text-slate-400">
-          {csvText
-            ? `${totalDataRows} transactions detected`
-            : "No file loaded"}
+          {excelFile
+            ? "StockyMind Journal ready"
+            : csvText
+              ? `${totalDataRows} transactions detected`
+              : "No file loaded"}
         </p>
         <button
           onClick={handleImport}
-          disabled={isSubmitting || !csvText.trim() || !!result}
+          disabled={isSubmitting || (!csvText.trim() && !excelFile) || !!result}
           className="rounded-xl bg-accent px-6 py-2.5 text-sm font-medium text-white transition hover:bg-accentDeep disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? "Importing..." : "Import Trades"}
+          {isSubmitting
+            ? "Importing..."
+            : excelFile
+              ? "Import StockyMind Journal"
+              : "Import Trades"}
         </button>
       </div>
     </div>

@@ -1,6 +1,12 @@
 import { Competition, Trade, Transaction, User } from "@prisma/client";
 import { differenceInDays } from "date-fns";
 import { z } from "zod";
+import {
+  exitTriggerValues,
+  growthAreaValues,
+  proficiencyValues,
+  setupValues,
+} from "@/lib/constants";
 
 export const segmentSchema = z.enum([
   "EQUITY",
@@ -30,6 +36,36 @@ const optionalNumber = z.preprocess((value) => {
   return value;
 }, z.coerce.number().positive().optional());
 
+const optionalJournalAttribute = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  return value;
+}, z.string().trim().max(500).optional());
+
+function parseJournalAttributeList(value?: string | null) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function validateOptionalListValue(
+  value: string | undefined,
+  allowedValues: readonly string[],
+  ctx: z.RefinementCtx,
+  path: string,
+) {
+  const values = parseJournalAttributeList(value);
+  const hasInvalidValue = values.some((item) => !allowedValues.includes(item));
+  if (hasInvalidValue) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid ${path}.`,
+      path: [path],
+    });
+  }
+}
+
 export const transactionSchema = z.object({
   type: z.enum(["BUY", "SELL"]),
   price: z.coerce.number().positive(),
@@ -51,6 +87,11 @@ export const tradePayloadSchema = z
     charges: z.coerce.number().min(0).default(0),
     tags: z.union([z.array(z.string()), z.string()]).optional(),
     notes: z.string().max(2000).optional(),
+    setup: optionalJournalAttribute,
+    planFollowed: z.boolean().optional().nullable(),
+    exitTrigger: optionalJournalAttribute,
+    proficiency: optionalJournalAttribute,
+    growthAreas: optionalJournalAttribute,
     status: tradeStatusSchema.default("OPEN"),
   })
   .superRefine((data, ctx) => {
@@ -66,6 +107,10 @@ export const tradePayloadSchema = z
         });
       }
     }
+    validateOptionalListValue(data.setup, setupValues, ctx, "setup");
+    validateOptionalListValue(data.exitTrigger, exitTriggerValues, ctx, "exitTrigger");
+    validateOptionalListValue(data.proficiency, proficiencyValues, ctx, "proficiency");
+    validateOptionalListValue(data.growthAreas, growthAreaValues, ctx, "growthAreas");
   });
 
 export const competitionPayloadSchema = z
@@ -470,6 +515,11 @@ export function normalizeTradePayload(
     status: payload.status,
     tags: sanitizeTags(payload.tags),
     notes: payload.notes?.trim() ?? "",
+    setup: parseJournalAttributeList(payload.setup).join(", ") || null,
+    planFollowed: payload.planFollowed ?? null,
+    exitTrigger: parseJournalAttributeList(payload.exitTrigger).join(", ") || null,
+    proficiency: parseJournalAttributeList(payload.proficiency).join(", ") || null,
+    growthAreas: parseJournalAttributeList(payload.growthAreas).join(", ") || null,
     charges: payload.charges,
     closingPrice: payload.closingPrice ?? null,
     stopLoss: payload.stopLoss ?? null,
@@ -506,6 +556,11 @@ export type GroupedTradeRow = {
   openCapital: number;
   stopLossPct: number | null;
   closingPrice: number | null;
+  setup: string | null;
+  planFollowed: boolean | null;
+  exitTrigger: string | null;
+  proficiency: string | null;
+  growthAreas: string | null;
 };
 
 export function buildGroupedJournalRows(
@@ -588,6 +643,11 @@ export function buildGroupedJournalRows(
       openCapital,
       stopLossPct,
       closingPrice: trade.closingPrice,
+      setup: trade.setup,
+      planFollowed: trade.planFollowed,
+      exitTrigger: trade.exitTrigger,
+      proficiency: trade.proficiency,
+      growthAreas: trade.growthAreas,
     };
   });
 }

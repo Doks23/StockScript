@@ -16,6 +16,53 @@ const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : 
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
 
+function splitAttr(value?: string | null) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function compactList(value?: string | null, max = 1) {
+  const values = splitAttr(value);
+  if (values.length === 0) return null;
+  const shown = values.slice(0, max).join(", ");
+  return values.length > max ? `${shown} +${values.length - max}` : shown;
+}
+
+function JournalAttributeChips({ trade }: { trade: GroupedTradeRow }) {
+  const setup = compactList(trade.setup, 1);
+  const exitTrigger = compactList(trade.exitTrigger, 1);
+  const plan =
+    trade.planFollowed === null
+      ? null
+      : trade.planFollowed
+        ? "Plan Yes"
+        : "Plan No";
+  const chips = [
+    setup ? { key: "setup", label: setup, className: "bg-emerald-50 text-emerald-700 border-emerald-100" } : null,
+    plan ? { key: "plan", label: plan, className: trade.planFollowed ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-rose-50 text-rose-700 border-rose-100" } : null,
+    exitTrigger ? { key: "exit", label: exitTrigger, className: "bg-amber-50 text-amber-700 border-amber-100" } : null,
+  ].filter((chip): chip is { key: string; label: string; className: string } => chip !== null);
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="mt-1 flex max-w-[240px] items-center gap-1 overflow-hidden whitespace-nowrap">
+      {chips.map((chip) => (
+        <span
+          key={chip.key}
+          title={chip.label}
+          className={`min-w-0 max-w-[92px] truncate rounded border px-1.5 py-0.5 text-[8px] font-medium leading-3 ${chip.className}`}
+        >
+          {chip.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 type SortKey =
   | "symbol"
   | "entryDate"
@@ -358,6 +405,10 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                 </div>
               </div>
 
+              <div className="ml-8">
+                <JournalAttributeChips trade={t} />
+              </div>
+
               <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Entry</span>
@@ -549,6 +600,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                                 {t.symbol}
                               </Link>
                             </div>
+                            <JournalAttributeChips trade={t} />
                           </td>
                         )}
 

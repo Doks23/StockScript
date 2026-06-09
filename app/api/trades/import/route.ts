@@ -3,54 +3,126 @@ import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { csvToTransactions, parseCSVText, detectBrokerProfile, BROKER_PROFILES } from "@/lib/csv-parser";
-import type { TradeSegment } from "@prisma/client";
+import type { TradeSegment, TransactionType } from "@prisma/client";
 import { buildTradesFromTransactions } from "@/lib/trade-matcher";
-import { calculateTradeMetrics } from "@/lib/trade-utils";
+import { calculateTradeMetrics, deriveTradeTypeAndStatus } from "@/lib/trade-utils";
+import { parseStockyMindWorkbook } from "@/lib/stockymind-parser";
 
 export async function POST(request: Request) {
   try {
     const user = await requireActiveUser();
-    const json = await request.json();
-    const { csvText, brokerKey, competitionId, segment } = json as {
-      csvText: string;
-      brokerKey?: string;
-      competitionId?: string;
-      segment?: string;
-    };
+    const contentType = request.headers.get("content-type") || "";
+    let competitionId: string | undefined;
+    let segment: TradeSegment = "EQUITY";
+    let detectedFormat = "Generic CSV";
+    let parseErrors: string[] = [];
+    let importTrades: {
+      symbol: string;
+      segment: TradeSegment;
+      tradeType: "LONG" | "SHORT";
+      status: "OPEN" | "CLOSED";
+      transactions: {
+        type: TransactionType;
+        price: number;
+        quantity: number;
+        dateTime: Date;
+        order: number;
+      }[];
+      charges: number;
+      closingPrice?: number | null;
+      stopLoss?: number | null;
+      notes?: string;
+      setup?: string | null;
+      planFollowed?: boolean | null;
+      exitTrigger?: string | null;
+      proficiency?: string | null;
+      growthAreas?: string | null;
+    }[] = [];
 
-    if (!csvText || csvText.trim().length === 0) {
-      return NextResponse.json({ error: "CSV text is empty." }, { status: 400 });
-    }
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      const file = formData.get("file");
+      competitionId = String(formData.get("competitionId") || "") || undefined;
+      segment = (String(formData.get("segment") || "EQUITY") || "EQUITY") as TradeSegment;
 
-    const rows = parseCSVText(csvText);
-    if (rows.length < 2) {
-      return NextResponse.json(
-        { error: "CSV must contain a header row and at least one data row." },
-        { status: 400 }
-      );
-    }
+      if (!(file instanceof File)) {
+        return NextResponse.json({ error: "StockyMind Excel file is required." }, { status: 400 });
+      }
 
-    const detectedKey = brokerKey === "auto" || !brokerKey
-      ? detectBrokerProfile(rows[0])
-      : brokerKey;
-    const profile = BROKER_PROFILES[detectedKey] || BROKER_PROFILES.generic;
+      const parsed = parseStockyMindWorkbook(await file.arrayBuffer(), segment);
+      parseErrors = parsed.errors;
+      detectedFormat = "StockyMind Journal";
+      importTrades = parsed.trades;
 
-    const { transactions, errors: parseErrors } = csvToTransactions(rows, profile);
+      if (importTrades.length === 0) {
+        return NextResponse.json(
+          { error: "No valid trades found in StockyMind Excel file.", parseErrors },
+          { status: 400 }
+        );
+      }
+    } else {
+      const json = await request.json();
+      const { csvText, brokerKey } = json as {
+        csvText: string;
+        brokerKey?: string;
+        competitionId?: string;
+        segment?: string;
+      };
+      competitionId = json.competitionId;
+      segment = (json.segment || "EQUITY") as TradeSegment;
 
-    if (transactions.length === 0) {
-      return NextResponse.json(
-        { error: "No valid transactions found in CSV." },
-        { status: 400 }
-      );
-    }
+      if (!csvText || csvText.trim().length === 0) {
+        return NextResponse.json({ error: "CSV text is empty." }, { status: 400 });
+      }
 
-    const matchedTrades = buildTradesFromTransactions(transactions);
+      const rows = parseCSVText(csvText);
+      if (rows.length < 2) {
+        return NextResponse.json(
+          { error: "CSV must contain a header row and at least one data row." },
+          { status: 400 }
+        );
+      }
 
-    if (matchedTrades.length === 0) {
-      return NextResponse.json(
-        { error: "No trades could be matched from the transactions." },
-        { status: 400 }
-      );
+      const detectedKey = brokerKey === "auto" || !brokerKey
+        ? detectBrokerProfile(rows[0])
+        : brokerKey;
+      const profile = BROKER_PROFILES[detectedKey] || BROKER_PROFILES.generic;
+
+      const { transactions, errors } = csvToTransactions(rows, profile);
+      parseErrors = errors;
+
+      if (transactions.length === 0) {
+        return NextResponse.json(
+          { error: "No valid transactions found in CSV.", parseErrors },
+          { status: 400 }
+        );
+      }
+
+      const matchedTrades = buildTradesFromTransactions(transactions);
+
+      if (matchedTrades.length === 0) {
+        return NextResponse.json(
+          { error: "No trades could be matched from the transactions.", parseErrors },
+          { status: 400 }
+        );
+      }
+
+      detectedFormat = profile.name;
+      importTrades = matchedTrades.map((matched) => ({
+        symbol: matched.ticker,
+        segment,
+        tradeType: matched.tradeType,
+        status: matched.status,
+        transactions: matched.transactions.map((transaction, index) => ({
+          type: transaction.type,
+          price: transaction.price,
+          quantity: transaction.quantity,
+          dateTime: transaction.date,
+          order: index,
+        })),
+        charges: 0,
+        notes: "",
+      }));
     }
 
     if (competitionId) {
@@ -70,27 +142,25 @@ export async function POST(request: Request) {
     const createdTrades = [];
     let rowIndex = currentCount;
 
-    for (const matched of matchedTrades) {
+    for (const importedTrade of importTrades) {
       rowIndex++;
 
-      const txPayload = matched.transactions.map((t, i) => ({
+      const txPayload = importedTrade.transactions.map((t, i) => ({
         type: t.type,
         price: t.price,
         quantity: t.quantity,
-        dateTime: t.date,
-        order: i,
+        dateTime: t.dateTime,
+        order: t.order ?? i,
       }));
 
-      const entryType = matched.tradeType === "LONG" ? "BUY" : "SELL";
-      const entryTxns = txPayload
-        .filter((t) => t.type === entryType)
-        .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-      const firstEntryAt = entryTxns.length > 0 ? entryTxns[0].dateTime : new Date();
+      const { tradeType: derivedTradeType, firstEntryAt, status: derivedStatus } =
+        deriveTradeTypeAndStatus(txPayload);
 
       const metrics = calculateTradeMetrics({
-        tradeType: matched.tradeType,
-        status: matched.status,
-        transactions: matched.transactions.map((t) => ({
+        tradeType: derivedTradeType,
+        status: derivedStatus,
+        charges: importedTrade.charges,
+        transactions: txPayload.map((t) => ({
           type: t.type,
           price: t.price,
           quantity: t.quantity,
@@ -101,18 +171,25 @@ export async function POST(request: Request) {
         data: {
           userId: user.id,
           competitionId: competitionId || null,
-          symbol: matched.ticker,
-          segment: (segment || "EQUITY") as TradeSegment,
-          tradeType: matched.tradeType,
-          status: matched.status,
+          symbol: importedTrade.symbol,
+          segment: importedTrade.segment,
+          tradeType: derivedTradeType,
+          status: derivedStatus,
           rowIndex,
           tags: "",
-          notes: "",
-          charges: 0,
+          notes: importedTrade.notes ?? "",
+          setup: importedTrade.setup ?? null,
+          planFollowed: importedTrade.planFollowed ?? null,
+          exitTrigger: importedTrade.exitTrigger ?? null,
+          proficiency: importedTrade.proficiency ?? null,
+          growthAreas: importedTrade.growthAreas ?? null,
+          charges: importedTrade.charges,
+          closingPrice: importedTrade.closingPrice ?? null,
+          stopLoss: importedTrade.stopLoss ?? null,
           capitalUsed: metrics.capitalUsed,
           netPnl: metrics.realizedPnl,
           firstEntryAt,
-          lockedAt: matched.status === "CLOSED" ? new Date() : null,
+          lockedAt: derivedStatus === "CLOSED" ? new Date() : null,
           transactions: { create: txPayload },
         },
       });
@@ -125,7 +202,8 @@ export async function POST(request: Request) {
         imported: createdTrades.length,
         open: createdTrades.filter((t) => t.status === "OPEN").length,
         closed: createdTrades.filter((t) => t.status === "CLOSED").length,
-        brokerDetected: profile.name,
+        brokerDetected: detectedFormat,
+        parseErrors,
       },
       { status: 201 }
     );
