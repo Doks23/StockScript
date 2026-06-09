@@ -850,21 +850,9 @@ export function getCompetitionWindowTrades(
 
   return trades.filter((trade) => {
     const firstEntry = getFirstEntryTime(trade);
-    const lastExit = getLastExitTime(trade);
-
-    const startsInWindow =
+    return (
       firstEntry >= competitionWindow.startDate &&
-      firstEntry <= competitionWindow.endDate;
-    const endsInWindow =
-      lastExit &&
-      lastExit >= competitionWindow.startDate &&
-      lastExit <= competitionWindow.endDate;
-    const closedInWindow =
-      trade.status === "CLOSED" &&
-      trade.lockedAt != null &&
-      trade.lockedAt >= competitionWindow.startDate &&
-      trade.lockedAt <= competitionWindow.endDate;
-
-    return startsInWindow || endsInWindow || closedInWindow;
+      firstEntry <= competitionWindow.endDate
+    );
   });
 }

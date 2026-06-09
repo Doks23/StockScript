@@ -172,31 +172,10 @@ export const getLeaderboard = cache(async function getLeaderboard(competitionId:
       ? await prisma.trade.findMany({
           where: {
             userId: { in: participantIds },
-            OR: [
-              {
-                firstEntryAt: {
-                  gte: competitionWindow.startDate,
-                  lte: competitionWindow.endDate,
-                },
-              },
-              {
-                status: "CLOSED",
-                lockedAt: {
-                  gte: competitionWindow.startDate,
-                  lte: competitionWindow.endDate,
-                },
-              },
-              {
-                transactions: {
-                  some: {
-                    dateTime: {
-                      gte: competitionWindow.startDate,
-                      lte: competitionWindow.endDate,
-                    },
-                  },
-                },
-              },
-            ],
+            firstEntryAt: {
+              gte: competitionWindow.startDate,
+              lte: competitionWindow.endDate,
+            },
           },
           orderBy: { firstEntryAt: "asc" },
           include: TRANSACTION_INCLUDE,
@@ -297,31 +276,10 @@ export const getTraderCompetitionTrades = cache(async function getTraderCompetit
   const trades = await prisma.trade.findMany({
     where: {
       userId,
-      OR: [
-        {
-          firstEntryAt: {
-            gte: competitionWindow.startDate,
-            lte: competitionWindow.endDate,
-          },
-        },
-        {
-          status: "CLOSED",
-          lockedAt: {
-            gte: competitionWindow.startDate,
-            lte: competitionWindow.endDate,
-          },
-        },
-        {
-          transactions: {
-            some: {
-              dateTime: {
-                gte: competitionWindow.startDate,
-                lte: competitionWindow.endDate,
-              },
-            },
-          },
-        },
-      ],
+      firstEntryAt: {
+        gte: competitionWindow.startDate,
+        lte: competitionWindow.endDate,
+      },
     },
     orderBy: { firstEntryAt: "desc" },
     include: TRANSACTION_INCLUDE,
