@@ -778,7 +778,7 @@ export function buildLeaderboardEntries(entries: LeaderboardInput[]) {
         portfolioImpactPct: metrics.portfolioReturn,
         maxDrawdown: calculateMaxDrawdown(trades, maxCapitalDeployed),
         winRate: metrics.winRate,
-        totalTrades: metrics.closedTrades,
+        totalTrades: rows.length,
         profitFactor: metrics.profitFactor,
       } as LeaderboardEntry;
     })
@@ -861,8 +861,9 @@ export function getCompetitionWindowTrades(
       lastExit <= competitionWindow.endDate;
     const closedInWindow =
       trade.status === "CLOSED" &&
-      trade.updatedAt >= competitionWindow.startDate &&
-      trade.updatedAt <= competitionWindow.endDate;
+      trade.lockedAt != null &&
+      trade.lockedAt >= competitionWindow.startDate &&
+      trade.lockedAt <= competitionWindow.endDate;
 
     return startsInWindow || endsInWindow || closedInWindow;
   });

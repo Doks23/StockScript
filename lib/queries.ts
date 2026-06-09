@@ -181,7 +181,7 @@ export const getLeaderboard = cache(async function getLeaderboard(competitionId:
               },
               {
                 status: "CLOSED",
-                updatedAt: {
+                lockedAt: {
                   gte: competitionWindow.startDate,
                   lte: competitionWindow.endDate,
                 },
@@ -306,7 +306,7 @@ export const getTraderCompetitionTrades = cache(async function getTraderCompetit
         },
         {
           status: "CLOSED",
-          updatedAt: {
+          lockedAt: {
             gte: competitionWindow.startDate,
             lte: competitionWindow.endDate,
           },
