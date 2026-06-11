@@ -1,5 +1,5 @@
 import { Competition, Trade, Transaction, User } from "@prisma/client";
-import { differenceInDays } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 import { z } from "zod";
 import {
   exitTriggerValues,
@@ -630,7 +630,7 @@ export function buildGroupedJournalRows(
 
     const firstEntry = getFirstEntryTime(trade);
     const endDate = isActuallyClosed && lastExit ? lastExit : new Date();
-    const ageDays = Math.max(0, differenceInDays(endDate, firstEntry));
+    const ageDays = Math.max(0, differenceInCalendarDays(endDate, firstEntry));
 
     let stopLossPct: number | null = null;
     if (trade.stopLoss && trade.stopLoss > 0 && weightedEntry > 0) {
@@ -733,7 +733,7 @@ export function buildJournalRows(
       pnlCombined: displayPnl,
       pnlPct: capital > 0 ? (displayPnl / capital) * 100 : 0,
       ageDays: Math.max(
-        differenceInDays(new Date(), getFirstEntryTime(trade)),
+        differenceInCalendarDays(new Date(), getFirstEntryTime(trade)),
         0,
       ),
       impactPct:
