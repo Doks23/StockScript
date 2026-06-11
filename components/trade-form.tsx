@@ -212,6 +212,28 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       return;
     }
 
+    const totalEntryAmt = entryRows.reduce(
+      (s, r) => s + (Number(r.price) || 0) * (Number(r.quantity) || 0),
+      0,
+    );
+    const totalEntryQ = entryRows.reduce(
+      (s, r) => s + (Number(r.quantity) || 0),
+      0,
+    );
+    const avgEntryPrice = totalEntryQ > 0 ? totalEntryAmt / totalEntryQ : 0;
+
+    let stopLoss: number | null = null;
+    const rawSl = String(formData.get("stopLoss") || "");
+    if (rawSl.endsWith("%")) {
+      const pct = parseFloat(rawSl);
+      if (!isNaN(pct) && avgEntryPrice > 0) {
+        stopLoss = avgEntryPrice + (avgEntryPrice * pct) / 100;
+      }
+    } else if (rawSl !== "") {
+      const num = parseFloat(rawSl);
+      if (!isNaN(num)) stopLoss = num;
+    }
+
     const planFollowedValue = String(formData.get("planFollowed") || "");
     const payload = {
       symbol: String(formData.get("symbol") || ""),
@@ -228,9 +250,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       exitTrigger: getMultiSelectValues(formData, "exitTrigger"),
       proficiency: getMultiSelectValues(formData, "proficiency"),
       growthAreas: getMultiSelectValues(formData, "growthAreas"),
-      stopLoss: formData.get("stopLoss")
-        ? Number(formData.get("stopLoss"))
-        : null,
+      stopLoss,
       charges: Number(formData.get("charges") || 0),
       closingPrice: formData.get("closingPrice")
         ? Number(formData.get("closingPrice"))
@@ -562,11 +582,14 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           Stop Loss
           <input
             name="stopLoss"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={initialData?.stopLoss ?? ""}
-            className="form-input h-9 w-full sm:w-[100px]"
+            type="text"
+            placeholder="abs or -5%"
+            defaultValue={
+              initialData?.stopLoss
+                ? String(initialData.stopLoss)
+                : ""
+            }
+            className="form-input h-9 w-full sm:w-[110px]"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">

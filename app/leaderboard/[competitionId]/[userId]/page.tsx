@@ -84,6 +84,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
                 <th className="px-3 py-3 text-center border-l border-slate-300">SL %</th>
                 <th className="px-3 py-3 text-center">Alloc %</th>
                 <th className="px-3 py-3 text-center">Age</th>
+                <th className="px-3 py-3 text-center border-l border-slate-300">Avg Entry ₹</th>
                 <th className="px-3 py-3 text-center border-l border-slate-300">P&amp;L %</th>
                 <th className="px-3 py-3 text-center">Impact %</th>
               </tr>
@@ -96,6 +97,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
                 <th className="px-3 py-1.5 border-l border-slate-300" />
                 <th className="px-3 py-1.5" />
                 <th className="px-3 py-1.5" />
+                <th className="px-3 py-1.5 border-l border-slate-300" />
                 <th className="px-3 py-1.5 border-l border-slate-300" />
                 <th className="px-3 py-1.5" />
               </tr>
@@ -155,7 +157,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
                             <>
                               <td className="px-3 py-3 text-right tabular-nums font-medium border-l border-line" rowSpan={maxLegs}>
                                 {trade.stopLossPct !== null
-                                  ? <span className="text-red-500">{fmtPctNoSign(trade.stopLossPct)}</span>
+                                  ? <span className="text-red-500">{fmtPctNoSign(Math.abs(trade.stopLossPct))}</span>
                                   : <span className="text-slate-300">—</span>}
                               </td>
                               <td className="px-3 py-3 text-right tabular-nums text-slate-600" rowSpan={maxLegs}>
@@ -165,6 +167,9 @@ export default async function TraderDrillDownPage({ params }: Props) {
                                 <span className={trade.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}>
                                   {trade.ageDays}
                                 </span>
+                              </td>
+                              <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium border-l border-line" rowSpan={maxLegs}>
+                                {trade.weightedEntryPrice > 0 ? fmtPrice(trade.weightedEntryPrice) : <span className="text-slate-300">—</span>}
                               </td>
                               <td className={`px-3 py-3 text-right align-middle border-l border-line ${pnlColor(trade.pnlAmount)}`} rowSpan={maxLegs}>
                                 {!showPnl ? (
@@ -204,7 +209,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400 text-sm">
+                  <td colSpan={11} className="py-12 text-center text-slate-400 text-sm">
                     No qualifying trades in this competition window.
                   </td>
                 </tr>

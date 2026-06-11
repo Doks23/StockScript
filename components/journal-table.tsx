@@ -75,6 +75,7 @@ type SortKey =
   | "stopLossPct"
   | "allocationPct"
   | "ageDays"
+  | "avgEntryPrice"
   | "pnlPct"
   | "pnlAmount"
   | "impactPct";
@@ -109,6 +110,79 @@ function SortTh({
       {children}
       <SortIcon active={sortKey === sKey} dir={sortDir} />
     </th>
+  );
+}
+
+function StopLossInput({ tradeId, stopLoss, entryPrice, onUpdate }: { tradeId: string; stopLoss: number | null; entryPrice: number; onUpdate: () => void }) {
+  const stopLossPct = stopLoss && entryPrice > 0 ? Math.abs(((stopLoss - entryPrice) / entryPrice) * 100) : null;
+  const [value, setValue] = useState(stopLoss?.toString() || "");
+  const [isEditing, setIsEditing] = useState(false);
+
+  async function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      let absValue: number | null = null;
+      const raw = value.trim();
+
+      if (raw.endsWith("%")) {
+        const pct = parseFloat(raw);
+        if (!isNaN(pct) && entryPrice > 0) {
+          absValue = entryPrice + (entryPrice * pct) / 100;
+        }
+      } else {
+        const num = parseFloat(raw);
+        if (!isNaN(num)) absValue = num;
+      }
+
+      if (absValue === null || absValue <= 0) {
+        absValue = null;
+      }
+
+      try {
+        const res = await fetch("/api/trades/update-stop-loss", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tradeId, stopLoss: absValue }),
+        });
+        if (res.ok) {
+          setIsEditing(false);
+          onUpdate();
+        } else {
+          alert("Failed to update stop loss.");
+        }
+      } catch {
+        alert("Network error.");
+      }
+    } else if (e.key === "Escape") {
+      setIsEditing(false);
+      setValue(stopLoss?.toString() || "");
+    }
+  }
+
+  if (!isEditing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsEditing(true)}
+        className={`cursor-pointer rounded text-[11px] tabular-nums transition ${
+          stopLossPct !== null ? "text-red-500 font-medium" : "text-slate-600 italic hover:text-blue-600"
+        }`}
+        title={stopLoss ? `₹ ${fmtPrice(stopLoss)}` : undefined}
+      >
+        {stopLossPct !== null ? fmtPctNoSign(stopLossPct) : "set"}
+      </button>
+    );
+  }
+
+  return (
+    <input
+      autoFocus
+      placeholder="abs or -5%"
+      className="w-[82px] rounded border border-blue-400 bg-blue-50 px-1.5 py-0.5 text-[11px] tabular-nums text-slate-800 outline-none"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={() => setIsEditing(false)}
+    />
   );
 }
 
@@ -204,6 +278,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
         case "ageDays": av = a.ageDays; bv = b.ageDays; break;
         case "pnlPct": av = a.pnlPct; bv = b.pnlPct; break;
         case "pnlAmount": av = a.pnlAmount; bv = b.pnlAmount; break;
+        case "avgEntryPrice": av = a.weightedEntryPrice; bv = b.weightedEntryPrice; break;
         case "impactPct": av = a.impactPct; bv = b.impactPct; break;
       }
       return sortDir === "asc" ? av - bv : bv - av;
@@ -417,9 +492,9 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
 
               <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Entry</span>
+                  <span className="text-slate-400">Avg Entry</span>
                   <span className="font-medium tabular-nums text-slate-700">
-                    {firstEntry?.price ? fmtPrice(firstEntry.price) : "—"}
+                    {t.weightedEntryPrice > 0 ? fmtPrice(t.weightedEntryPrice) : "—"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -452,9 +527,12 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">SL</span>
-                  <span className="font-medium tabular-nums text-red-500">
-                    {t.stopLossPct !== null ? fmtPctNoSign(t.stopLossPct) : "—"}
-                  </span>
+                  <StopLossInput
+                    tradeId={t.id}
+                    stopLoss={t.stopLoss}
+                    entryPrice={t.weightedEntryPrice}
+                    onUpdate={() => onRefresh?.()}
+                  />
                 </div>
               </div>
 
@@ -561,12 +639,15 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                 className="px-3 py-3 text-center">Alloc %</SortTh>
               <SortTh sKey="ageDays" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center">Age</SortTh>
+              <SortTh sKey="avgEntryPrice" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-3 py-3 text-center border-l border-slate-300">Avg Entry ₹</SortTh>
               <SortTh sKey="pnlPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center border-l border-slate-300">P&amp;L %</SortTh>
               <SortTh sKey="pnlAmount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center">P&amp;L ₹</SortTh>
               <SortTh sKey="impactPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
                 className="px-3 py-3 text-center">Impact %</SortTh>
+              <th className="px-3 py-3 text-center text-[10px] text-slate-400">EOD</th>
               <th className="px-2 py-3 text-center w-8"></th>
             </tr>
             <tr className="bg-white text-slate-400 text-[10px] border-b border-line">
@@ -584,7 +665,10 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
               <th className="px-3 py-1.5 border-l border-slate-300" />
               <th className="px-3 py-1.5" /><th className="px-3 py-1.5" />
               <th className="px-3 py-1.5 border-l border-slate-300" />
-              <th className="px-3 py-1.5" /><th className="px-3 py-1.5" /><th />
+              <th className="px-3 py-1.5 border-l border-slate-300" />
+              <th className="px-3 py-1.5" /><th className="px-3 py-1.5" />
+              <th className="px-3 py-1.5 border-l border-slate-300" />
+              <th />
             </tr>
           </thead>
 
@@ -679,10 +763,13 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                                 ? <span className="text-slate-300">•••</span>
                                 : t.openCapital > 0 ? fmtAmt(t.openCapital) : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>
-                              {t.stopLossPct !== null
-                                ? <span className="text-red-500 font-medium">{fmtPctNoSign(t.stopLossPct)}</span>
-                                : <span className="text-slate-300">—</span>}
+                            <td className="px-3 py-3 text-right align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                              <StopLossInput
+                                tradeId={t.id}
+                                stopLoss={t.stopLoss}
+                                entryPrice={t.weightedEntryPrice}
+                                onUpdate={() => onRefresh?.()}
+                              />
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
                               {fmtPctNoSign(t.allocationPct)}
@@ -691,6 +778,9 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                               <span className={t.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}>
                                 {t.ageDays}
                               </span>
+                            </td>
+                            <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                              {t.weightedEntryPrice > 0 ? fmtPrice(t.weightedEntryPrice) : <span className="text-slate-300">—</span>}
                             </td>
                             <td className={`px-3 py-3 text-right align-middle border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
                               {!showPnl ? (

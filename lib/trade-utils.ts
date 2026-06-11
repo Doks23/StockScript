@@ -572,6 +572,7 @@ export type GroupedTradeRow = {
   impactPct: number;
   openQty: number;
   openCapital: number;
+  stopLoss: number | null;
   stopLossPct: number | null;
   closingPrice: number | null;
   setup: string | null;
@@ -659,6 +660,7 @@ export function buildGroupedJournalRows(
       impactPct,
       openQty,
       openCapital,
+      stopLoss: trade.stopLoss,
       stopLossPct,
       closingPrice: trade.closingPrice,
       setup: trade.setup,
