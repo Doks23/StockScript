@@ -16,6 +16,7 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
     redirect("/dashboard");
   }
   const isAdmin = user.role === "ADMIN";
+  const canCreateCompetition = user.role === "ADMIN" || user.role === "SUPER_TRADER";
 
   const activeTab = searchParams.tab === "maintenance" ? "maintenance" : "competitions";
 
@@ -37,7 +38,7 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500 sm:text-sm">Admin</p>
           <h1 className="mt-1 font-display text-2xl font-semibold text-ink sm:mt-2 sm:text-4xl">Competitions</h1>
         </div>
-        {activeTab === "competitions" && isAdmin && (
+        {activeTab === "competitions" && canCreateCompetition && (
           <Link
             href="/competitions/new"
             className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-accentDeep"
@@ -83,9 +84,11 @@ export default async function CompetitionsManagementPage({ searchParams }: Props
               {competitions.length === 0 && (
                 <p className="py-8 text-center text-slate-400 italic">
                   No competitions yet.{" "}
-                  <Link href="/competitions/new" className="font-medium text-accent hover:underline">
-                    Create one →
-                  </Link>
+                  {canCreateCompetition && (
+                    <Link href="/competitions/new" className="font-medium text-accent hover:underline">
+                      Create one →
+                    </Link>
+                  )}
                 </p>
               )}
               {competitions.map((competition) => (

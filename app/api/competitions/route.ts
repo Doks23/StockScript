@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await requireActiveUser();
-    if (user.role !== "ADMIN") {
+    if (user.role !== "ADMIN" && user.role !== "SUPER_TRADER") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const json = await request.json();

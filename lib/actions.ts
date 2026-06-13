@@ -73,7 +73,7 @@ export async function requestToJoinCompetition(formData: FormData) {
 
 export async function createCompetition(formData: FormData) {
   const user = await requireActiveUser();
-  if (user.role !== "ADMIN") {
+  if (user.role !== "ADMIN" && user.role !== "SUPER_TRADER") {
     throw new Error("Unauthorized");
   }
 
