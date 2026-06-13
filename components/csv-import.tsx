@@ -19,7 +19,10 @@ const BROKER_OPTIONS = [
   { key: "groww", label: "Groww" },
   { key: "angel", label: "Angel One" },
   { key: "dhan", label: "Dhan" },
+  { key: "kotak", label: "Kotak Securities" },
 ];
+
+const EXCEL_BROKER_KEYS = new Set(["stockymind", "auto", "kotak"]);
 
 const SEGMENT_OPTIONS = [
   { value: "EQUITY", label: "Equity" },
@@ -64,6 +67,8 @@ export function CSVImport({
   const totalDataRows = csvText
     ? csvText.split(/\r?\n/).filter((line) => line.trim().length > 0).length - 1
     : 0;
+  const selectedBrokerLabel =
+    BROKER_OPTIONS.find((option) => option.key === brokerKey)?.label ?? "Selected broker";
 
   const handleFileRead = useCallback((file: File) => {
     setFileName(file.name);
@@ -75,7 +80,7 @@ export function CSVImport({
 
     if (file.name.toLowerCase().endsWith(".xlsx")) {
       setExcelFile(file);
-      setBrokerKey("stockymind");
+      if (!EXCEL_BROKER_KEYS.has(brokerKey)) setBrokerKey("auto");
       return;
     }
 
@@ -104,7 +109,7 @@ export function CSVImport({
       ) {
         handleFileRead(file);
       } else {
-        setError("Please upload a CSV or StockyMind Excel file.");
+        setError("Please upload a CSV or Excel statement file.");
       }
     },
     [handleFileRead],
@@ -131,6 +136,7 @@ export function CSVImport({
         const formData = new FormData();
         formData.append("file", excelFile);
         formData.append("segment", segment);
+        formData.append("brokerKey", brokerKey);
         response = await fetch("/api/trades/import", {
           method: "POST",
           body: formData,
@@ -199,7 +205,7 @@ export function CSVImport({
         <Upload className="h-8 w-8 text-slate-400" />
         <div className="text-center">
           <p className="text-sm font-medium text-slate-700">
-            Drop your CSV or StockyMind Excel here, or{" "}
+            Drop your CSV or Excel statement here, or{" "}
             <label className="cursor-pointer text-[#b18123] hover:text-[#886219] font-semibold">
               browse
               <input
@@ -214,7 +220,7 @@ export function CSVImport({
             </label>
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Supports StockyMind Journal Excel, Zerodha, Groww, Angel One, Dhan, or generic CSV/TSV
+            Supports StockyMind Journal Excel, Kotak Securities Excel, Zerodha, Groww, Angel One, Dhan, or generic CSV/TSV
           </p>
         </div>
 
@@ -223,7 +229,7 @@ export function CSVImport({
             <FileText className="h-4 w-4 text-[#b18123]" />
             <span className="font-medium">{fileName}</span>
             <span className="text-slate-400">
-              {excelFile ? "(StockyMind Journal)" : `(${totalDataRows} rows)`}
+              {excelFile ? `(${selectedBrokerLabel})` : `(${totalDataRows} rows)`}
             </span>
             <button
               onClick={handleClear}
@@ -360,7 +366,7 @@ export function CSVImport({
       <div className="flex items-center justify-between pt-2 border-t border-slate-100">
         <p className="text-xs text-slate-400">
           {excelFile
-            ? "StockyMind Journal ready"
+            ? `${selectedBrokerLabel} Excel ready`
             : csvText
               ? `${totalDataRows} transactions detected`
               : "No file loaded"}
@@ -373,7 +379,7 @@ export function CSVImport({
           {isSubmitting
             ? "Importing..."
             : excelFile
-              ? "Import StockyMind Journal"
+              ? "Import Excel Statement"
               : "Import Trades"}
         </button>
       </div>

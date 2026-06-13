@@ -15,6 +15,11 @@ const fmtPrice = (n: number) => fmtPriceIntl.format(n);
 const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtAmtIntl.format(n);
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
+const dateSortValue = (d: Date | string | null | undefined) => {
+  if (!d) return 0;
+  const time = new Date(d).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
 const hasPnlData = (row: GroupedTradeRow) =>
   row.derivedStatus === "CLOSED" || row.exitQty > 0 || !!(row.closingPrice && row.closingPrice > 0);
 const isPartiallyClosed = (row: GroupedTradeRow) =>
@@ -265,12 +270,12 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
       let bv = 0;
       switch (sortKey) {
         case "entryDate":
-          av = a.entryLegs[0]?.dateTime?.getTime() ?? 0;
-          bv = b.entryLegs[0]?.dateTime?.getTime() ?? 0;
+          av = dateSortValue(a.entryLegs[0]?.dateTime);
+          bv = dateSortValue(b.entryLegs[0]?.dateTime);
           break;
         case "exitDate":
-          av = a.exitDateTime?.getTime() ?? 0;
-          bv = b.exitDateTime?.getTime() ?? 0;
+          av = dateSortValue(a.exitDateTime);
+          bv = dateSortValue(b.exitDateTime);
           break;
         case "openCapital": av = a.openCapital; bv = b.openCapital; break;
         case "stopLossPct": av = a.stopLossPct ?? 0; bv = b.stopLossPct ?? 0; break;

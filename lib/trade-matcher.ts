@@ -6,6 +6,7 @@ export type RawTransaction = {
   type: "BUY" | "SELL";
   price: number;
   quantity: number;
+  charges?: number;
 };
 
 export type TxLeg = {
@@ -13,6 +14,7 @@ export type TxLeg = {
   price: number;
   quantity: number;
   date: Date;
+  charges?: number;
 };
 
 export type MatchedTrade = {
@@ -101,6 +103,7 @@ export function buildTradesFromTransactions(
             price: t.price,
             quantity: t.quantity,
             date: t.date,
+            charges: t.charges,
           })),
         });
 
@@ -124,6 +127,7 @@ export function buildTradesFromTransactions(
           price: t.price,
           quantity: t.quantity,
           date: t.date,
+          charges: t.charges,
         })),
       });
     }

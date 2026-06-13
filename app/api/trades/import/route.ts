@@ -7,6 +7,7 @@ import type { TradeSegment, TransactionType } from "@prisma/client";
 import { buildTradesFromTransactions } from "@/lib/trade-matcher";
 import { calculateTradeMetrics, deriveTradeTypeAndStatus } from "@/lib/trade-utils";
 import { parseStockyMindWorkbook } from "@/lib/stockymind-parser";
+import { parseKotakWorkbook } from "@/lib/kotak-parser";
 
 export async function POST(request: Request) {
   try {
@@ -42,21 +43,68 @@ export async function POST(request: Request) {
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const file = formData.get("file");
+      const brokerKey = String(formData.get("brokerKey") || "stockymind");
       competitionId = String(formData.get("competitionId") || "") || undefined;
       segment = (String(formData.get("segment") || "EQUITY") || "EQUITY") as TradeSegment;
 
       if (!(file instanceof File)) {
-        return NextResponse.json({ error: "StockyMind Excel file is required." }, { status: 400 });
+        return NextResponse.json({ error: "Excel statement file is required." }, { status: 400 });
       }
 
-      const parsed = parseStockyMindWorkbook(await file.arrayBuffer(), segment);
-      parseErrors = parsed.errors;
-      detectedFormat = "StockyMind Journal";
-      importTrades = parsed.trades;
+      if (brokerKey === "kotak") {
+        const parsed = parseKotakWorkbook(await file.arrayBuffer());
+        parseErrors = parsed.errors;
+        detectedFormat = "Kotak Securities Transaction Statement";
+
+        if (parsed.transactions.length === 0) {
+          return NextResponse.json(
+            { error: "No valid transactions found in Kotak Excel statement.", parseErrors },
+            { status: 400 }
+          );
+        }
+
+        const matchedTrades = buildTradesFromTransactions(parsed.transactions);
+
+        if (matchedTrades.length === 0) {
+          return NextResponse.json(
+            { error: "No trades could be matched from the Kotak transactions.", parseErrors },
+            { status: 400 }
+          );
+        }
+
+        importTrades = matchedTrades.map((matched) => ({
+          symbol: matched.ticker,
+          segment,
+          tradeType: matched.tradeType,
+          status: matched.status,
+          transactions: matched.transactions.map((transaction, index) => ({
+            type: transaction.type,
+            price: transaction.price,
+            quantity: transaction.quantity,
+            dateTime: transaction.date,
+            order: index,
+          })),
+          charges: matched.transactions.reduce(
+            (sum, transaction) => sum + (transaction.charges ?? 0),
+            0,
+          ),
+          notes: "",
+        }));
+      } else if (brokerKey === "stockymind" || brokerKey === "auto") {
+        const parsed = parseStockyMindWorkbook(await file.arrayBuffer(), segment);
+        parseErrors = parsed.errors;
+        detectedFormat = "StockyMind Journal";
+        importTrades = parsed.trades;
+      } else {
+        return NextResponse.json(
+          { error: "Please select the correct broker for this Excel statement." },
+          { status: 400 }
+        );
+      }
 
       if (importTrades.length === 0) {
         return NextResponse.json(
-          { error: "No valid trades found in StockyMind Excel file.", parseErrors },
+          { error: `No valid trades found in ${detectedFormat}.`, parseErrors },
           { status: 400 }
         );
       }
