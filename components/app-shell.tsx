@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BarChart3,
+  Calculator,
   Flag,
   LayoutDashboard,
   LineChart,
@@ -23,8 +24,8 @@ const traderNavigation: NavItem[] = [
   { href: "/trades", label: "Journal", iconKey: "journal", icon: BarChart3 },
   { href: "/summary", label: "Summary", iconKey: "summary", icon: LineChart },
   { href: "/trades/new", label: "New Trade", iconKey: "newTrade", icon: PencilLine },
+  { href: "/position-size", label: "Position Sizer", iconKey: "positionSizer", icon: Calculator },
   { href: "/leaderboard", label: "Leaderboard", iconKey: "leaderboard", icon: Medal },
-  { href: "/account", label: "Account", iconKey: "account", icon: User },
 ];
 
 const superTraderNavigation: NavItem[] = [
@@ -99,6 +100,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
                       {user.name}
                     </span>
+                    <Link
+                      href="/account"
+                      className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 font-medium text-slate-600 transition hover:border-accent hover:text-accent"
+                    >
+                      <User className="h-4 w-4" />
+                      Account
+                    </Link>
                     <LogoutButton />
                   </div>
                 </>

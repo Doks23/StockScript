@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  Calculator,
   Flag,
   LayoutDashboard,
   LineChart,
@@ -28,6 +29,7 @@ type IconKey =
   | "journal"
   | "summary"
   | "newTrade"
+  | "positionSizer"
   | "leaderboard"
   | "account"
   | "competitions"
@@ -38,6 +40,7 @@ const ICONS: Record<IconKey, React.ComponentType<{ className?: string }>> = {
   journal: BarChart3,
   summary: LineChart,
   newTrade: PencilLine,
+  positionSizer: Calculator,
   leaderboard: Medal,
   account: UserIcon,
   competitions: Flag,
@@ -73,8 +76,16 @@ export function MobileNav({ items, user }: MobileNavProps) {
   ).filter(Boolean) as NavSpec[];
 
   const fab = items.find((i) => i.href === FAB_HREF);
+  const account = items.find((i) => i.href === "/account") ?? {
+    href: "/account",
+    label: "Account",
+    iconKey: "account" as const,
+  };
   const overflow = items.filter(
-    (i) => !PRIMARY_HREFS.includes(i.href) && i.href !== FAB_HREF,
+    (i) =>
+      !PRIMARY_HREFS.includes(i.href) &&
+      i.href !== FAB_HREF &&
+      i.href !== "/account",
   );
 
   async function handleLogout() {
@@ -188,14 +199,28 @@ export function MobileNav({ items, user }: MobileNavProps) {
               })}
             </nav>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="mt-4 w-full rounded-2xl border border-loss/30 bg-loss/5 px-4 py-3 text-sm font-medium text-loss transition active:bg-loss/10 disabled:opacity-60"
-            >
-              {loggingOut ? "Logging out..." : "Logout"}
-            </button>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Link
+                href={account.href}
+                onClick={() => setSheetOpen(false)}
+                className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+                  isActive(pathname, account.href)
+                    ? "border-accent/30 bg-accent/5 text-accent"
+                    : "border-line bg-canvas text-slate-700"
+                }`}
+              >
+                <UserIcon className="h-4 w-4" />
+                {account.label}
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="rounded-2xl border border-loss/30 bg-loss/5 px-4 py-3 text-sm font-medium text-loss transition active:bg-loss/10 disabled:opacity-60"
+              >
+                {loggingOut ? "Logging out..." : "Logout"}
+              </button>
+            </div>
           </div>
         </>
       )}
