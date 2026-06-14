@@ -183,6 +183,42 @@ Per-trader metrics are aggregated from competition-filtered trades:
 
 ---
 
+---
+
+## Summary Page Metrics
+
+### Gross R (per trade)
+
+`Gross R = Net P/L % ÷ Stop Loss %`
+
+Measures how many times your stop loss risk you captured. Gross R of 2.0 means you made 2× your SL risk.
+
+### Net R (per trade)
+
+`Net R = Gross R × Risk %`
+
+Risk % is the percentage of capital at risk based on entry-to-stop distance plus charges. Net R adjusts Gross R by actual position size.
+
+### Simple RR (Risk-Reward Ratio)
+
+`Simple RR = Avg Win % ÷ Avg Loss %`
+
+Compares average winning return against average losing return.
+
+### AWLR (Adjusted Win/Loss Ratio)
+
+`AWLR = (Avg Win % × Win Rate) ÷ ((1 − Win Rate) × Avg Loss %)`
+
+A single metric that combines win rate and average win/loss size. Values > 1.0 indicate a positive expectancy system.
+
+### Default Stop Loss
+
+If a trade does not have a stop loss set, the summary defaults to 3% for calculation purposes:
+- **LONG:** SL = entry price × 1.03
+- **SHORT:** SL = entry price × 0.97
+
+Trades using the default SL are flagged with an amber indicator in the summary tables.
+
 ## Quick Reference: All Formulas
 
 | Metric | Formula |
@@ -204,6 +240,12 @@ Per-trader metrics are aggregated from competition-filtered trades:
 | Impact % (per trade) | `(displayPnl ÷ portfolioCapital) × 100` |
 | Age (days) | `diffInDays(endDate, startDate)` |
 | Stop Loss % | `((SL - entry) ÷ entry) × 100` |
+| Gross R | `netPnlPct ÷ stopLossPct` |
+| Net R | `grossR × riskPct` |
+| Simple RR | `avgWinPct ÷ avgLossPct` |
+| AWLR | `(avgWinPct × winRate) ÷ ((1 − winRate) × avgLossPct)` |
+| Default SL (LONG) | `entryPrice × 1.03` |
+| Default SL (SHORT) | `entryPrice × 0.97` |
 | Leaderboard sort | Impact% → Drawdown → WinRate |
 | Derived Status | `entryQty - exitQty ≤ 0 → CLOSED` |
 | Competition filter | Entry/exit/update within dates |

@@ -4,6 +4,7 @@ import {
   BarChart3,
   Flag,
   LayoutDashboard,
+  LineChart,
   Medal,
   PencilLine,
   Shield,
@@ -20,6 +21,7 @@ type NavItem = NavSpec & {
 const traderNavigation: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", iconKey: "dashboard", icon: LayoutDashboard },
   { href: "/trades", label: "Journal", iconKey: "journal", icon: BarChart3 },
+  { href: "/summary", label: "Summary", iconKey: "summary", icon: LineChart },
   { href: "/trades/new", label: "New Trade", iconKey: "newTrade", icon: PencilLine },
   { href: "/leaderboard", label: "Leaderboard", iconKey: "leaderboard", icon: Medal },
   { href: "/account", label: "Account", iconKey: "account", icon: User },

@@ -125,7 +125,7 @@ function TradesPageContent() {
             aria-label="Download CSV"
           >
             <Download size={15} />
-            <span className="hidden sm:inline">CSV</span>
+            <span className="hidden sm:inline">Download</span>
           </button>
           <button
             onClick={() => fetchData(filters, page)}

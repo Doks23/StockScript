@@ -57,6 +57,7 @@ After logging in, you'll see the navigation bar at the top. Here's what each lin
 |------|-------------|
 | **Dashboard** | Your performance overview — charts, numbers, trends |
 | **Journal** | Your complete trade list — search, filter, edit |
+| **Summary** | Analytics by setup and month — win %, R-multiples, quarterly breakdowns |
 | **New Trade** | Add a trade (manual form or CSV import) |
 | **Leaderboard** | See how you rank in competitions |
 | **Account** | Your profile and portfolio capital setting |
@@ -99,7 +100,46 @@ Use the **Hide $** button to temporarily hide amounts (useful when sharing your 
 
 ---
 
-## 5. Journal — Your Trade Ledger
+## 5. Trade Summary — Analytics by Setup and Month
+
+Click **Summary** in the navigation to see your closed trade analytics broken down in two views.
+
+### Setup Summary
+
+Groups your closed trades by setup pattern (Flag, VCP, Pullback, etc.). Each row shows:
+- **Trades, Wins, Losses** — count and win %
+- **Avg Win / Avg Loss** — average return % for winners and losers
+- **RR** — risk-reward ratio (avg win ÷ avg loss)
+- **AWLR** — adjusted win/loss ratio (accounts for both win rate and size)
+- **Gross R / Net R** — how many times your stop loss risk you captured
+- **Max R / Min R** — best and worst R-multiple trades
+- **Avg Win / Loss Days** — average hold time
+
+### Monthly Summary
+
+Groups closed trades by month with quarterly breakdowns:
+- Per-month metrics in a color-coded table (green for positive, red for negative)
+- Quarterly cards showing Net R, Trades, Win %, and RR for Q1–Q4
+- Yearly average row
+
+### Year-over-Year
+
+If you have data across multiple years, a Year-over-Year section lets you compare performance side-by-side. Click any year card to drill into its detailed breakdown.
+
+### Key Formulas
+
+| Metric | Formula |
+|--------|---------|
+| **Gross R** | Net P/L % ÷ Stop Loss % |
+| **Net R** | Gross R × Risk % |
+| **Simple RR** | Avg Win % ÷ Avg Loss % |
+| **AWLR** | (Avg Win % × Win Rate) ÷ ((1 − Win Rate) × Avg Loss %) |
+
+Trades without a stop loss use a default 3% SL for calculation (flagged with an amber indicator).
+
+---
+
+## 6. Journal — Your Trade Ledger
 
 Click **Journal** in the navigation to see every trade you've ever logged.
 
@@ -142,7 +182,7 @@ Check the boxes on the left side to:
 
 ---
 
-## 6. Adding a New Trade
+## 7. Adding a New Trade
 
 Click **New Trade** in the navigation. You'll see a form like this:
 
@@ -175,7 +215,7 @@ Click **"+ Add"** for partial exits (scaling out).
 
 > ⚠️ Total exit quantity can't be more than total entry quantity.
 
-### Step 4 — Extra Fields (below the transaction grid)
+### Step 4 — Risk & Rationale (below the transaction grid)
 
 | Field | Why use it |
 |-------|-----------|
@@ -184,13 +224,23 @@ Click **"+ Add"** for partial exits (scaling out).
 | **EOD Closing Price** | For open trades — the day's closing price (used for MTM) |
 | **Notes** | Why you took the trade, your setup, lessons learned |
 
-### Step 5 — Save
+### Step 5 — Journaling Tags (below notes)
+
+| Field | Why use it |
+|-------|-----------|
+| **Setup** | Chart pattern or strategy (Flag, VCP, Pullback, etc.) — select multiple |
+| **Plan Followed** | Did you follow your pre-trade plan? |
+| **Exit Trigger** | Why you exited — SL hit, target, time-based, etc. — select multiple |
+| **Proficiency** | What you did well — select multiple |
+| **Growth Areas** | What to improve next time — select multiple |
+
+### Step 6 — Save
 
 Click **"Log Trade"**. You'll be taken to that symbol's detail page.
 
 ---
 
-## 7. Trade Detail View & Chart Screenshots
+## 8. Trade Detail View & Chart Screenshots
 
 Click any symbol name in your Journal to open its detail page.
 
@@ -218,7 +268,7 @@ On the **Journal** page, open trades have a **"set"** link in the EOD column. Cl
 
 ---
 
-## 8. Leaderboard & Competitions
+## 9. Leaderboard & Competitions
 
 If your admin has set up competitions, you can join and see how you rank against other traders.
 
@@ -248,7 +298,7 @@ The leaderboard ranks traders by:
 
 ---
 
-## 9. Account Settings
+## 10. Account Settings
 
 Click **Account** in the navigation.
 
@@ -260,7 +310,7 @@ The most important setting here is **Portfolio Capital**. This is the total amou
 
 ---
 
-## 10. Quick Tips for Daily Use
+## 11. Quick Tips for Daily Use
 
 ### Every Day
 - ✅ Set **EOD closing prices** for your open trades so your P&L is accurate

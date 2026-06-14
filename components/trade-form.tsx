@@ -496,6 +496,59 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         </div>
       </div>
 
+      {/* Stop Loss, Charges, EOD Closing Price */}
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
+          Stop Loss
+          <input
+            name="stopLoss"
+            type="text"
+            placeholder="abs or -5%"
+            defaultValue={
+              initialData?.stopLoss
+                ? String(initialData.stopLoss)
+                : ""
+            }
+            className="form-input h-9 w-full sm:w-[110px]"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
+          Charges
+          <input
+            name="charges"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={initialData?.charges ?? "0"}
+            className="form-input h-9 w-full sm:w-[100px]"
+          />
+        </label>
+        <label
+          className="col-span-2 flex flex-col gap-1.5 text-xs text-slate-500 sm:col-span-1 sm:flex-row sm:items-center sm:gap-2 sm:text-sm"
+          title="End of day Mark to Market"
+        >
+          EOD Closing Price
+          <input
+            name="closingPrice"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={initialData?.closingPrice ?? ""}
+            className="form-input h-9 w-full sm:w-[100px]"
+          />
+        </label>
+      </div>
+
+      {/* Notes / Rationale */}
+      <textarea
+        name="notes"
+        rows={2}
+        placeholder="Setup rationale, reflection notes..."
+        defaultValue={initialData?.notes || ""}
+        className="form-input resize-y text-sm"
+      />
+
+      {/* Setup, Plan, Exit Trigger, Proficiency, Growth Areas */}
       <div className="grid gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-2 lg:grid-cols-5">
         <label className="flex flex-col gap-1.5 text-xs text-slate-500">
           Setup
@@ -575,57 +628,6 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           </select>
         </label>
       </div>
-
-      {/* Auxiliary fields */}
-      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
-        <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
-          Stop Loss
-          <input
-            name="stopLoss"
-            type="text"
-            placeholder="abs or -5%"
-            defaultValue={
-              initialData?.stopLoss
-                ? String(initialData.stopLoss)
-                : ""
-            }
-            className="form-input h-9 w-full sm:w-[110px]"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
-          Charges
-          <input
-            name="charges"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={initialData?.charges ?? "0"}
-            className="form-input h-9 w-full sm:w-[100px]"
-          />
-        </label>
-        <label
-          className="col-span-2 flex flex-col gap-1.5 text-xs text-slate-500 sm:col-span-1 sm:flex-row sm:items-center sm:gap-2 sm:text-sm"
-          title="End of day Mark to Market"
-        >
-          EOD Closing Price
-          <input
-            name="closingPrice"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={initialData?.closingPrice ?? ""}
-            className="form-input h-9 w-full sm:w-[100px]"
-          />
-        </label>
-      </div>
-
-      <textarea
-        name="notes"
-        rows={2}
-        placeholder="Setup rationale, reflection notes..."
-        defaultValue={initialData?.notes || ""}
-        className="form-input resize-y text-sm"
-      />
 
       <div className="mt-2 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
         {error ? (

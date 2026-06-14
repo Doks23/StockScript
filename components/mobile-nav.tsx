@@ -7,6 +7,7 @@ import {
   BarChart3,
   Flag,
   LayoutDashboard,
+  LineChart,
   Medal,
   MoreHorizontal,
   PencilLine,
@@ -25,6 +26,7 @@ export type NavSpec = {
 type IconKey =
   | "dashboard"
   | "journal"
+  | "summary"
   | "newTrade"
   | "leaderboard"
   | "account"
@@ -34,6 +36,7 @@ type IconKey =
 const ICONS: Record<IconKey, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   journal: BarChart3,
+  summary: LineChart,
   newTrade: PencilLine,
   leaderboard: Medal,
   account: UserIcon,
