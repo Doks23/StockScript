@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
 
     const realizedRows = filtered.filter((r) => r.derivedStatus === "CLOSED");
     const openRows = filtered.filter((r) => r.derivedStatus === "OPEN");
-    const totalAlloc = filtered.reduce((s, r) => s + r.allocationPct, 0);
+    const totalAlloc = openRows.reduce((s, r) => s + r.allocationPct, 0);
     const totalImpact = filtered.reduce((s, r) => s + r.impactPct, 0);
     const totalRealizedPnl = realizedRows.reduce((s, r) => s + r.pnlAmount, 0);
     const totalOpenPnl = openRows.reduce((s, r) => s + r.pnlAmount, 0);

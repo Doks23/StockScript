@@ -678,6 +678,7 @@ export function buildGroupedJournalMetrics(
 ) {
   // Only fully closed trades count towards win rate, profit factor, etc.
   const fullyClosedRows = rows.filter((row) => row.derivedStatus === "CLOSED");
+  const openRows = rows.filter((row) => row.derivedStatus === "OPEN");
   const winningRows = fullyClosedRows.filter((row) => row.realizedPnl > 0);
   const grossProfit = winningRows.reduce((sum, row) => sum + row.realizedPnl, 0);
   const grossLoss = Math.abs(
@@ -694,6 +695,7 @@ export function buildGroupedJournalMetrics(
     profitFactor: grossLoss === 0 ? (grossProfit > 0 ? grossProfit : 0) : grossProfit / grossLoss,
     returnOnCapital: totalCapital > 0 ? (totalPnl / totalCapital) * 100 : 0,
     portfolioReturn: portfolioCapital > 0 ? (totalPnl / portfolioCapital) * 100 : 0,
+    totalAllocationPct: openRows.reduce((sum, row) => sum + row.allocationPct, 0),
     totalPnl,
   };
 }

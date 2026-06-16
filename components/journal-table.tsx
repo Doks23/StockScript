@@ -297,7 +297,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
       openRows.reduce((s, r) => s + r.realizedPnl, 0);
     const unrealizedPnl = openRows.reduce((s, r) => s + r.unrealizedPnl, 0);
     const totalCapital = rows.reduce((s, r) => s + r.capital, 0);
-    const totalAlloc = rows.reduce((s, r) => s + r.allocationPct, 0);
+    const totalAlloc = openRows.reduce((s, r) => s + r.allocationPct, 0);
     const totalImpact = rows.reduce((s, r) => s + r.impactPct, 0);
     const totalPnl = realizedPnl + unrealizedPnl;
     const totalPnlPct = totalCapital > 0 ? (totalPnl / totalCapital) * 100 : 0;
