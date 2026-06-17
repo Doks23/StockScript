@@ -23,6 +23,34 @@ const hasPnlData = (row: ReturnType<typeof buildGroupedJournalRows>[number]) =>
   !!(row.closingPrice && row.closingPrice > 0);
 const isPartiallyClosed = (row: ReturnType<typeof buildGroupedJournalRows>[number]) =>
   row.derivedStatus === "OPEN" && row.exitQty > 0;
+const getTradeStatusUi = (row: ReturnType<typeof buildGroupedJournalRows>[number]) => {
+  if (isPartiallyClosed(row)) {
+    return {
+      label: "PARTIAL",
+      chipClass: "border-amber-200 bg-amber-50 text-amber-700",
+      borderClass: "border-l-amber-400",
+      rowClass: "bg-amber-50/40",
+      title: "Partially closed with remaining open quantity",
+    };
+  }
+  if (row.derivedStatus === "OPEN") {
+    return {
+      label: "OPEN",
+      chipClass: "border-blue-200 bg-blue-50 text-blue-700",
+      borderClass: "border-l-blue-400",
+      rowClass: "bg-blue-50/20",
+      title: "Open position",
+    };
+  }
+
+  return {
+    label: "",
+    chipClass: "",
+    borderClass: "border-l-slate-200",
+    rowClass: "hover:bg-slate-50",
+    title: "Closed trade",
+  };
+};
 
 type Props = { params: { competitionId: string; userId: string } };
 
@@ -108,10 +136,8 @@ export default async function TraderDrillDownPage({ params }: Props) {
                 const maxLegs = Math.max(trade.entryLegs.length, trade.exitLegs.length, 1);
                 const showPnl = hasPnlData(trade);
                 const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-500" : "text-slate-400";
-                const isPartial = isPartiallyClosed(trade);
-                const borderStyle = trade.derivedStatus === "OPEN"
-                  ? "border-l-4 border-l-blue-400"
-                  : "";
+                const statusUi = getTradeStatusUi(trade);
+                const borderStyle = `border-l-4 ${statusUi.borderClass}`;
 
                 return (
                   <React.Fragment key={trade.id}>
@@ -122,7 +148,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
 
                       return (
                         <tr key={`${trade.id}-${idx}`}
-                          className={`transition-colors ${isPartial ? "bg-amber-50/40" : "hover:bg-slate-50"} ${isFirst ? borderStyle : "border-l-4 border-l-transparent"}`}>
+                          className={`transition-colors ${statusUi.rowClass} ${isFirst ? borderStyle : "border-l-4 border-l-transparent"}`}>
 
                           {isFirst && (
                             <td className="px-3 py-3 text-left align-middle" rowSpan={maxLegs}>
@@ -135,6 +161,14 @@ export default async function TraderDrillDownPage({ params }: Props) {
                                 <span className="font-semibold text-slate-800 text-[12px] uppercase tracking-wide">
                                   {trade.symbol}
                                 </span>
+                                {statusUi.label && (
+                                  <span
+                                    className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide ${statusUi.chipClass}`}
+                                    title={statusUi.title}
+                                  >
+                                    {statusUi.label}
+                                  </span>
+                                )}
                               </div>
                             </td>
                           )}

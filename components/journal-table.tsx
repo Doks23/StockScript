@@ -24,6 +24,34 @@ const hasPnlData = (row: GroupedTradeRow) =>
   row.derivedStatus === "CLOSED" || row.exitQty > 0 || !!(row.closingPrice && row.closingPrice > 0);
 const isPartiallyClosed = (row: GroupedTradeRow) =>
   row.derivedStatus === "OPEN" && row.exitQty > 0;
+const getTradeStatusUi = (row: GroupedTradeRow) => {
+  if (isPartiallyClosed(row)) {
+    return {
+      label: "PARTIAL",
+      chipClass: "border-amber-200 bg-amber-50 text-amber-700",
+      borderClass: "border-l-amber-400",
+      rowClass: "bg-amber-50/40",
+      title: "Partially closed with remaining open quantity",
+    };
+  }
+  if (row.derivedStatus === "OPEN") {
+    return {
+      label: "OPEN",
+      chipClass: "border-blue-200 bg-blue-50 text-blue-700",
+      borderClass: "border-l-blue-400",
+      rowClass: "bg-blue-50/20",
+      title: "Open position",
+    };
+  }
+
+  return {
+    label: "",
+    chipClass: "",
+    borderClass: "border-l-slate-200",
+    rowClass: "bg-white",
+    title: "Closed trade",
+  };
+};
 
 function splitAttr(value?: string | null) {
   if (!value) return [];
@@ -168,10 +196,10 @@ function StopLossInput({ tradeId, stopLoss, entryPrice, onUpdate }: { tradeId: s
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className={`cursor-pointer rounded text-[11px] tabular-nums transition ${
-          stopLossPct !== null ? "text-red-500 font-medium" : "text-slate-600 italic hover:text-blue-600"
+        className={`cursor-pointer rounded-md border border-transparent px-1.5 py-0.5 text-[11px] tabular-nums transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+          stopLossPct !== null ? "font-medium text-red-500" : "italic text-slate-500"
         }`}
-        title={stopLoss ? `₹ ${fmtPrice(stopLoss)}` : undefined}
+        title={stopLoss ? `Click to edit stop loss. Current price: ₹ ${fmtPrice(stopLoss)}` : "Click to set stop loss"}
       >
         {stopLossPct !== null ? fmtPctNoSign(stopLossPct) : "set"}
       </button>
@@ -182,7 +210,7 @@ function StopLossInput({ tradeId, stopLoss, entryPrice, onUpdate }: { tradeId: s
     <input
       autoFocus
       placeholder="abs or -5%"
-      className="w-[82px] rounded border border-blue-400 bg-blue-50 px-1.5 py-0.5 text-[11px] tabular-nums text-slate-800 outline-none"
+      className="w-[82px] rounded-md border border-blue-400 bg-blue-50 px-1.5 py-0.5 text-[11px] tabular-nums text-slate-800 outline-none ring-2 ring-blue-100"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
@@ -194,6 +222,11 @@ function StopLossInput({ tradeId, stopLoss, entryPrice, onUpdate }: { tradeId: s
 function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: string; initialValue: number | null; onUpdate: () => void }) {
   const [value, setValue] = useState(initialValue?.toString() || "");
   const [isEditing, setIsEditing] = useState(false);
+  const numericValue = Number(value);
+  const title =
+    value && Number.isFinite(numericValue)
+      ? `Click to edit EOD price. Current price: ₹ ${fmtPrice(numericValue)}`
+      : "Click to set EOD price";
 
   async function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
@@ -223,7 +256,8 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="cursor-pointer rounded text-[11px] tabular-nums text-slate-600 italic hover:text-blue-600 transition"
+        className="cursor-pointer rounded-md border border-transparent px-1.5 py-0.5 text-[11px] tabular-nums text-slate-500 italic transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+        title={title}
       >
         {value || "set"}
       </button>
@@ -233,7 +267,7 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
   return (
     <input
       autoFocus
-      className="w-[70px] rounded border border-blue-400 bg-blue-50 px-1.5 py-0.5 text-[11px] tabular-nums text-slate-800 outline-none"
+      className="w-[70px] rounded-md border border-blue-400 bg-blue-50 px-1.5 py-0.5 text-[11px] tabular-nums text-slate-800 outline-none ring-2 ring-blue-100"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
@@ -418,9 +452,9 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
           const isClosed = t.derivedStatus === "CLOSED";
           const isSelected = selectedIds.has(t.id);
           const isDeleting = deletingIds.has(t.id);
-          const isPartial = isPartiallyClosed(t);
+          const statusUi = getTradeStatusUi(t);
           const accent = !isClosed
-            ? "border-l-blue-400"
+            ? statusUi.borderClass
             : t.pnlAmount > 0
             ? "border-l-emerald-500"
             : t.pnlAmount < 0
@@ -432,7 +466,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
           return (
             <div
               key={t.id}
-              className={`rounded-2xl border border-line border-l-4 ${accent} ${isPartial ? "bg-amber-50/50" : "bg-white"} p-3 shadow-sm ${
+              className={`rounded-2xl border border-line border-l-4 ${accent} ${statusUi.rowClass} p-3 shadow-sm ${
                 isSelected ? "ring-2 ring-blue-300" : ""
               } ${isDeleting ? "opacity-40" : ""}`}
             >
@@ -459,15 +493,14 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                   >
                     {t.symbol}
                   </Link>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                      isClosed
-                        ? "bg-slate-100 text-slate-500"
-                        : "bg-blue-100 text-blue-700"
-                    }`}
-                  >
-                    {isClosed ? "CLOSED" : "OPEN"}
-                  </span>
+                  {statusUi.label && (
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide ${statusUi.chipClass}`}
+                      title={statusUi.title}
+                    >
+                      {statusUi.label}
+                    </span>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {!isClosed && (
@@ -685,9 +718,9 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
               const showPnl = hasPnlData(t);
               const maxLegs = Math.max(t.entryLegs.length, t.exitLegs?.length || 0, 1);
 
-              const isPartial = isPartiallyClosed(t);
+              const statusUi = getTradeStatusUi(t);
               const borderColor = !isClosed
-                ? "border-l-4 border-l-blue-400"
+                ? `border-l-4 ${statusUi.borderClass}`
                 : t.pnlAmount > 0
                 ? "border-l-4 border-l-emerald-500"
                 : t.pnlAmount < 0
@@ -696,11 +729,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
 
               const rowBg = isSelected
                 ? "bg-blue-50"
-                : isPartial
-                ? "bg-amber-50/40"
-                : !isClosed
-                ? "bg-blue-50/20"
-                : "bg-white";
+                : statusUi.rowClass;
 
               return (
                 <React.Fragment key={t.id}>
@@ -732,6 +761,14 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                                 className="font-semibold text-slate-800 hover:text-blue-600 transition text-[12px] uppercase tracking-wide">
                                 {t.symbol}
                               </Link>
+                              {statusUi.label && (
+                                <span
+                                  className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide ${statusUi.chipClass}`}
+                                  title={statusUi.title}
+                                >
+                                  {statusUi.label}
+                                </span>
+                              )}
                             </div>
                             <JournalAttributeChips trade={t} />
                           </td>
