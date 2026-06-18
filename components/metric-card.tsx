@@ -1,8 +1,12 @@
+import type { ReactNode } from "react";
+
 type MetricCardProps = {
   label: string;
   value: string;
-  detail?: string;
-  tone?: "default" | "profit" | "loss";
+  detail?: ReactNode;
+  tone?: "default" | "profit" | "loss" | "warning";
+  compact?: boolean;
+  className?: string;
 };
 
 export function MetricCard({
@@ -10,36 +14,57 @@ export function MetricCard({
   value,
   detail,
   tone = "default",
+  compact = false,
+  className = "",
 }: MetricCardProps) {
-  const toneClass =
-    tone === "profit"
-      ? "from-profit/15 to-white"
-      : tone === "loss"
-        ? "from-loss/12 to-white"
-        : "from-accent/12 to-white";
+  const toneBorder =
+    tone === "warning" ? "border-amber-200" : "border-line";
+
   const valueClass =
     tone === "profit"
       ? "text-profit"
       : tone === "loss"
         ? "text-loss"
-        : "text-ink";
+        : tone === "warning"
+          ? "text-amber-600"
+          : "text-ink";
 
   return (
     <article
-      className={`rounded-2xl border border-line bg-gradient-to-br ${toneClass} p-3 shadow-soft transition-all duration-200 hover:scale-[1.02] hover:shadow-md cursor-default sm:rounded-3xl sm:p-5`}
+      className={`border ${toneBorder} bg-white shadow-soft transition-all duration-200 cursor-default ${
+        compact
+          ? "rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2"
+          : "rounded-2xl px-4 py-3 hover:shadow-md sm:px-5 sm:py-4"
+      } ${className}`}
     >
-      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:text-sm sm:tracking-[0.2em]">
+      <p
+        className={`uppercase text-slate-500 ${
+          compact
+            ? "text-[9px] font-medium tracking-[0.12em]"
+            : "text-[10px] tracking-[0.18em] sm:text-xs sm:tracking-[0.2em]"
+        }`}
+      >
         {label}
       </p>
       <p
-        className={`mt-2 font-display text-lg font-semibold ${valueClass} sm:mt-4 sm:text-3xl`}
+        className={`font-display font-semibold ${valueClass} ${
+          compact
+            ? "mt-0 text-sm sm:text-base"
+            : "mt-1 text-xl sm:mt-2 sm:text-2xl"
+        }`}
       >
         {value}
       </p>
       {detail ? (
-        <p className="mt-1 text-xs text-slate-600 sm:mt-2 sm:text-sm">
-          {detail}
-        </p>
+        typeof detail === "string" ? (
+          <p className="mt-0.5 text-[10px] leading-tight text-slate-500 sm:text-xs">
+            {detail}
+          </p>
+        ) : (
+          <div className="mt-0.5 text-[10px] leading-tight text-slate-500 sm:text-xs">
+            {detail}
+          </div>
+        )
       ) : null}
     </article>
   );

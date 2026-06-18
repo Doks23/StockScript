@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import type { TradeWithTxns } from "@/lib/trade-utils";
+import { getWeightedEntryPrice, getTotalEntryQty, calculateOpenPnl } from "@/lib/trade-utils";
 import {
   AreaChart,
   Area,
@@ -16,39 +17,30 @@ import {
   Bar,
   ReferenceLine,
 } from "recharts";
+import { formatCurrency, formatPrice, formatPercent } from "@/lib/format";
 
-// Use these to compute the gradient stop offset where the area crosses zero.
-function computeZeroOffset(data: { equity: number }[]) {
+const PROFIT = "#157f5b";
+const LOSS = "#b33f40";
+const WARNING = "#d97706";
+
+function computeEquityOffset(
+  data: { equity: number }[],
+  baseline: number,
+) {
   if (!data.length) return 1;
   const values = data.map((d) => d.equity);
   const max = Math.max(...values);
   const min = Math.min(...values);
-  if (max <= 0) return 0;
-  if (min >= 0) return 1;
-  return max / (max - min);
+  if (max <= baseline) return 0;
+  if (min >= baseline) return 1;
+  return (max - baseline) / (max - min);
 }
-import { ArrowUp, ArrowDown } from "lucide-react";
-import { calculateOpenPnl } from "@/lib/trade-utils";
 
-const ACCENT = "#0c8f6a";
-const PROFIT = "#157f5b";
-const PROFIT_LIGHT = "#8ee6bd";
-const LOSS = "#b33f40";
-
-export function DashboardCharts({
-  trades,
-  metrics,
-  userCapital,
-  groupedTrades,
-  showAmounts = true,
-}: {
-  trades: any[];
-  metrics: any;
-  userCapital: number;
-  groupedTrades: any[];
-  showAmounts?: boolean;
-}) {
-  const { equityCurve, recentStats, monthlyTotals } = useMemo(() => {
+export function useEquityCurveData(
+  trades: TradeWithTxns[],
+  userCapital: number,
+) {
+  return useMemo(() => {
     const sorted = [...trades].sort(
       (a, b) =>
         new Date(a.firstEntryAt ?? a.createdAt).getTime() -
@@ -56,394 +48,395 @@ export function DashboardCharts({
     );
 
     let cumulative = 0;
-    const equityCurve = sorted.map((t: any) => {
+    const curve = sorted.map((t) => {
       const pnl =
         t.status === "CLOSED"
-          ? t.netPnl
-          : t.closingPrice
-            ? calculateOpenPnl(t)
-            : 0;
+          ? (t.netPnl ?? 0)
+          : calculateOpenPnl(t);
       cumulative += pnl;
       return {
         date: new Date(t.firstEntryAt ?? t.createdAt).toLocaleDateString(
           undefined,
           { month: "short", day: "numeric" },
         ),
-        equity: cumulative,
+        equity: userCapital + cumulative,
+        pnl: cumulative,
       };
     });
 
-    const recent = sorted.slice(-10);
-    const last10 = {
-      winners: recent.filter((t: any) => {
-        const pnl =
-          t.status === "CLOSED"
-            ? t.netPnl
-            : t.closingPrice
-              ? calculateOpenPnl(t)
-              : 0;
-        return pnl > 0;
-      }).length,
-      losers: recent.filter((t: any) => {
-        const pnl =
-          t.status === "CLOSED"
-            ? t.netPnl
-            : t.closingPrice
-              ? calculateOpenPnl(t)
-              : 0;
-        return pnl < 0;
-      }).length,
-      total: recent.length,
-    };
+    if (!curve.length) {
+      return {
+        curve: [{ date: "-", equity: userCapital, pnl: 0 }],
+        peak: userCapital,
+        current: userCapital,
+        maxDrawdownPct: 0,
+        maxDrawdownAmt: 0,
+        recovery: 100,
+        trough: userCapital,
+      };
+    }
 
-    const monthlyMap = new Map();
-    sorted.forEach((t: any) => {
+    const equityValues = curve.map((c) => c.equity);
+    const peak = Math.max(...equityValues);
+    const current = equityValues[equityValues.length - 1];
+    const trough = Math.min(...equityValues);
+
+    let runningPeak = equityValues[0];
+    let maxDD = 0;
+    for (const eq of equityValues) {
+      runningPeak = Math.max(runningPeak, eq);
+      const dd = runningPeak > 0 ? ((runningPeak - eq) / runningPeak) * 100 : 0;
+      maxDD = Math.max(maxDD, dd);
+    }
+    const maxDrawdownAmt = Math.abs(peak - trough);
+
+    const recovery =
+      peak > trough
+        ? Math.min(100, ((current - trough) / (peak - trough)) * 100)
+        : 100;
+
+    return {
+      curve,
+      peak,
+      current,
+      maxDrawdownPct: maxDD,
+      maxDrawdownAmt,
+      recovery,
+      trough,
+    };
+  }, [trades, userCapital]);
+}
+
+export function useMonthlyPnlData(trades: TradeWithTxns[]) {
+  return useMemo(() => {
+    const sorted = [...trades].sort(
+      (a, b) =>
+        new Date(a.firstEntryAt ?? a.createdAt).getTime() -
+        new Date(b.firstEntryAt ?? b.createdAt).getTime(),
+    );
+
+    const monthlyMap = new Map<string, number>();
+    sorted.forEach((t) => {
       const month = new Date(t.firstEntryAt ?? t.createdAt).toLocaleDateString(
         undefined,
         { month: "short", year: "2-digit" },
       );
-      if (!monthlyMap.has(month)) {
-        monthlyMap.set(month, {
-          month,
-          winners: 0,
-          losers: 0,
-          pnl: 0,
-          capital: 0,
-        });
-      }
-      const data = monthlyMap.get(month);
-
       const pnl =
         t.status === "CLOSED"
-          ? t.netPnl
+          ? (t.netPnl ?? 0)
           : t.closingPrice
             ? calculateOpenPnl(t)
             : 0;
-      if (pnl > 0) data.winners += 1;
-      if (pnl < 0) data.losers += 1;
-
-      data.pnl += pnl;
-      data.capital += t.capitalUsed || t.weightedEntryPrice * t.totalEntryQty;
+      monthlyMap.set(month, (monthlyMap.get(month) ?? 0) + pnl);
     });
 
-    const monthlyTotals = Array.from(monthlyMap.values()).map((m: any) => ({
-      ...m,
-      pnlPct: m.capital > 0 ? (m.pnl / m.capital) * 100 : 0,
-    }));
+    const data = Array.from(monthlyMap.entries())
+      .map(([month, pnl]) => ({ month, pnl }))
+      .sort((a, b) => {
+        const parse = (m: string) => {
+          const [mon, yr] = m.split(" ");
+          const months = "JanFebMarAprMayJunJulAugSepOctNovDec";
+          return parseInt(yr) * 12 + months.indexOf(mon) / 3;
+        };
+        return parse(a.month) - parse(b.month);
+      })
+      .slice(-5);
 
-    return { equityCurve, recentStats: last10, monthlyTotals };
+    const totalPnl = data.reduce((s, d) => s + d.pnl, 0);
+    return { data, totalPnl };
   }, [trades]);
+}
 
-  const PIE_COLORS = [PROFIT, LOSS];
-  const pieData = [
-    { name: "Wins", value: metrics.winRate },
-    { name: "Losses", value: 100 - metrics.winRate },
-  ];
+export function EquityCurveChart({
+  equityData,
+  showAmounts,
+}: {
+  equityData: ReturnType<typeof useEquityCurveData>;
+  showAmounts: boolean;
+}) {
+  const { curve, peak, current, maxDrawdownPct, maxDrawdownAmt, recovery } =
+    equityData;
+  const lastPnl = curve[curve.length - 1]?.pnl ?? 0;
+  const startingCapital = current - lastPnl;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Top row */}
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {/* Recent Performance */}
-        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-          <p className="text-xs uppercase tracking-wider text-slate-500 mb-3 sm:text-sm sm:mb-4">
-            Recent Performance
+    <div className="flex h-full flex-col">
+      <div className="mb-1.5 grid grid-cols-4 gap-3 text-xs">
+        <div>
+          <span className="text-slate-400">Peak</span>
+          <p className="font-medium text-ink">
+            {showAmounts ? formatCurrency(peak) : "•••"}
           </p>
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2">
-              <ArrowUp className="w-6 h-6 text-profit sm:w-8 sm:h-8" />
-              <span className="text-2xl font-display font-semibold text-profit sm:text-3xl">
-                {recentStats.winners}
-              </span>
-            </div>
-            <span className="text-xl text-slate-300">|</span>
-            <div className="flex items-center gap-2">
-              <ArrowDown className="w-6 h-6 text-loss sm:w-8 sm:h-8" />
-              <span className="text-2xl font-display font-semibold text-loss sm:text-3xl">
-                {recentStats.losers}
-              </span>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-line flex justify-between text-xs text-slate-500 sm:mt-4 sm:pt-4 sm:text-sm">
-            <span className="text-slate-400">Sample Size</span>
-            <span className="font-medium text-ink">
-              {recentStats.total} trades
-            </span>
-          </div>
         </div>
-
-        {/* Batting Average */}
-        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm flex flex-col items-center sm:rounded-3xl sm:p-5">
-          <p className="text-xs uppercase tracking-wider text-slate-500 mb-2 self-start sm:text-sm">
-            Batting Average
+        <div>
+          <span className="text-slate-400">Current</span>
+          <p className="font-medium text-ink">
+            {showAmounts ? formatCurrency(current) : "•••"}
           </p>
-          <div className="h-28 w-full mt-2 sm:h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={30}
-                  outerRadius={50}
-                  stroke="none"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={PIE_COLORS[index % PIE_COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: any, name: any) => [
-                    `${Number(value).toFixed(1)}%`,
-                    name,
-                  ]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex gap-4 mt-2 text-sm font-medium">
-            <span style={{ color: PROFIT }}>
-              Win {metrics.winRate.toFixed(1)}%
-            </span>
-            <span style={{ color: LOSS }}>
-              Loss {(100 - metrics.winRate).toFixed(1)}%
-            </span>
-          </div>
         </div>
-
-        {/* Trade Stats Block */}
-        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm space-y-2.5 text-sm sm:col-span-2 md:col-span-1 sm:rounded-3xl sm:p-5 sm:space-y-3">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Trade</span>
-            <span className="font-medium text-ink">{metrics.totalTrades}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Win</span>
-            <span className="font-medium" style={{ color: PROFIT }}>
-              {Math.round(metrics.totalTrades * (metrics.winRate / 100))}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Loss</span>
-            <span className="font-medium" style={{ color: LOSS }}>
-              {metrics.totalTrades -
-                Math.round(metrics.totalTrades * (metrics.winRate / 100))}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Pnl</span>
-            <span
-              className={`font-medium ${metrics.totalMtmPnl >= 0 ? "text-profit" : "text-loss"}`}
-            >
-              {showAmounts ? formatCurrency(metrics.totalMtmPnl) : "•••"}
-            </span>
-          </div>
+        <div>
+          <span className="text-slate-400">Max DD</span>
+          <p className="font-medium text-loss">
+            {maxDrawdownPct.toFixed(2)}% /{" "}
+            {showAmounts ? formatCurrency(maxDrawdownAmt) : "•••"}
+          </p>
+        </div>
+        <div>
+          <span className="text-slate-400">Recovery</span>
+          <p
+            className={`font-medium ${
+              recovery >= 90 ? "text-profit" : recovery >= 50 ? "text-amber-600" : "text-loss"
+            }`}
+          >
+            {recovery.toFixed(1)}%
+          </p>
         </div>
       </div>
 
-      {/* Equity Curve */}
-      <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
-        <p className="text-sm font-medium text-slate-700 mb-3 sm:text-md sm:mb-4">Equity Curve</p>
-        <div className="h-[220px] w-full sm:h-[280px]">
+      <div className="min-h-0 flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={curve}
+            margin={{ top: 2, right: 6, left: -16, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient
+                id="equityFill"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="0%"
+                  stopColor={PROFIT}
+                  stopOpacity={0.2}
+                />
+                <stop
+                  offset={`${computeEquityOffset(curve, startingCapital) * 100}%`}
+                  stopColor={PROFIT}
+                  stopOpacity={0.02}
+                />
+                <stop
+                  offset={`${computeEquityOffset(curve, startingCapital) * 100}%`}
+                  stopColor={LOSS}
+                  stopOpacity={0.02}
+                />
+                <stop
+                  offset="100%"
+                  stopColor={LOSS}
+                  stopOpacity={0.2}
+                />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 9, fill: "#94a3b8" }}
+              tickMargin={4}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={(val) =>
+                showAmounts ? `₹${(val / 1000).toFixed(0)}K` : ""
+              }
+              tick={{ fontSize: 9, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+              domain={["dataMin - 5000", "dataMax + 5000"]}
+            />
+            <ReferenceLine
+              y={startingCapital}
+              stroke="#cbd5e1"
+              strokeDasharray="3 3"
+              strokeWidth={1}
+            />
+            <Tooltip
+              formatter={(value: any) => formatCurrency(Number(value))}
+              contentStyle={{
+                fontSize: 12,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="equity"
+              stroke={current >= startingCapital ? PROFIT : LOSS}
+              strokeWidth={2}
+              fillOpacity={1}
+              fill="url(#equityFill)"
+              baseValue={startingCapital}
+              dot={false}
+              activeDot={{ r: 3, strokeWidth: 0 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export function MonthlyPnlChart({
+  data,
+  totalPnl,
+  showAmounts,
+}: {
+  data: { month: string; pnl: number }[];
+  totalPnl: number;
+  showAmounts: boolean;
+}) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+          Monthly P&L
+        </p>
+        <span
+          className={`text-xs font-semibold ${totalPnl >= 0 ? "text-profit" : "text-loss"}`}
+        >
+          {showAmounts ? formatCurrency(totalPnl) : "•••"}
+          <span className="ml-1 font-normal text-slate-400">
+            Total
+          </span>
+        </span>
+      </div>
+
+      <div className="min-h-0 flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            margin={{ top: 2, right: 2, left: -16, bottom: 0 }}
+          >
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 9, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis hide />
+            <Tooltip
+              formatter={(value: any) => formatCurrency(Number(value))}
+              contentStyle={{
+                fontSize: 12,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+              }}
+            />
+            <ReferenceLine y={0} stroke="#e2e5ea" strokeWidth={1} />
+            <Bar dataKey="pnl" radius={[3, 3, 0, 0]} maxBarSize={32}>
+              {data.map((entry, idx) => (
+                <Cell
+                  key={idx}
+                  fill={entry.pnl >= 0 ? PROFIT : LOSS}
+                  fillOpacity={0.7}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export function PnlDistributionChart({
+  winners,
+  losers,
+  totalTrades,
+  avgWin,
+  avgLoss,
+  largestWin,
+  largestLoss,
+}: {
+  winners: number;
+  losers: number;
+  totalTrades: number;
+  avgWin: number;
+  avgLoss: number;
+  largestWin: number;
+  largestLoss: number;
+}) {
+  const breakeven = totalTrades - winners - losers;
+  const winPct = totalTrades > 0 ? (winners / totalTrades) * 100 : 0;
+  const lossPct = totalTrades > 0 ? (losers / totalTrades) * 100 : 0;
+  const bePct = totalTrades > 0 ? (breakeven / totalTrades) * 100 : 0;
+
+  const pieData = [
+    { name: "Winners", value: winners, color: PROFIT },
+    { name: "Losers", value: losers, color: LOSS },
+  ].filter((d) => d.value > 0);
+
+  return (
+    <div className="flex h-full flex-col">
+      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+        P&L Distribution
+      </p>
+
+      <div className="flex min-h-0 flex-1 items-center gap-2">
+        <div className="h-full w-[45%]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={equityCurve}
-              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="colorEquityFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={PROFIT} stopOpacity={0.25} />
-                  <stop
-                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
-                    stopColor={PROFIT}
-                    stopOpacity={0.02}
-                  />
-                  <stop
-                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
-                    stopColor={LOSS}
-                    stopOpacity={0.02}
-                  />
-                  <stop offset="100%" stopColor={LOSS} stopOpacity={0.25} />
-                </linearGradient>
-                <linearGradient id="colorEquityStroke" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={PROFIT} />
-                  <stop
-                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
-                    stopColor={PROFIT}
-                  />
-                  <stop
-                    offset={`${computeZeroOffset(equityCurve) * 100}%`}
-                    stopColor={LOSS}
-                  />
-                  <stop offset="100%" stopColor={LOSS} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 12, fill: "#94a3b8" }}
-                tickMargin={10}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={(val) => showAmounts ? `₹${val}` : ""}
-                tick={{ fontSize: 12, fill: "#94a3b8" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="3 3" />
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                cx="50%"
+                cy="50%"
+                innerRadius={24}
+                outerRadius={38}
+                stroke="none"
+              >
+                {pieData.map((entry, idx) => (
+                  <Cell key={idx} fill={entry.color} />
+                ))}
+              </Pie>
               <Tooltip
-                formatter={(value: any) => formatCurrency(Number(value))}
+                formatter={(value: any, name: any) => [
+                  `${value} (${name === "Winners" ? winPct.toFixed(1) : lossPct.toFixed(1)}%)`,
+                  name,
+                ]}
+                contentStyle={{
+                  fontSize: 12,
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                }}
               />
-              <Area
-                type="monotone"
-                dataKey="equity"
-                stroke="url(#colorEquityStroke)"
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorEquityFill)"
-                baseValue={0}
-              />
-            </AreaChart>
+            </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      {/* Bottom Row Charts */}
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Portfolio Allocation % */}
-        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-          <p className="text-sm font-medium text-slate-700 mb-3 sm:mb-4">
-            Portfolio Allocation % (Open)
-          </p>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={trades
-                  .filter((t: any) => t.status === "OPEN")
-                  .slice(0, 6)
-                  .map((t: any) => ({
-                    symbol: t.symbol,
-                    allocationPct:
-                      userCapital > 0
-                        ? ((t.capitalUsed ||
-                            t.weightedEntryPrice * t.totalEntryQty ||
-                            0) /
-                            userCapital) *
-                          100
-                        : 0,
-                  }))}
-                margin={{ top: 0, right: 0, left: -25, bottom: 0 }}
-              >
-                <XAxis
-                  dataKey="symbol"
-                  tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  tickMargin={5}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={(val) => `${val.toFixed(1)}%`}
-                  tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  formatter={(value: any) => `${Number(value).toFixed(1)}%`}
-                />
-                <Bar
-                  dataKey="allocationPct"
-                  fill={PROFIT_LIGHT}
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="flex flex-col gap-0.5 text-[10px] leading-tight">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-profit" />
+            <span className="text-slate-500">Winners</span>
+            <span className="ml-auto font-medium text-ink">
+              {winners} / {winPct.toFixed(1)}%
+            </span>
           </div>
-        </div>
-
-        {/* PnL */}
-        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-          <p className="text-sm font-medium text-slate-700 mb-3 sm:mb-4">PnL</p>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={monthlyTotals}
-                margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-              >
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  tickMargin={5}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  formatter={(value: any) => [
-                    `${Number(value).toFixed(1)}%`,
-                    "PnL",
-                  ]}
-                />
-                <ReferenceLine y={0} stroke="#e2e5ea" />
-                <Bar
-                  dataKey="pnlPct"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
-                >
-                  {monthlyTotals.map((m: any, idx: number) => (
-                    <Cell
-                      key={`pnl-cell-${idx}`}
-                      fill={m.pnlPct >= 0 ? PROFIT : LOSS}
-                      fillOpacity={0.55}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-loss" />
+            <span className="text-slate-500">Losers</span>
+            <span className="ml-auto font-medium text-ink">
+              {losers} / {lossPct.toFixed(1)}%
+            </span>
           </div>
-        </div>
-
-        {/* Winners per Month */}
-        <div className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-          <p className="text-sm font-medium text-slate-700 mb-3 sm:mb-4">
-            # Winners per Month
-          </p>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={monthlyTotals}
-                margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-              >
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  tickMargin={5}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip />
-                <Bar
-                  dataKey="winners"
-                  fill={PROFIT_LIGHT}
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="mt-1 border-t border-line pt-1 text-slate-400">
+            <div className="flex justify-between">
+              <span>Avg Win</span>
+              <span className="font-medium text-profit">{formatCurrency(avgWin)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Avg Loss</span>
+              <span className="font-medium text-loss">{formatCurrency(avgLoss)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Best</span>
+              <span className="font-medium text-profit">{formatCurrency(largestWin)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Worst</span>
+              <span className="font-medium text-loss">{formatCurrency(largestLoss)}</span>
+            </div>
           </div>
         </div>
       </div>

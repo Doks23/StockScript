@@ -35,10 +35,10 @@ export default async function LeaderboardPage({
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      {/* Competition selector */}
+      {/* Competition card: selector + stats */}
       <section className="rounded-2xl border border-line bg-white/80 p-4 shadow-sm backdrop-blur sm:p-5">
-        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
-          <div>
+        <div className="grid gap-4 sm:grid-cols-[auto_1fr_1fr] sm:gap-5">
+          <div className="max-w-xs">
             <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Competition
             </label>
@@ -47,53 +47,60 @@ export default async function LeaderboardPage({
               selectedId={selectedCompetitionId ?? ""}
             />
           </div>
-          {selectedCompetition &&
-            (alreadyJoined ? (
-              <button
-                type="button"
-                disabled
-                className="rounded-xl bg-emerald-100 border border-emerald-200 px-5 py-2.5 text-sm font-medium text-emerald-700 opacity-80 cursor-not-allowed transition"
-              >
-                Joined
-              </button>
-            ) : pendingRequest ? (
-              <button
-                type="button"
-                disabled
-                className="rounded-xl bg-amber-100 border border-amber-200 px-5 py-2.5 text-sm font-medium text-amber-700 opacity-80 cursor-not-allowed transition"
-              >
-                Pending Approval
-              </button>
-            ) : (
-              <JoinButton competitionId={selectedCompetition.id} />
-            ))}
+          {leaderboard ? (
+            <>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 sm:text-xs">
+                  Window
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-800 sm:text-lg">
+                  {formatDateValue(leaderboard.competition.startDate)} →{" "}
+                  {formatDateValue(leaderboard.competition.endDate)}
+                </p>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 sm:text-xs">
+                    Qualified Traders
+                  </p>
+                  <p className="mt-0.5 text-2xl font-bold text-slate-800 sm:text-3xl">
+                    {leaderboard.entries.length}
+                  </p>
+                </div>
+                <div className="shrink-0 pt-4">
+                  {selectedCompetition &&
+                    (alreadyJoined ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="rounded-xl bg-emerald-100 border border-emerald-200 px-4 py-2 text-xs font-medium text-emerald-700 opacity-80 cursor-not-allowed transition"
+                      >
+                        Joined
+                      </button>
+                    ) : pendingRequest ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="rounded-xl bg-amber-100 border border-amber-200 px-4 py-2 text-xs font-medium text-amber-700 opacity-80 cursor-not-allowed transition"
+                      >
+                        Pending
+                      </button>
+                    ) : (
+                      <JoinButton competitionId={selectedCompetition.id} />
+                    ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="col-span-2 flex items-center text-sm text-slate-400">
+              Select a competition to view details
+            </div>
+          )}
         </div>
       </section>
 
-      {leaderboard ? (
-        <>
-          {/* Competition stats */}
-          <section className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2">
-            <div className="rounded-2xl border border-line bg-white p-3 shadow-sm sm:p-5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 sm:text-xs">
-                Window
-              </p>
-              <p className="mt-1.5 text-sm font-semibold text-slate-800 sm:mt-2 sm:text-lg">
-                {formatDateValue(leaderboard.competition.startDate)} →{" "}
-                {formatDateValue(leaderboard.competition.endDate)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-line bg-white p-3 shadow-sm sm:p-5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 sm:text-xs">
-                Qualified Traders
-              </p>
-              <p className="mt-1 text-2xl font-bold text-slate-800 sm:mt-2 sm:text-3xl">
-                {leaderboard.entries.length}
-              </p>
-            </div>
-          </section>
-
-          {/* Top 3 podium */}
+      {leaderboard && (<>
+        {/* Top 3 podium */}
           {leaderboard.entries.length > 0 && (
             <section className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
               {leaderboard.entries.slice(0, 3).map((entry, i) => {
@@ -261,7 +268,9 @@ export default async function LeaderboardPage({
             </div>
           </section>
         </>
-      ) : (
+      )}
+
+      {competitions.length === 0 && (
         <section className="rounded-2xl border border-line bg-white p-12 text-center text-slate-400 shadow-sm">
           No competitions available yet.
           {user.role === "ADMIN" && (

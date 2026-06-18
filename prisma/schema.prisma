@@ -54,15 +54,15 @@ model Trade {
   status        TradeStatus   @default(OPEN)
   tags          String        @default("")
   notes         String        @default("")
-  setup         String?
-  planFollowed  Boolean?
-  exitTrigger   String?
-  proficiency   String?
-  growthAreas   String?
   firstEntryAt  DateTime?
   lockedAt      DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  exitTrigger   String?
+  growthAreas   String?
+  planFollowed  Boolean?
+  proficiency   String?
+  setup         String?
   competition   Competition?  @relation(fields: [competitionId], references: [id])
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   images        TradeImage[]
