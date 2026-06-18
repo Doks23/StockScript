@@ -28,15 +28,15 @@ export function PortfolioCapitalEditor({ initialCapital }: { initialCapital: num
   if (!isEditing) {
     return (
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs text-slate-500 sm:text-sm">Portfolio Capital</p>
-          <p className="mt-1 truncate font-display text-lg font-semibold text-ink sm:mt-2 sm:text-xl">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">Capital</p>
+          <p className="truncate font-display text-base font-semibold text-ink sm:text-lg">
             {formatCurrency(initialCapital)}
           </p>
         </div>
         <button
           onClick={() => setIsEditing(true)}
-          className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200 sm:text-sm"
+          className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
         >
           Edit
         </button>
@@ -45,8 +45,8 @@ export function PortfolioCapitalEditor({ initialCapital }: { initialCapital: num
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-slate-500">Portfolio Capital</p>
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-slate-500">Portfolio Capital</p>
       <div className="flex items-center gap-2">
         <input
           type="number"
@@ -54,12 +54,12 @@ export function PortfolioCapitalEditor({ initialCapital }: { initialCapital: num
           step="0.01"
           value={capital}
           onChange={(e) => setCapital(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+          className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-accent"
         />
         <button
           onClick={handleSave}
           disabled={loading}
-          className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition hover:bg-accentDeep"
+          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition hover:bg-accentDeep"
         >
           Save
         </button>
@@ -69,7 +69,7 @@ export function PortfolioCapitalEditor({ initialCapital }: { initialCapital: num
             setCapital(initialCapital.toString());
           }}
           disabled={loading}
-          className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-200"
+          className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-200"
         >
           Cancel
         </button>

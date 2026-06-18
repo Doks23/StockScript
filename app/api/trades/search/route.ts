@@ -62,12 +62,12 @@ export async function GET(req: NextRequest) {
     const start = (page - 1) * pageSize;
     const pagedRows = filtered.slice(start, start + pageSize);
 
-    const realizedRows = filtered.filter((r) => r.derivedStatus === "CLOSED");
     const openRows = filtered.filter((r) => r.derivedStatus === "OPEN");
     const totalAlloc = openRows.reduce((s, r) => s + r.allocationPct, 0);
     const totalImpact = filtered.reduce((s, r) => s + r.impactPct, 0);
-    const totalRealizedPnl = realizedRows.reduce((s, r) => s + r.pnlAmount, 0);
-    const totalOpenPnl = openRows.reduce((s, r) => s + r.pnlAmount, 0);
+    const totalRealizedPnl = filtered.reduce((s, r) => s + r.realizedPnl, 0);
+    const totalUnrealizedPnl = openRows.reduce((s, r) => s + r.unrealizedPnl, 0);
+    const totalPnl = totalRealizedPnl + totalUnrealizedPnl;
 
     const result = {
       trades: pagedRows,
@@ -79,8 +79,9 @@ export async function GET(req: NextRequest) {
         totalTrades: totalCount,
         totalAlloc,
         totalRealizedPnl,
-        totalOpenPnl,
-        totalPnl: totalRealizedPnl + totalOpenPnl,
+        totalOpenPnl: totalPnl,
+        totalUnrealizedPnl,
+        totalPnl,
         totalImpact,
       },
     };

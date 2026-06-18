@@ -276,7 +276,17 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
   );
 }
 
-export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { rows: GroupedTradeRow[]; showAmounts?: boolean; onRefresh?: () => void }) {
+export function JournalTable({
+  rows = [],
+  showAmounts = true,
+  onRefresh,
+  showSummary = true,
+}: {
+  rows: GroupedTradeRow[];
+  showAmounts?: boolean;
+  onRefresh?: () => void;
+  showSummary?: boolean;
+}) {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -391,7 +401,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
   return (
     <div className="space-y-2">
       {/* Summary bar */}
-      {rows.length > 0 && (
+      {showSummary && rows.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 rounded-xl bg-canvas border border-line text-[12px]">
           <span className="text-slate-400 font-medium">{rows.length} trades</span>
           <div className="flex items-center gap-1">
@@ -568,7 +578,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                   <StopLossInput
                     tradeId={t.id}
                     stopLoss={t.stopLoss}
-                    entryPrice={t.weightedEntryPrice}
+                    entryPrice={t.entryLegs[0]?.price ?? t.weightedEntryPrice}
                     onUpdate={() => onRefresh?.()}
                   />
                 </div>
@@ -809,7 +819,7 @@ export function JournalTable({ rows = [], showAmounts = true, onRefresh }: { row
                               <StopLossInput
                                 tradeId={t.id}
                                 stopLoss={t.stopLoss}
-                                entryPrice={t.weightedEntryPrice}
+                                entryPrice={t.entryLegs[0]?.price ?? t.weightedEntryPrice}
                                 onUpdate={() => onRefresh?.()}
                               />
                             </td>

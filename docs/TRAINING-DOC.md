@@ -286,7 +286,7 @@ If your admin has set up competitions, you can join and see how you rank against
 Your trades are automatically included if their entry date falls within the competition window. You don't need to tag anything manually.
 
 The leaderboard ranks traders by:
-- **Portfolio Impact %** — (Total P&L ÷ Max capital used) × 100
+- **Portfolio Impact %** — (Total P&L ÷ full portfolio capital) × 100
 - **Win Rate** — % of profitable trades
 - **Number of Trades**
 

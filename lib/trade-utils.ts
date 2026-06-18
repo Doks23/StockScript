@@ -633,8 +633,9 @@ export function buildGroupedJournalRows(
     const ageDays = Math.max(0, differenceInCalendarDays(endDate, firstEntry));
 
     let stopLossPct: number | null = null;
-    if (trade.stopLoss && trade.stopLoss > 0 && weightedEntry > 0) {
-      stopLossPct = ((trade.stopLoss - weightedEntry) / weightedEntry) * 100;
+    const firstEntryPrice = entryLegs[0]?.price ?? weightedEntry;
+    if (trade.stopLoss && trade.stopLoss > 0 && firstEntryPrice > 0) {
+      stopLossPct = ((trade.stopLoss - firstEntryPrice) / firstEntryPrice) * 100;
     }
 
     return {

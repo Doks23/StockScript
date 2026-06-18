@@ -18,6 +18,8 @@ type Scenario = {
 const R_LEVELS = [1, 2, 3, 4, 5];
 const DEFAULT_STOP_LOSS_PCT = 2;
 const SETTINGS_KEY = "stockscript-position-size-settings-v2";
+const PERCENT_STEP = "0.1";
+const ABSOLUTE_STEP = "0.5";
 
 function toNumber(value: string, fallback = 0) {
   const parsed = Number(value);
@@ -285,7 +287,7 @@ export function PositionSizeCalculator({
                 <input
                   type="number"
                   min="0"
-                  step="any"
+                  step={ABSOLUTE_STEP}
                   value={capital}
                   onChange={(event) => setCapital(event.target.value)}
                   onBlur={() => setCapital(trimZeros(capital))}
@@ -302,7 +304,7 @@ export function PositionSizeCalculator({
                 <input
                   type="number"
                   min="0"
-                  step="any"
+                  step={PERCENT_STEP}
                   value={brokeragePct}
                   onChange={(event) => setBrokeragePct(event.target.value)}
                   onBlur={() => setBrokeragePct(trimZeros(brokeragePct))}
@@ -389,6 +391,7 @@ export function PositionSizeCalculator({
               <EditableRow
                 label="Risk %"
                 suffix="%"
+                step={PERCENT_STEP}
                 values={scenarios.map((scenario) => scenario.riskPctOfCapital)}
                 onChange={(index, value) =>
                   updateScenario(scenarios[index].id, { riskPctOfCapital: value })
@@ -397,6 +400,7 @@ export function PositionSizeCalculator({
               <EditableRow
                 label="Stock Price"
                 prefix="₹"
+                step={ABSOLUTE_STEP}
                 values={scenarios.map((scenario) => scenario.stockPrice)}
                 onChange={(index, value) =>
                   updateScenario(scenarios[index].id, { stockPrice: value })
@@ -486,24 +490,28 @@ export function PositionSizeCalculator({
                 value={scenarios[index].riskPctOfCapital}
                 onChange={(value) => updateScenario(row.id, { riskPctOfCapital: value })}
                 suffix="%"
+                step={PERCENT_STEP}
               />
               <MobileFieldRow
                 label="Stock Price"
                 value={scenarios[index].stockPrice}
                 onChange={(value) => updateScenario(row.id, { stockPrice: value })}
                 prefix="₹"
+                step={ABSOLUTE_STEP}
               />
               <MobileFieldRow
                 label="Stop Loss"
                 value={scenarios[index].stopLossPrice}
                 onChange={(value) => updateScenario(row.id, { stopLossPrice: value })}
                 prefix="₹"
+                step={ABSOLUTE_STEP}
               />
               <MobileFieldRow
                 label="Stop Loss %"
                 value={scenarios[index].stopLossPct}
                 onChange={(value) => updateScenario(row.id, { stopLossPct: value })}
                 suffix="%"
+                step={PERCENT_STEP}
               />
             </div>
 
@@ -546,12 +554,14 @@ function EditableRow({
   onChange,
   prefix,
   suffix,
+  step = ABSOLUTE_STEP,
 }: {
   label: string;
   values: string[];
   onChange: (index: number, value: string) => void;
   prefix?: string;
   suffix?: string;
+  step?: string;
 }) {
   return (
     <tr className="bg-white">
@@ -565,7 +575,7 @@ function EditableRow({
             <input
               type="number"
               min="0"
-              step="any"
+              step={step}
               value={value}
               onChange={(event) => onChange(index, event.target.value)}
               onBlur={() => onChange(index, trimZeros(value))}
@@ -601,7 +611,7 @@ function StopLossRow({
               <input
                 type="number"
                 min="0"
-                step="any"
+                step={ABSOLUTE_STEP}
                 value={scenario.stopLossPrice}
                 onChange={(event) => onStopPriceChange(index, event.target.value)}
                 onBlur={() => onStopPriceChange(index, trimZeros(scenario.stopLossPrice))}
@@ -612,7 +622,7 @@ function StopLossRow({
               <input
                 type="number"
                 min="0"
-                step="any"
+                step={PERCENT_STEP}
                 value={scenario.stopLossPct}
                 onChange={(event) => onStopPctChange(index, event.target.value)}
                 onBlur={() => onStopPctChange(index, trimZeros(scenario.stopLossPct))}
@@ -659,12 +669,14 @@ function MobileFieldRow({
   onChange,
   prefix,
   suffix,
+  step = ABSOLUTE_STEP,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   prefix?: string;
   suffix?: string;
+  step?: string;
 }) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5">
@@ -674,7 +686,7 @@ function MobileFieldRow({
         <input
           type="number"
           min="0"
-          step="any"
+          step={step}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onBlur={() => onChange(trimZeros(value))}

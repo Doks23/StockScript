@@ -154,7 +154,7 @@ export function summarize(label: string, trades: ClosedSummaryTrade[]): SummaryM
 }
 
 function getRiskProfile(row: GroupedTradeRow, charges: number) {
-  const entryPrice = row.weightedEntryPrice;
+  const entryPrice = row.entryLegs[0]?.price ?? row.weightedEntryPrice;
   const entryQty = row.totalEntryQty;
   const capital = row.capital || entryPrice * entryQty;
   const usedDefaultStopLoss = !row.stopLoss || row.stopLoss <= 0;
@@ -165,7 +165,7 @@ function getRiskProfile(row: GroupedTradeRow, charges: number) {
     : row.stopLoss ?? entryPrice;
   const priceRisk = Math.abs(entryPrice - stopLoss) * entryQty;
   const riskAmount = priceRisk + Math.max(0, charges);
-  const stopLossPct = capital > 0 ? (priceRisk / capital) * 100 : 0;
+  const stopLossPct = entryPrice > 0 ? (Math.abs(entryPrice - stopLoss) / entryPrice) * 100 : 0;
   const riskPct = capital > 0 ? (riskAmount / capital) * 100 : 0;
 
   return { riskAmount, riskPct, stopLossPct, usedDefaultStopLoss };

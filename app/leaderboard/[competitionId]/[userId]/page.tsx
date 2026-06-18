@@ -85,7 +85,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
           { label: "Closed Trades", value: String(metrics.closedTrades) },
           { label: "Win Rate", value: formatPercent(metrics.winRate), positive: metrics.winRate > 50 },
           { label: "Return on Capital", value: formatPercent(metrics.returnOnCapital), positive: metrics.returnOnCapital >= 0 },
-          { label: "Portfolio Return", value: formatPercent(metrics.portfolioReturn), positive: metrics.portfolioReturn >= 0 },
+          { label: "Portfolio Impact", value: formatPercent(metrics.portfolioReturn), positive: metrics.portfolioReturn >= 0 },
           { label: "Total Allocation", value: formatPercent(metrics.totalAllocationPct), positive: metrics.totalAllocationPct <= 100 },
         ].map((card) => (
           <div key={card.label} className="rounded-2xl border border-line bg-white p-4 shadow-sm">

@@ -61,14 +61,14 @@ StockScript features an automated competition engine designed to evaluate trader
 4. **Scoring & Leaderboard:** The leaderboard recalculates dynamically:
    - **Net P&L:** Realized profit/loss + Unrealized Mark-to-Market (using manual end-of-day `closing_price`).
    - **Max Capital Deployed:** The highest concurrent capital the trader had tied up in active trades during the window.
-   - **Return %:** Calculated as `(Total Net P&L / Max Capital Deployed) * 100`.
-   - **Tie-Breakers:** If Return % is identical, the system sorts by Lowest Max Drawdown, then Highest Win Rate.
+   - **Portfolio Impact %:** Calculated as `(Total Net P&L / Portfolio Capital) * 100`.
+   - **Tie-Breakers:** If Portfolio Impact % is identical, the system sorts by Lowest Max Drawdown, then Highest Win Rate.
 
 ## Leaderboard formula
 
-- Portfolio Return % = `(Total Net Realized P&L / Max Capital Deployed) * 100`
+- Portfolio Impact % = `(Total Net P&L / Portfolio Capital) * 100`
 - Sort order:
-  - Highest return %
+  - Highest portfolio impact %
   - Lowest drawdown
   - Highest win rate
 

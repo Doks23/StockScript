@@ -20,6 +20,7 @@ type Metrics = {
   totalAlloc: number;
   totalRealizedPnl: number;
   totalOpenPnl: number;
+  totalUnrealizedPnl: number;
   totalPnl: number;
   totalImpact: number;
 };
@@ -36,6 +37,8 @@ type SearchResult = {
 const fmtAmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-500" : "text-slate-400";
+const signedAmt = (n: number) => `${n >= 0 ? "+" : ""}${fmtAmt.format(n)}`;
+const hiddenAmt = "•••";
 
 function TradesPageContent() {
   const router = useRouter();
@@ -146,14 +149,24 @@ function TradesPageContent() {
             <span className="text-slate-500">Alloc:</span>
             <span className="font-semibold text-slate-700">{fmtPct(metrics.totalAlloc)}</span>
           </div>
-          {metrics.totalPnl !== 0 && (
-            <div className="flex items-center gap-1">
-              <span className="text-slate-500">MTM:</span>
-              <span className={`font-semibold ${pnlColor(metrics.totalPnl)}`}>
-                {metrics.totalPnl >= 0 ? "+" : ""}{fmtAmt.format(metrics.totalPnl)}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">R:</span>
+            <span className={`font-semibold ${pnlColor(metrics.totalRealizedPnl)}`}>
+              {filters.hideAmounts ? hiddenAmt : signedAmt(metrics.totalRealizedPnl)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">U:</span>
+            <span className={`font-semibold ${pnlColor(metrics.totalUnrealizedPnl)}`}>
+              {filters.hideAmounts ? hiddenAmt : signedAmt(metrics.totalUnrealizedPnl)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">MTM:</span>
+            <span className={`font-semibold ${pnlColor(metrics.totalPnl)}`}>
+              {filters.hideAmounts ? hiddenAmt : signedAmt(metrics.totalPnl)}
+            </span>
+          </div>
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Impact:</span>
             <span className={`font-semibold ${pnlColor(metrics.totalImpact)}`}>
@@ -172,7 +185,7 @@ function TradesPageContent() {
 
       {data && (
         <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
-          <JournalTable rows={data.trades} showAmounts={!filters.hideAmounts} onRefresh={() => fetchData(filters, page)} />
+          <JournalTable rows={data.trades} showAmounts={!filters.hideAmounts} onRefresh={() => fetchData(filters, page)} showSummary={false} />
         </section>
       )}
 
