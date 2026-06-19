@@ -9,6 +9,7 @@ export default async function DashboardPage() {
   return (
     <DashboardPageClient
       trades={dashboard.trades as any}
+      userName={user.name}
       userCapital={user.portfolioCapital}
     />
   );

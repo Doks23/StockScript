@@ -20,13 +20,22 @@ import {
   useMonthlyPnlData,
 } from "./dashboard-charts";
 import { PortfolioCapitalEditor } from "@/components/portfolio-capital-editor";
-import { buildDashboardMetrics } from "@/lib/trade-utils";
 import {
+  buildDashboardMetrics,
+  buildGroupedJournalRows,
   getWeightedEntryPrice,
   getTotalEntryQty,
   getLastExitTime,
   calculateOpenPnl,
 } from "@/lib/trade-utils";
+import {
+  buildClosedSummaryTrades,
+  buildMonthlySummary,
+  buildSetupSummary,
+  formatReturnPercent,
+  formatSummaryNumber,
+  formatSummaryPercent,
+} from "@/lib/journal-summary";
 import { formatCurrency, formatPercent, formatPrice } from "@/lib/format";
 import type { TradeWithTxns } from "@/lib/trade-utils";
 
@@ -64,12 +73,10 @@ function computeOpenPositions(trades: TradeWithTxns[], userCapital: number) {
       const riskPct = userCapital > 0 ? (riskAmount / userCapital) * 100 : 0;
       const rMultiple = riskAmount > 0 ? mtmPnl / riskAmount : 0;
 
-      let status: "Safe" | "Watch" | "Risk High";
-      if (riskPct > 4 || allocationPct > 25) status = "Risk High";
-      else if (riskPct > 2.5 || allocationPct > 15)
-        status = "Watch";
-      else if (rMultiple < -0.5) status = "Watch";
-      else status = "Safe";
+      let status: "OpenRisk" | "BreakEven" | "Profitable";
+      if (rMultiple > 2) status = "Profitable";
+      else if (rMultiple >= 1) status = "BreakEven";
+      else status = "OpenRisk";
 
       return {
         symbol: t.symbol,
@@ -87,11 +94,18 @@ function computeOpenPositions(trades: TradeWithTxns[], userCapital: number) {
     });
 }
 
+function metricToneClass(value: number | null) {
+  if (value === null || value === 0) return "text-slate-500";
+  return value > 0 ? "text-profit" : "text-loss";
+}
+
 export function DashboardPageClient({
   trades,
+  userName,
   userCapital,
 }: {
   trades: TradeWithTxns[];
+  userName: string;
   userCapital: number;
 }) {
   const router = useRouter();
@@ -100,6 +114,7 @@ export function DashboardPageClient({
   const [customTo, setCustomTo] = useState("");
   const [showAmounts, setShowAmounts] = useState(true);
   const [lastUpdated] = useState(() => new Date());
+  const [selectedMonthKey, setSelectedMonthKey] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem("dashboardPeriod") as Period | null;
@@ -392,36 +407,73 @@ export function DashboardPageClient({
   const equityData = useEquityCurveData(filteredTrades, userCapital);
   const monthlyData = useMonthlyPnlData(filteredTrades);
 
-  const monthlyDetail = useMemo(() => {
-    const map = new Map<string, { pnl: number; wins: number; losses: number; trades: number }>();
-    filteredTrades.forEach((t) => {
-      const key = new Date(t.firstEntryAt ?? t.createdAt).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
-      const entry = map.get(key) ?? { pnl: 0, wins: 0, losses: 0, trades: 0 };
-      const pnl = t.status === "CLOSED" ? (t.netPnl ?? 0) : calculateOpenPnl(t);
-      entry.pnl += pnl;
-      entry.trades += 1;
-      if (pnl > 0) entry.wins += 1;
-      else if (pnl < 0) entry.losses += 1;
-      map.set(key, entry);
-    });
-    return Array.from(map.entries())
-      .map(([month, d]) => ({ month, ...d }))
-      .sort((a, b) => {
-        const parse = (m: string) => { const [mon, yr] = m.split(" "); const months = "JanFebMarAprMayJunJulAugSepOctNovDec"; return parseInt(yr) * 12 + months.indexOf(mon) / 3; };
-        return parse(a.month) - parse(b.month);
-      })
-      .slice(-6);
-  }, [filteredTrades]);
+  const monthOptions = useMemo(() => {
+    const groupedRows = buildGroupedJournalRows(filteredTrades, userCapital);
+    const options = new Map<string, string>();
 
-  const availableCash = userCapital - derived.capitalDeployed;
+    groupedRows.forEach((row) => {
+      const entryDate = row.entryLegs[0]?.dateTime;
+      if (row.derivedStatus !== "CLOSED" || !entryDate) return;
+      const key = format(entryDate, "yyyy-MM");
+      options.set(key, format(entryDate, "MMMM yyyy"));
+    });
+
+    return Array.from(options.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => b.key.localeCompare(a.key));
+  }, [filteredTrades, userCapital]);
+
+  useEffect(() => {
+    if (!monthOptions.length) {
+      setSelectedMonthKey("");
+      return;
+    }
+
+    const currentMonthKey = format(new Date(), "yyyy-MM");
+    const nextKey = monthOptions.some((option) => option.key === currentMonthKey)
+      ? currentMonthKey
+      : monthOptions[0].key;
+
+    setSelectedMonthKey((current) =>
+      monthOptions.some((option) => option.key === current) ? current : nextKey,
+    );
+  }, [monthOptions]);
+
+  const selectedMonthlySummary = useMemo(() => {
+    if (!selectedMonthKey) return null;
+    const [yearValue, monthValue] = selectedMonthKey.split("-").map(Number);
+    const monthIndex = monthValue - 1;
+    const yearTrades = filteredTrades.filter((trade) => {
+      const entryDate = new Date(trade.firstEntryAt ?? trade.createdAt);
+      return entryDate.getFullYear() === yearValue;
+    });
+    const groupedRows = buildGroupedJournalRows(yearTrades, userCapital);
+    const summaryTrades = buildClosedSummaryTrades(groupedRows, yearTrades);
+    const monthlySummary = buildMonthlySummary(summaryTrades);
+    const setupSummary = buildSetupSummary(
+      summaryTrades.filter((trade) => {
+        const entryDate = trade.row.entryLegs[0]?.dateTime;
+        return entryDate?.getMonth() === monthIndex;
+      }),
+    );
+    const monthLabel = format(new Date(yearValue, monthIndex, 1), "MMMM");
+    const month = monthlySummary.rows.find((row) => row.label === monthLabel) ?? null;
+
+    return {
+      month,
+      setups: setupSummary.rows
+        .sort((a, b) => Math.abs(b.netR) - Math.abs(a.netR))
+        .slice(0, 6),
+    };
+  }, [filteredTrades, selectedMonthKey, userCapital]);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-slate-50/50 p-2 sm:p-3">
+    <div className="flex min-h-dvh flex-col overflow-y-auto bg-slate-50/50 p-2 sm:p-3 xl:h-dvh xl:overflow-hidden">
       {/* ─── Header ─── */}
-      <header className="mb-1.5 flex shrink-0 items-center justify-between rounded-xl border border-line bg-white px-3 py-2 shadow-sm sm:px-4">
+      <header className="mb-1.5 flex shrink-0 flex-col gap-2 rounded-xl border border-line bg-white px-3 py-2 shadow-sm sm:px-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <h1 className="font-display text-base font-semibold tracking-tight text-ink sm:text-lg">
-            Saurabh
+            {userName}
           </h1>
           <div className="flex gap-1.5">
             <a
@@ -438,7 +490,7 @@ export function DashboardPageClient({
             </a>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-3 lg:justify-end lg:gap-4">
           <PortfolioCapitalEditor initialCapital={userCapital} />
           <Link
             href="/account"
@@ -517,7 +569,7 @@ export function DashboardPageClient({
       </div>
 
       {/* ─── Top KPI Row (8 cards) ─── */}
-      <div className="mb-1.5 grid shrink-0 grid-cols-4 gap-1.5 sm:grid-cols-8 sm:gap-2">
+      <div className="mb-1.5 grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-8 xl:gap-2">
         <MetricCard
           label="Total P&L"
           value={showAmounts ? formatCurrency(derived.totalPnl) : "•••"}
@@ -551,6 +603,7 @@ export function DashboardPageClient({
           value={metrics.profitFactor.toFixed(2)}
           tone={metrics.profitFactor >= 1 ? "profit" : "loss"}
           compact
+          className="hidden sm:block"
           detail={
             <span>
               GP: {formatCurrency(derived.grossProfit)} /
@@ -563,6 +616,7 @@ export function DashboardPageClient({
           value={showAmounts ? formatCurrency(derived.expectancy) : "•••"}
           tone={pnlTone(derived.expectancy)}
           compact
+          className="hidden sm:block"
           detail="Per Trade"
         />
         <MetricCard
@@ -570,6 +624,7 @@ export function DashboardPageClient({
           value={`${derived.avgRR.toFixed(2)}R`}
           tone={derived.avgRR >= 1.5 ? "profit" : derived.avgRR >= 1 ? "default" : "loss"}
           compact
+          className="hidden sm:block"
           detail={
             <span>
               Win: {derived.avgWinR.toFixed(2)}R / Loss: {derived.avgLossR.toFixed(2)}R
@@ -587,12 +642,46 @@ export function DashboardPageClient({
                 : "default"
           }
           compact
+          className="hidden sm:block"
           detail={`${derived.openRiskPct.toFixed(2)}% of Capital`}
         />
       </div>
 
+      <div className="mb-1.5 grid shrink-0 grid-cols-2 gap-1.5 text-[10px] md:hidden">
+        <div className="rounded-lg border border-line bg-white px-2.5 py-1.5 shadow-sm">
+          <p className="uppercase tracking-[0.12em] text-slate-400">Open Trades</p>
+          <p className="font-semibold text-ink">{metrics.openTrades}</p>
+        </div>
+        <div className="rounded-lg border border-line bg-white px-2.5 py-1.5 shadow-sm">
+          <p className="uppercase tracking-[0.12em] text-slate-400">Capital Used</p>
+          <p className="font-semibold text-ink">
+            {derived.capitalDeployedPct.toFixed(1)}%
+          </p>
+        </div>
+        <div className="rounded-lg border border-line bg-white px-2.5 py-1.5 shadow-sm">
+          <p className="uppercase tracking-[0.12em] text-slate-400">Max DD</p>
+          <p className="font-semibold text-loss">
+            {equityData.maxDrawdownPct.toFixed(2)}%
+          </p>
+        </div>
+        <div className="rounded-lg border border-line bg-white px-2.5 py-1.5 shadow-sm">
+          <p className="uppercase tracking-[0.12em] text-slate-400">Recovery</p>
+          <p
+            className={`font-semibold ${
+              equityData.recovery >= 90
+                ? "text-profit"
+                : equityData.recovery >= 50
+                  ? "text-amber-600"
+                  : "text-loss"
+            }`}
+          >
+            {equityData.recovery.toFixed(1)}%
+          </p>
+        </div>
+      </div>
+
       {/* ─── Second KPI Strip ─── */}
-      <div className="mb-1.5 flex shrink-0 items-center gap-3 overflow-x-auto rounded-lg border border-line bg-white px-3 py-1.5 text-[10px] shadow-sm sm:text-[11px]">
+      <div className="mb-1.5 hidden shrink-0 items-center gap-3 overflow-x-auto rounded-lg border border-line bg-white px-3 py-1.5 text-[10px] shadow-sm md:flex sm:text-[11px]">
         <div className="flex items-center gap-1.5 whitespace-nowrap">
           <span className="text-slate-400">Open Trades:</span>
           <span className="font-semibold text-ink">{metrics.openTrades}</span>
@@ -671,9 +760,9 @@ export function DashboardPageClient({
       </div>
 
       {/* ─── Main Content: Equity Curve (70%) + Risk Summary (30%) ─── */}
-      <div className="mb-1.5 grid min-h-0 flex-[2] grid-cols-[7fr_3fr] gap-2 sm:gap-3">
+      <div className="mb-1.5 grid min-h-0 gap-2 sm:gap-3 xl:flex-[2] xl:grid-cols-[7fr_3fr]">
         {/* Equity Curve */}
-        <div className="flex flex-col rounded-xl border border-line bg-white p-2.5 shadow-sm sm:p-3">
+        <div className="flex min-h-[320px] flex-col rounded-xl border border-line bg-white p-2.5 shadow-sm sm:p-3 xl:min-h-0">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
               Equity Curve
@@ -684,60 +773,260 @@ export function DashboardPageClient({
         </div>
 
         {/* Monthly Performance */}
-        <div className="flex flex-col rounded-xl border border-line bg-white p-2.5 shadow-sm sm:p-3">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
-            Monthly Performance
-          </p>
-
-          <div className="flex-1 overflow-y-auto">
-            <table className="w-full text-[10px]">
-              <thead>
-                <tr className="text-left text-[9px] uppercase tracking-wider text-slate-400">
-                  <th className="pb-1 font-medium">Month</th>
-                  <th className="pb-1 text-right font-medium">P&L</th>
-                  <th className="pb-1 text-right font-medium">Trades</th>
-                  <th className="pb-1 text-right font-medium">W/L</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyDetail.length > 0 ? (
-                  monthlyDetail.map((m) => (
-                    <tr key={m.month} className="border-t border-line/30">
-                      <td className="py-1 font-medium text-ink">{m.month}</td>
-                      <td className={`py-1 text-right font-mono font-medium ${m.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {showAmounts ? formatCurrency(m.pnl) : "•••"}
-                      </td>
-                      <td className="py-1 text-right text-slate-600">{m.trades}</td>
-                      <td className="py-1 text-right">
-                        <span className="font-medium text-profit">{m.wins}</span>
-                        <span className="text-slate-300">/</span>
-                        <span className="font-medium text-loss">{m.losses}</span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="py-4 text-center text-slate-400">No data</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        <div className="hidden min-h-[220px] flex-col rounded-xl border border-line bg-white p-2.5 shadow-sm md:flex sm:p-3 xl:min-h-0">
+          <div className="mb-2 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                Monthly Summary
+              </p>
+              <p className="mt-0.5 text-[9px] text-slate-400">
+                One active month at a time
+              </p>
+            </div>
+            <select
+              value={selectedMonthKey}
+              onChange={(event) => setSelectedMonthKey(event.target.value)}
+              className="max-w-[130px] rounded-md border border-line bg-white px-2 py-1 text-[10px] font-medium text-slate-600 shadow-xs outline-none transition focus:border-accent"
+            >
+              {monthOptions.length > 0 ? (
+                monthOptions.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))
+              ) : (
+                <option value="">No months</option>
+              )}
+            </select>
           </div>
 
-          {monthlyDetail.length > 0 && (
-            <div className="mt-auto border-t border-line/30 pt-1.5 text-[9px] text-slate-400">
-              Total: {showAmounts ? formatCurrency(monthlyDetail.reduce((s, m) => s + m.pnl, 0)) : "•••"} &middot;{" "}
-              {monthlyDetail.reduce((s, m) => s + m.trades, 0)} trades &middot;{" "}
-              {monthlyDetail.reduce((s, m) => s + m.wins, 0)}W / {monthlyDetail.reduce((s, m) => s + m.losses, 0)}L
+          {selectedMonthlySummary?.month ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+              <div className="grid grid-cols-3 gap-1">
+                <div className="rounded-lg bg-slate-50 px-2 py-1">
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                    Net R
+                  </p>
+                  <p className={`font-mono text-base font-semibold ${metricToneClass(selectedMonthlySummary.month.netR)}`}>
+                    {formatSummaryNumber(selectedMonthlySummary.month.netR)}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-2 py-1">
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                    Win %
+                  </p>
+                  <p className="font-mono text-base font-semibold text-ink">
+                    {formatSummaryPercent(selectedMonthlySummary.month.winPct)}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-2 py-1">
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                    RR
+                  </p>
+                  <p className={`font-mono text-base font-semibold ${metricToneClass(selectedMonthlySummary.month.simpleRR)}`}>
+                    {formatSummaryNumber(selectedMonthlySummary.month.simpleRR)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 text-[10px]">
+                <div className="rounded-lg border border-line/70 px-2 py-1">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-slate-400">Trades</span>
+                    <span className="font-semibold text-ink">
+                      {selectedMonthlySummary.month.totalTrades}
+                    </span>
+                  </div>
+                  <div className="flex h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="bg-profit"
+                      style={{
+                        width: `${selectedMonthlySummary.month.totalTrades > 0
+                          ? (selectedMonthlySummary.month.wins / selectedMonthlySummary.month.totalTrades) * 100
+                          : 0}%`,
+                      }}
+                    />
+                    <div
+                      className="bg-loss"
+                      style={{
+                        width: `${selectedMonthlySummary.month.totalTrades > 0
+                          ? (selectedMonthlySummary.month.losses / selectedMonthlySummary.month.totalTrades) * 100
+                          : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[9px]">
+                    <span className="text-profit">{selectedMonthlySummary.month.wins}W</span>
+                    <span className="px-1 text-slate-300">/</span>
+                    <span className="text-loss">{selectedMonthlySummary.month.losses}L</span>
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-line/70 px-2 py-1">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <p className="text-slate-400">Avg Win</p>
+                    <p className="text-right font-mono font-medium text-profit">
+                      {formatReturnPercent(selectedMonthlySummary.month.winAverage)}
+                    </p>
+                    <p className="text-slate-400">Avg Loss</p>
+                    <p className="text-right font-mono font-medium text-loss">
+                      {formatReturnPercent(selectedMonthlySummary.month.lossAverage)}
+                    </p>
+                    <p className="text-slate-400">Best</p>
+                    <p className="text-right font-mono font-medium text-profit">
+                      {formatReturnPercent(selectedMonthlySummary.month.maxWin)}
+                    </p>
+                    <p className="text-slate-400">Worst</p>
+                    <p className="text-right font-mono font-medium text-loss">
+                      {formatReturnPercent(selectedMonthlySummary.month.maxLoss)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-line/70 px-2 py-1.5">
+                <div className="mb-1 flex items-center justify-between text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                  <span>Setup Summary</span>
+                  <span>Net R</span>
+                </div>
+                <div className="space-y-1">
+                  {selectedMonthlySummary.setups.length > 0 ? (
+                    selectedMonthlySummary.setups.map((setup) => (
+                      <div
+                        key={setup.label}
+                        className="grid grid-cols-[1fr_2.3rem_2.8rem_2.8rem] items-center gap-1 text-[10px]"
+                      >
+                        <p className="truncate font-medium text-ink">
+                          {setup.label}
+                        </p>
+                        <p className="text-right text-slate-500">
+                          {setup.totalTrades}T
+                        </p>
+                        <p className="text-right font-mono text-slate-600">
+                          {formatSummaryPercent(setup.winPct, 0)}
+                        </p>
+                        <p className={`text-right font-mono font-semibold ${metricToneClass(setup.netR)}`}>
+                          {formatSummaryNumber(setup.netR)}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-slate-400">
+                      No setup data
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-1.5 border-t border-line/40 pt-1 text-[9px]">
+                <div>
+                  <p className="text-slate-400">Gross R</p>
+                  <p className={`font-mono font-semibold ${metricToneClass(selectedMonthlySummary.month.grossR)}`}>
+                    {formatSummaryNumber(selectedMonthlySummary.month.grossR)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Max R</p>
+                  <p className={`font-mono font-semibold ${metricToneClass(selectedMonthlySummary.month.maxR)}`}>
+                    {formatSummaryNumber(selectedMonthlySummary.month.maxR)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Avg Win Days</p>
+                  <p className="font-mono font-semibold text-ink">
+                    {formatSummaryNumber(selectedMonthlySummary.month.avgWinDays)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Avg Loss Days</p>
+                  <p className="font-mono font-semibold text-ink">
+                    {formatSummaryNumber(selectedMonthlySummary.month.avgLossDays)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-xs text-slate-400">
+              No data
             </div>
           )}
         </div>
       </div>
 
       {/* ─── Bottom Section: Open Positions (50%) + Monthly P&L (25%) + Distribution (25%) ─── */}
-      <div className="mb-1.5 grid min-h-0 flex-[1.3] grid-cols-[2.5fr_1fr_1fr] gap-2 sm:gap-3">
+      <div className="mb-1.5 grid min-h-0 gap-2 sm:gap-3 lg:grid-cols-2 xl:flex-[1.3] xl:grid-cols-[2.5fr_1fr_1fr]">
         {/* Open Positions */}
-        <div className="flex flex-col overflow-hidden rounded-xl border border-line bg-white shadow-sm">
+        <div className="rounded-xl border border-line bg-white shadow-sm md:hidden">
+          <div className="flex items-center justify-between border-b border-line px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+              Open Positions
+            </p>
+            <span className="text-[9px] text-slate-400">
+              {derived.openPositions.length}
+            </span>
+          </div>
+          {derived.openPositions.length > 0 ? (
+            <div className="divide-y divide-line/50">
+              {derived.openPositions.slice(0, 5).map((pos) => (
+                <div key={pos.symbol} className="px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-ink">
+                        {pos.symbol}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Qty {showAmounts ? pos.qty : "••"} · Entry {showAmounts ? formatPrice(pos.entry) : "•••"}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-[1px] text-[9px] font-medium ${
+                        pos.status === "Profitable"
+                          ? "bg-profit/10 text-profit"
+                          : pos.status === "BreakEven"
+                            ? "bg-amber-50 text-amber-600"
+                            : "bg-loss/10 text-loss"
+                      }`}
+                    >
+                      {pos.status}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 grid grid-cols-4 gap-1 text-[10px]">
+                    <div>
+                      <p className="text-slate-400">MTM</p>
+                      <p className={`font-mono font-semibold ${pos.mtmPnl >= 0 ? "text-profit" : "text-loss"}`}>
+                        {showAmounts ? formatCurrency(pos.mtmPnl) : "•••"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Risk</p>
+                      <p className="font-mono font-semibold text-ink">
+                        {pos.riskPct.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Alloc</p>
+                      <p className="font-mono font-semibold text-ink">
+                        {pos.allocationPct.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">R</p>
+                      <p className={`font-mono font-semibold ${pos.rMultiple >= 0 ? "text-profit" : "text-loss"}`}>
+                        {pos.rMultiple.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-3 py-6 text-center text-xs text-slate-400">
+              No open positions
+            </div>
+          )}
+        </div>
+
+        <div className="hidden min-h-[230px] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-sm md:flex lg:col-span-2 xl:col-span-1 xl:min-h-0">
           <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
               Open Positions
@@ -797,13 +1086,13 @@ export function DashboardPageClient({
                         {showAmounts ? pos.qty : "••"}
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-slate-600">
-                        {formatPrice(pos.entry)}
+                        {showAmounts ? formatPrice(pos.entry) : "•••"}
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-slate-600">
-                        {formatPrice(pos.cmp)}
+                        {showAmounts ? formatPrice(pos.cmp) : "•••"}
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-slate-500">
-                        {pos.sl ? formatPrice(pos.sl) : "--"}
+                        {showAmounts ? (pos.sl ? formatPrice(pos.sl) : "--") : "•••"}
                       </td>
                       <td
                         className={`px-2 py-1 text-right font-mono font-medium ${
@@ -848,9 +1137,9 @@ export function DashboardPageClient({
                       <td className="px-2 py-1 text-center">
                         <span
                           className={`inline-block rounded-full px-1.5 py-[1px] text-[9px] font-medium ${
-                            pos.status === "Safe"
+                            pos.status === "Profitable"
                               ? "bg-profit/10 text-profit"
-                              : pos.status === "Watch"
+                              : pos.status === "BreakEven"
                                 ? "bg-amber-50 text-amber-600"
                                 : "bg-loss/10 text-loss"
                           }`}
@@ -886,7 +1175,7 @@ export function DashboardPageClient({
         </div>
 
         {/* Monthly P&L */}
-        <div className="rounded-xl border border-line bg-white p-2.5 shadow-sm sm:p-3">
+        <div className="min-h-[220px] rounded-xl border border-line bg-white p-2.5 shadow-sm sm:p-3 xl:min-h-0">
           <MonthlyPnlChart
             data={monthlyData.data}
             totalPnl={monthlyData.totalPnl}
@@ -895,7 +1184,7 @@ export function DashboardPageClient({
         </div>
 
         {/* P&L Distribution */}
-        <div className="rounded-xl border border-line bg-white p-2.5 shadow-sm sm:p-3">
+        <div className="min-h-[220px] rounded-xl border border-line bg-white p-2.5 shadow-sm sm:p-3 xl:min-h-0">
           <PnlDistributionChart
             winners={derived.winners}
             losers={derived.losers}
@@ -904,12 +1193,13 @@ export function DashboardPageClient({
             avgLoss={derived.avgLoss}
             largestWin={derived.largestWin}
             largestLoss={derived.largestLoss}
+            showAmounts={showAmounts}
           />
         </div>
       </div>
 
       {/* ─── Bottom Insight Strip ─── */}
-      <div className="flex shrink-0 items-center gap-4 overflow-x-auto rounded-lg border border-line bg-white px-3 py-1.5 text-[10px] shadow-sm sm:text-[11px]">
+      <div className="hidden shrink-0 items-center gap-4 overflow-x-auto rounded-lg border border-line bg-white px-3 py-1.5 text-[10px] shadow-sm md:flex sm:text-[11px]">
         <div className="flex items-center gap-1.5 whitespace-nowrap">
           <span className="text-slate-400">Best Day:</span>
           <span className="font-semibold text-profit">
@@ -976,5 +1266,3 @@ export function DashboardPageClient({
     </div>
   );
 }
-
-
