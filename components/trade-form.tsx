@@ -277,7 +277,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       return;
     }
 
-    router.push(`/trades/${encodeURIComponent(result.trade.symbol)}`);
+    router.push(`/trades?saved=${initialData?.id ? "updated" : "created"}`);
     router.refresh();
   }
 
@@ -638,7 +638,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
           {initialData && (
             <Link
-              href={`/trades/${encodeURIComponent(initialData.symbol)}`}
+              href="/trades"
               className="w-full rounded-xl border border-line bg-white px-8 py-3 text-center text-sm font-medium text-slate-600 transition hover:bg-canvas sm:w-auto sm:py-2.5"
             >
               Cancel

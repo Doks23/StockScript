@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
+
+const DEFAULT_DASHBOARD_THRESHOLDS = {
+  breakEvenR: 1,
+  profitableR: 2,
+  riskWarnPct: 2.5,
+  riskHighPct: 4,
+  allocationWarnPct: 15,
+  allocationHighPct: 25,
+};
+
+type DashboardThresholdSettings = typeof DEFAULT_DASHBOARD_THRESHOLDS;
 
 export function AccountPageClient({ user }: { user: any }) {
   const router = useRouter();
@@ -22,6 +33,21 @@ export function AccountPageClient({ user }: { user: any }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
+  const [thresholds, setThresholds] = useState<DashboardThresholdSettings>(
+    DEFAULT_DASHBOARD_THRESHOLDS,
+  );
+  const [thresholdMessage, setThresholdMessage] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("dashboardThresholdSettings");
+      if (saved) {
+        setThresholds({ ...DEFAULT_DASHBOARD_THRESHOLDS, ...JSON.parse(saved) });
+      }
+    } catch {
+      setThresholds(DEFAULT_DASHBOARD_THRESHOLDS);
+    }
+  }, []);
 
   async function handleAvatarUpload(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -109,6 +135,20 @@ export function AccountPageClient({ user }: { user: any }) {
     } finally {
       setChangingPassword(false);
     }
+  }
+
+  function updateThreshold(key: keyof DashboardThresholdSettings, value: string) {
+    const parsed = Number(value);
+    setThresholds((current) => ({
+      ...current,
+      [key]: Number.isFinite(parsed) ? parsed : current[key],
+    }));
+  }
+
+  function saveThresholds() {
+    localStorage.setItem("dashboardThresholdSettings", JSON.stringify(thresholds));
+    setThresholdMessage("Dashboard settings saved.");
+    window.dispatchEvent(new Event("dashboard-threshold-settings-updated"));
   }
 
   return (
@@ -265,6 +305,87 @@ export function AccountPageClient({ user }: { user: any }) {
               </span>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* Dashboard Settings */}
+      <section className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <h2 className="mb-4 text-xs uppercase tracking-wider text-slate-500 sm:mb-5 sm:text-sm">
+          Dashboard Settings
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm text-slate-500 mb-1">BreakEven from R</label>
+            <input
+              type="number"
+              step="0.1"
+              value={thresholds.breakEvenR}
+              onChange={(e) => updateThreshold("breakEvenR", e.target.value)}
+              className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-slate-500 mb-1">Profitable above R</label>
+            <input
+              type="number"
+              step="0.1"
+              value={thresholds.profitableR}
+              onChange={(e) => updateThreshold("profitableR", e.target.value)}
+              className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-slate-500 mb-1">Risk warning %</label>
+            <input
+              type="number"
+              step="0.1"
+              value={thresholds.riskWarnPct}
+              onChange={(e) => updateThreshold("riskWarnPct", e.target.value)}
+              className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-slate-500 mb-1">Risk high %</label>
+            <input
+              type="number"
+              step="0.1"
+              value={thresholds.riskHighPct}
+              onChange={(e) => updateThreshold("riskHighPct", e.target.value)}
+              className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-slate-500 mb-1">Allocation warning %</label>
+            <input
+              type="number"
+              step="0.5"
+              value={thresholds.allocationWarnPct}
+              onChange={(e) => updateThreshold("allocationWarnPct", e.target.value)}
+              className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-slate-500 mb-1">Allocation high %</label>
+            <input
+              type="number"
+              step="0.5"
+              value={thresholds.allocationHighPct}
+              onChange={(e) => updateThreshold("allocationHighPct", e.target.value)}
+              className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={saveThresholds}
+            className="rounded-full bg-accent px-6 py-2 text-sm font-medium text-white hover:bg-accentDeep transition"
+          >
+            Save Dashboard Settings
+          </button>
+          {thresholdMessage && (
+            <span className="text-sm text-profit">{thresholdMessage}</span>
+          )}
         </div>
       </section>
 

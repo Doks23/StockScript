@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { CheckCircle2, Download, RefreshCw, X } from "lucide-react";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters } from "@/components/journal-filters";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 
 type Filters = {
@@ -42,6 +42,7 @@ const hiddenAmt = "•••";
 
 function TradesPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,18 @@ function TradesPageContent() {
     hideAmounts: false,
   });
   const [page, setPage] = useState(1);
+  const [toast, setToast] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const saved = searchParams.get("saved");
+    if (saved === "created" || saved === "updated") {
+      setToast(saved === "created" ? "Trade created." : "Trade updated.");
+      const timer = setTimeout(() => setToast(""), 3500);
+      router.replace("/trades", { scroll: false });
+      return () => clearTimeout(timer);
+    }
+  }, [router, searchParams]);
 
   const fetchData = useCallback(async (f: Filters, p: number) => {
     setLoading(true);
@@ -115,6 +127,36 @@ function TradesPageContent() {
 
   return (
     <div className="space-y-3 sm:space-y-4">
+      {toast && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/10 px-4 pt-24 backdrop-blur-[1px]">
+          <div
+            role="status"
+            aria-live="polite"
+            className="w-full max-w-sm rounded-2xl border border-profit/20 bg-white p-4 shadow-2xl"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-profit/10 text-profit">
+                <CheckCircle2 size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink">{toast}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Your journal has been updated.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToast("")}
+                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close confirmation"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-5 sm:py-3">
         <div className="flex items-center justify-between gap-1.5 sm:gap-4">
           <JournalFilters

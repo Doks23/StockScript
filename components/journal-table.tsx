@@ -15,6 +15,8 @@ const fmtPrice = (n: number) => fmtPriceIntl.format(n);
 const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtAmtIntl.format(n);
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
+const shortSymbol = (symbol: string, max = 12) =>
+  symbol.length > max ? `${symbol.slice(0, max - 1)}…` : symbol;
 const dateSortValue = (d: Date | string | null | undefined) => {
   if (!d) return 0;
   const time = new Date(d).getTime();
@@ -27,7 +29,7 @@ const isPartiallyClosed = (row: GroupedTradeRow) =>
 const getTradeStatusUi = (row: GroupedTradeRow) => {
   if (isPartiallyClosed(row)) {
     return {
-      label: "PARTIAL",
+      label: "P",
       chipClass: "border-amber-200 bg-amber-50 text-amber-700",
       borderClass: "border-l-amber-400",
       rowClass: "bg-amber-50/40",
@@ -36,7 +38,7 @@ const getTradeStatusUi = (row: GroupedTradeRow) => {
   }
   if (row.derivedStatus === "OPEN") {
     return {
-      label: "OPEN",
+      label: "O",
       chipClass: "border-blue-200 bg-blue-50 text-blue-700",
       borderClass: "border-l-blue-400",
       rowClass: "bg-blue-50/20",
@@ -137,7 +139,7 @@ function SortTh({
 }) {
   return (
     <th
-      className={`cursor-pointer select-none hover:bg-slate-700 transition-colors ${className}`}
+      className={`cursor-pointer select-none transition-colors hover:bg-slate-200/70 hover:text-slate-800 ${className}`}
       onClick={() => onSort(sKey)}
     >
       {children}
@@ -667,56 +669,81 @@ export function JournalTable({
         )}
       </div>
 
-      <div className="hidden w-full overflow-x-auto scrollbar-hide lg:block">
-        <table className="w-full whitespace-nowrap text-right text-[12px] text-slate-700">
+      <div className="hidden w-full overflow-hidden lg:block">
+        <table className="w-full table-fixed whitespace-nowrap text-right text-[10px] text-slate-700">
+          <colgroup>
+            <col className="w-[2.2%]" />
+            <col className="w-[9.8%]" />
+            <col className="w-[4.6%]" />
+            <col className="w-[5.6%]" />
+            <col className="w-[6%]" />
+            <col className="w-[4.6%]" />
+            <col className="w-[5.6%]" />
+            <col className="w-[6%]" />
+            <col className="w-[4.8%]" />
+            <col className="w-[3.8%]" />
+            <col className="w-[6.4%]" />
+            <col className="w-[5%]" />
+            <col className="w-[5%]" />
+            <col className="w-[5.8%]" />
+            <col className="w-[5.2%]" />
+            <col className="w-[6%]" />
+            <col className="w-[5.2%]" />
+            <col className="w-[6.2%]" />
+            <col className="w-[2.2%]" />
+          </colgroup>
           <thead>
-            <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-line">
-              <th className="px-2 py-3 text-center w-8">
+            <tr className="bg-slate-100 text-slate-600 text-[9px] uppercase tracking-wide border-b border-line">
+              <th className="w-[2.2%] px-1 py-2 text-center">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
                   className="h-3.5 w-3.5 rounded border-slate-400 accent-slate-500 cursor-pointer" />
               </th>
               <SortTh sKey="symbol" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-left min-w-[130px]">Symbol</SortTh>
-              <th className="px-3 py-3 text-center" colSpan={3}>Entry</th>
-              <th className="px-3 py-3 text-center border-l border-slate-300" colSpan={3}>Exit</th>
-              <SortTh sKey="openCapital" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center border-l border-slate-300">Open Cap ₹</SortTh>
+                className="w-[8.8%] px-1.5 py-2 text-left">Symbol</SortTh>
+              <th className="px-1 py-2 text-center" colSpan={3}>Entry</th>
+              <th className="px-1 py-2 text-center border-l border-slate-300" colSpan={3}>Exit</th>
               <SortTh sKey="stopLossPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center border-l border-slate-300">SL %</SortTh>
-              <SortTh sKey="allocationPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center">Alloc %</SortTh>
+                className="w-[4.8%] px-1 py-2 text-center border-l border-slate-300">SL%</SortTh>
               <SortTh sKey="ageDays" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center">Age</SortTh>
+                className="w-[3.8%] px-1 py-2 text-center">Age</SortTh>
+              <SortTh sKey="openCapital" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="w-[6%] px-1 py-2 text-center border-l border-slate-300">Open Cap</SortTh>
+              <SortTh sKey="allocationPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="w-[4.8%] px-1 py-2 text-center">Alloc%</SortTh>
+              <th className="w-[4.8%] px-1 py-2 text-center">Open Qty</th>
               <SortTh sKey="avgEntryPrice" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center border-l border-slate-300">Avg Entry ₹</SortTh>
+                className="w-[5.5%] px-1 py-2 text-center">Avg Entry</SortTh>
               <SortTh sKey="pnlPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center border-l border-slate-300">P&amp;L %</SortTh>
+                className="w-[5%] px-1 py-2 text-center border-l border-slate-300">P&amp;L%</SortTh>
               <SortTh sKey="pnlAmount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center">P&amp;L ₹</SortTh>
+                className="w-[5.8%] px-1 py-2 text-center">P&amp;L</SortTh>
               <SortTh sKey="impactPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-3 text-center">Impact %</SortTh>
-              <th className="px-3 py-3 text-center text-[10px] text-slate-400">EOD</th>
-              <th className="px-2 py-3 text-center w-8"></th>
+                className="w-[5%] px-1 py-2 text-center">Impact%</SortTh>
+              <th className="w-[8.4%] px-1 py-2 text-center text-[9px] text-slate-400" colSpan={2}>EOD</th>
             </tr>
             <tr className="bg-white text-slate-400 text-[10px] border-b border-line">
               <th />
-              <th className="px-3 py-1.5 text-left">L / S</th>
-              <th className="px-3 py-1.5">Qty</th>
-              <th className="px-3 py-1.5">Price</th>
+              <th className="px-1.5 py-1 text-left">L/S</th>
+              <th className="w-[4.5%] px-1 py-1">Qty</th>
+              <th className="w-[5.2%] px-1 py-1">Price</th>
               <SortTh sKey="entryDate" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-1.5">Date</SortTh>
-              <th className="px-3 py-1.5 border-l border-slate-300">Qty</th>
-              <th className="px-3 py-1.5">Price</th>
+                className="w-[5.8%] px-1 py-1">Date</SortTh>
+              <th className="w-[4.5%] px-1 py-1 border-l border-slate-300">Qty</th>
+              <th className="w-[5.2%] px-1 py-1">Price</th>
               <SortTh sKey="exitDate" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="px-3 py-1.5">Date</SortTh>
-              <th className="px-3 py-1.5 border-l border-slate-300" />
-              <th className="px-3 py-1.5 border-l border-slate-300" />
-              <th className="px-3 py-1.5" /><th className="px-3 py-1.5" />
-              <th className="px-3 py-1.5 border-l border-slate-300" />
-              <th className="px-3 py-1.5 border-l border-slate-300" />
-              <th className="px-3 py-1.5" /><th className="px-3 py-1.5" />
-              <th className="px-3 py-1.5 border-l border-slate-300" />
-              <th />
+                className="w-[5.8%] px-1 py-1">Date</SortTh>
+              <th className="px-1 py-1 border-l border-slate-300" />
+              <th className="px-1 py-1" />
+              <th className="px-1 py-1 border-l border-slate-300" />
+              <th className="px-1 py-1" />
+              <th className="px-1 py-1" />
+              <th className="px-1 py-1" />
+              <th className="px-1 py-1 border-l border-slate-300" />
+              <th className="px-1 py-1" />
+              <th className="px-1 py-1" />
+              <th className="px-1 py-1" />
+              <th className="px-1 py-1 border-l border-slate-300" />
+              <th className="px-1 py-1" />
             </tr>
           </thead>
 
@@ -753,27 +780,28 @@ export function JournalTable({
                         className={`${rowBg} hover:bg-slate-50 transition-colors ${isDeleting ? "opacity-40" : ""} ${isFirst ? borderColor : "border-l-4 border-l-transparent"}`}>
 
                         {isFirst && (
-                          <td className="px-2 py-3 text-center align-middle" rowSpan={maxLegs}>
+                          <td className="px-1 py-2 text-center align-middle" rowSpan={maxLegs}>
                             <input type="checkbox" checked={isSelected} onChange={() => toggleOne(t.id)}
                               className="h-3.5 w-3.5 rounded border-slate-300 accent-slate-700 cursor-pointer" />
                           </td>
                         )}
 
                         {isFirst && (
-                          <td className="px-3 py-3 text-left align-middle" rowSpan={maxLegs}>
-                            <div className="flex items-center gap-1.5">
+                          <td className="px-1.5 py-2 text-left align-middle" rowSpan={maxLegs}>
+                            <div className="flex min-w-0 items-center gap-1">
                               <span className={`shrink-0 w-4 h-4 flex items-center justify-center rounded text-[9px] font-bold ${
                                 t.tradeType === "LONG" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
                               }`}>
                                 {t.tradeType === "LONG" ? "L" : "S"}
                               </span>
                               <Link href={`/trades/${encodeURIComponent(t.symbol)}`}
-                                className="font-semibold text-slate-800 hover:text-blue-600 transition text-[12px] uppercase tracking-wide">
-                                {t.symbol}
+                                title={t.symbol}
+                                className="min-w-0 max-w-[74px] truncate font-semibold text-slate-800 hover:text-blue-600 transition text-[10px] uppercase tracking-wide">
+                                {shortSymbol(t.symbol, 11)}
                               </Link>
                               {statusUi.label && (
                                 <span
-                                  className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide ${statusUi.chipClass}`}
+                                  className={`rounded-full border px-1 py-0.5 text-[8px] font-semibold tracking-wide ${statusUi.chipClass}`}
                                   title={statusUi.title}
                                 >
                                   {statusUi.label}
@@ -784,38 +812,33 @@ export function JournalTable({
                           </td>
                         )}
 
-                        <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                        <td className="px-1 py-2 text-right tabular-nums text-slate-600">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
                             : eLeg?.qty ? fmtQty(eLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
+                        <td className="px-1 py-2 text-right tabular-nums text-slate-700 font-medium">
                           {eLeg?.price ? fmtPrice(eLeg.price) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right text-slate-500 text-[11px]">
+                        <td className="px-1 py-2 text-right text-slate-500 text-[10px]">
                           {eLeg?.dateTime ? fmtDate(eLeg.dateTime) : <span className="text-slate-300">—</span>}
                         </td>
 
-                        <td className="px-3 py-3 text-right tabular-nums text-slate-600 border-l border-slate-100">
+                        <td className="px-1 py-2 text-right tabular-nums text-slate-600 border-l border-slate-100">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
                             : xLeg?.qty > 0 ? fmtQty(xLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium">
+                        <td className="px-1 py-2 text-right tabular-nums text-slate-700 font-medium">
                           {xLeg?.price > 0 ? fmtPrice(xLeg.price) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right text-slate-500 text-[11px]">
+                        <td className="px-1 py-2 text-right text-slate-500 text-[10px]">
                           {xLeg?.dateTime ? fmtDate(xLeg.dateTime) : <span className="text-slate-300">—</span>}
                         </td>
 
                         {isFirst && (
                           <>
-                            <td className="px-3 py-3 text-right tabular-nums text-slate-600 align-middle border-l border-slate-100" rowSpan={maxLegs}>
-                              {!showAmounts
-                                ? <span className="text-slate-300">•••</span>
-                                : t.openCapital > 0 ? fmtAmt(t.openCapital) : <span className="text-slate-300">—</span>}
-                            </td>
-                            <td className="px-3 py-3 text-right align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                            <td className="px-1 py-2 text-right align-middle border-l border-slate-100" rowSpan={maxLegs}>
                               <StopLossInput
                                 tradeId={t.id}
                                 stopLoss={t.stopLoss}
@@ -823,18 +846,26 @@ export function JournalTable({
                                 onUpdate={() => onRefresh?.()}
                               />
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
-                              {fmtPctNoSign(t.allocationPct)}
-                            </td>
-                            <td className="px-3 py-3 text-right tabular-nums align-middle" rowSpan={maxLegs}>
+                            <td className="px-1 py-2 text-right tabular-nums align-middle" rowSpan={maxLegs}>
                               <span className={t.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}>
                                 {t.ageDays}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                            <td className="px-1 py-2 text-right tabular-nums text-slate-600 align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                              {!showAmounts
+                                ? <span className="text-slate-300">•••</span>
+                                : t.openCapital > 0 ? fmtAmt(t.openCapital) : <span className="text-slate-300">—</span>}
+                            </td>
+                            <td className="px-1 py-2 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
+                              {fmtPctNoSign(t.allocationPct)}
+                            </td>
+                            <td className="px-1 py-2 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
+                              {showAmounts ? fmtQty(t.openQty) : <span className="text-slate-300">•••</span>}
+                            </td>
+                            <td className="px-1 py-2 text-right tabular-nums text-slate-700 font-medium align-middle" rowSpan={maxLegs}>
                               {t.weightedEntryPrice > 0 ? fmtPrice(t.weightedEntryPrice) : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className={`px-3 py-3 text-right align-middle border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                            <td className={`px-1 py-2 text-right align-middle border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
                               {!showPnl ? (
                                 <span className="text-slate-300">—</span>
                               ) : t.derivedStatus === "CLOSED" || (t.unrealizedPnl === 0) ? (
@@ -855,7 +886,7 @@ export function JournalTable({
                                 </span>
                               )}
                             </td>
-                            <td className={`px-3 py-3 text-right align-middle tabular-nums ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                            <td className={`px-1 py-2 text-right align-middle tabular-nums ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
                               {!showAmounts ? (
                                 <span className="text-slate-300">•••</span>
                               ) : !showPnl ? (
@@ -878,21 +909,21 @@ export function JournalTable({
                                 </span>
                               )}
                             </td>
-                            <td className={`px-3 py-3 text-right tabular-nums font-medium align-middle ${pnlColor(t.impactPct)}`} rowSpan={maxLegs}>
+                            <td className={`px-1 py-2 text-right tabular-nums font-medium align-middle ${pnlColor(t.impactPct)}`} rowSpan={maxLegs}>
                               {showPnl
                                 ? fmtPct(t.impactPct)
                                 : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>
-                               <ClosingPriceInput
-                                  tradeId={t.id}
-                                  initialValue={t.closingPrice}
-                                  onUpdate={() => onRefresh?.()}
-                                />
+                            <td className="px-1 py-2 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                              <ClosingPriceInput
+                                tradeId={t.id}
+                                initialValue={t.closingPrice}
+                                onUpdate={() => onRefresh?.()}
+                              />
                             </td>
-                            <td className="px-2 py-3 text-center align-middle" rowSpan={maxLegs}>
+                            <td className="px-1 py-2 text-center align-middle" rowSpan={maxLegs}>
                               <Link href={`/trades/${encodeURIComponent(t.symbol)}/edit/${t.id}`}
-                                className="text-slate-400 hover:text-slate-700 transition" title="Edit">
+                                className="inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" title="Edit">
                                 <Edit2 size={12} />
                               </Link>
                             </td>
@@ -908,7 +939,7 @@ export function JournalTable({
 
             {rows.length === 0 && (
               <tr>
-                <td colSpan={16} className="py-16 text-center text-slate-400 text-sm">
+                <td colSpan={19} className="py-16 text-center text-slate-400 text-sm">
                   No trades found. Import a CSV or add a trade manually.
                 </td>
               </tr>

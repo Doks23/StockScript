@@ -158,6 +158,7 @@ export function EquityCurveChart({
     equityData;
   const lastPnl = curve[curve.length - 1]?.pnl ?? 0;
   const startingCapital = current - lastPnl;
+  const xAxisInterval = Math.max(0, Math.ceil(curve.length / 7) - 1);
 
   return (
     <div className="flex h-full flex-col">
@@ -231,6 +232,8 @@ export function EquityCurveChart({
             </defs>
             <XAxis
               dataKey="date"
+              interval={xAxisInterval}
+              minTickGap={18}
               tick={{ fontSize: 9, fill: "#94a3b8" }}
               tickMargin={4}
               axisLine={false}
