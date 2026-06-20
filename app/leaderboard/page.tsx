@@ -114,36 +114,42 @@ export default async function LeaderboardPage({
                 return (
                   <article
                     key={entry.userId}
-                    className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-5"
+                    className="rounded-2xl border border-line bg-white p-3 shadow-sm sm:p-4"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="rounded-full bg-canvas px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                      <span className="rounded-full bg-canvas px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
                         #{entry.rank}
                       </span>
-                      <Icon className={`h-6 w-6 ${medalColor}`} />
+                      <Icon className={`h-5 w-5 ${medalColor}`} />
                     </div>
-                    <p className="mt-4 font-display text-xl font-semibold text-slate-800">
+                    <p className="mt-2 font-display text-lg font-semibold text-slate-800">
                       {entry.userName}
                     </p>
                     <p
-                      className={`mt-1 text-3xl font-bold ${entry.portfolioImpactPct >= 0 ? "text-emerald-600" : "text-red-500"}`}
+                      className={`mt-0.5 text-2xl font-bold ${entry.portfolioImpactPct >= 0 ? "text-emerald-600" : "text-red-500"}`}
                     >
                       {formatPercent(entry.portfolioImpactPct)}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-400 uppercase tracking-wider">
+                    <p className="text-[11px] text-slate-400 uppercase tracking-wider">
                       Portfolio Impact
                     </p>
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                      <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-                        <p className="text-slate-500 text-xs">Win Rate</p>
-                        <p className="mt-1 font-semibold text-slate-800">
+                    <div className="mt-3 grid grid-cols-3 gap-1.5 text-xs">
+                      <div className="rounded-xl bg-slate-50 px-2 py-1.5">
+                        <p className="text-slate-500 text-[10px]">Win Rate</p>
+                        <p className="mt-0.5 font-semibold text-slate-800">
                           {formatPercent(entry.winRate)}
                         </p>
                       </div>
-                      <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-                        <p className="text-slate-500 text-xs">Trades</p>
-                        <p className="mt-1 font-semibold text-slate-800">
+                      <div className="rounded-xl bg-slate-50 px-2 py-1.5">
+                        <p className="text-slate-500 text-[10px]">Trades</p>
+                        <p className="mt-0.5 font-semibold text-slate-800">
                           {entry.totalTrades}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-2 py-1.5">
+                        <p className="text-slate-500 text-[10px]">Allocation</p>
+                        <p className="mt-0.5 font-semibold text-slate-800">
+                          {formatPercent(entry.allocationPct)}
                         </p>
                       </div>
                     </div>
@@ -168,10 +174,12 @@ export default async function LeaderboardPage({
                   <p className="truncate text-sm font-semibold text-slate-800">
                     {entry.userName}
                   </p>
-                  <div className="mt-0.5 flex items-center gap-3 text-[11px] text-slate-500">
+                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
                     <span>Win {formatPercent(entry.winRate)}</span>
                     <span>•</span>
                     <span>{entry.totalTrades} trades</span>
+                    <span>•</span>
+                    <span>Alloc {formatPercent(entry.allocationPct)}</span>
                   </div>
                 </div>
                 <div className="text-right">
@@ -209,7 +217,8 @@ export default async function LeaderboardPage({
                     <th className="px-5 py-3 text-right">PnL %</th>
                     <th className="px-5 py-3 text-right">Win Rate</th>
                     <th className="px-5 py-3 text-right">Trades</th>
-                    <th className="px-5 py-3 text-center">Trades Detail</th>
+                    <th className="px-5 py-3 text-right">Allocation</th>
+                    <th className="px-5 py-3 text-center">Detail</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -243,6 +252,9 @@ export default async function LeaderboardPage({
                       <td className="px-5 py-4 text-right text-slate-600">
                         {entry.totalTrades}
                       </td>
+                      <td className="px-5 py-4 text-right text-slate-600">
+                        {formatPercent(entry.allocationPct)}
+                      </td>
                       <td className="px-5 py-4 text-center">
                         <Link
                           href={`/leaderboard/${selectedCompetitionId}/${entry.userId}`}
@@ -256,7 +268,7 @@ export default async function LeaderboardPage({
                   {leaderboard.entries.length === 0 && (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={8}
                         className="py-12 text-center text-slate-400"
                       >
                         No qualifying traders yet.

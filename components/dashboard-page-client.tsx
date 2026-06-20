@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { subDays, format } from "date-fns";
+import { subDays, format, differenceInCalendarDays } from "date-fns";
 import {
   Eye,
   EyeOff,
@@ -19,7 +19,7 @@ import {
   useEquityCurveData,
   useMonthlyPnlData,
 } from "./dashboard-charts";
-import { PortfolioCapitalEditor } from "@/components/portfolio-capital-editor";
+
 import {
   buildDashboardMetrics,
   buildGroupedJournalRows,
@@ -114,6 +114,7 @@ function computeOpenPositions(
       const riskPct = userCapital > 0 ? (riskAmount / userCapital) * 100 : 0;
       const slPct = sl && firstEntry > 0 ? Math.abs(((sl - firstEntry) / firstEntry) * 100) : null;
       const rMultiple = riskAmount > 0 ? mtmPnl / riskAmount : 0;
+      const ageDays = differenceInCalendarDays(new Date(), t.firstEntryAt ?? t.createdAt);
 
       let status: "OpenRisk" | "BreakEven" | "Profitable";
       if (rMultiple > settings.profitableR) status = "Profitable";
@@ -133,6 +134,7 @@ function computeOpenPositions(
         rMultiple,
         status,
         capital,
+        ageDays,
       };
     })
     .filter((position) => position.qty > 0);
@@ -559,14 +561,29 @@ export function DashboardPageClient({
           </div>
         </div>
         <div className="flex items-center justify-between gap-3 lg:justify-end lg:gap-4">
-          <PortfolioCapitalEditor initialCapital={userCapital} />
-          <Link
-            href="/account"
-            className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-            title="Settings"
-          >
-            <Settings size={16} />
-          </Link>
+          <div className="flex items-center gap-4">
+            <div className="flex items-baseline gap-3">
+              <div className="text-right">
+                <p className="text-[9px] uppercase tracking-[0.1em] text-slate-400">Capital</p>
+                <p className="font-display text-sm font-semibold text-ink">
+                  {showAmounts ? formatCurrency(userCapital) : "•••"}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] uppercase tracking-[0.1em] text-slate-400">Available</p>
+                <p className="font-display text-sm font-semibold text-profit">
+                  {showAmounts ? formatCurrency(userCapital - derived.capitalDeployed) : "•••"}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/account"
+              className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              title="Account settings"
+            >
+              <Settings size={16} />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -1058,7 +1075,13 @@ export function DashboardPageClient({
                       {pos.status}
                     </span>
                   </div>
-                  <div className="mt-1.5 grid grid-cols-4 gap-1 text-[10px]">
+                  <div className="mt-1.5 grid grid-cols-5 gap-1 text-[9px]">
+                    <div>
+                      <p className="text-slate-400">Age</p>
+                      <p className={`font-mono font-semibold ${pos.ageDays > 30 ? "text-amber-600" : "text-slate-700"}`}>
+                        {pos.ageDays}d
+                      </p>
+                    </div>
                     <div>
                       <p className="text-slate-400">MTM</p>
                       <p className={`font-mono font-semibold ${pos.mtmPnl >= 0 ? "text-profit" : "text-loss"}`}>
@@ -1119,6 +1142,9 @@ export function DashboardPageClient({
                       Avg Entry
                     </th>
                     <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
+                      Age
+                    </th>
+                    <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
                       SL %
                     </th>
                     <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
@@ -1152,6 +1178,9 @@ export function DashboardPageClient({
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-slate-600">
                         {showAmounts ? formatPrice(pos.entry) : "•••"}
+                      </td>
+                      <td className={`px-2 py-1 text-right font-mono ${pos.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}`}>
+                        {pos.ageDays}d
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-slate-500">
                         {pos.slPct !== null ? `${pos.slPct.toFixed(1)}%` : "--"}

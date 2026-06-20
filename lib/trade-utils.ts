@@ -762,6 +762,7 @@ export type LeaderboardEntry = {
   winRate: number;
   totalTrades: number;
   profitFactor: number;
+  allocationPct: number;
   rank?: number;
 };
 
@@ -785,6 +786,7 @@ export function buildLeaderboardEntries(entries: LeaderboardInput[]) {
         winRate: metrics.winRate,
         totalTrades: rows.length,
         profitFactor: metrics.profitFactor,
+        allocationPct: metrics.totalAllocationPct,
       } as LeaderboardEntry;
     })
     .filter((entry): entry is LeaderboardEntry => entry !== null)
