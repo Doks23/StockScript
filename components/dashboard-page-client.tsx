@@ -23,8 +23,10 @@ import { PortfolioCapitalEditor } from "@/components/portfolio-capital-editor";
 import {
   buildDashboardMetrics,
   buildGroupedJournalRows,
+  getEntryTransactions,
   getWeightedEntryPrice,
   getTotalEntryQty,
+  getTotalExitQty,
   getLastExitTime,
   calculateOpenPnl,
 } from "@/lib/trade-utils";
@@ -52,30 +54,70 @@ const PERIOD_TABS: { key: Period; label: string }[] = [
   { key: "custom", label: "Custom" },
 ];
 
+type DashboardThresholdSettings = {
+  breakEvenR: number;
+  profitableR: number;
+  riskWarnPct: number;
+  riskHighPct: number;
+  allocationWarnPct: number;
+  allocationHighPct: number;
+};
+
+const DEFAULT_DASHBOARD_THRESHOLDS: DashboardThresholdSettings = {
+  breakEvenR: 1,
+  profitableR: 2,
+  riskWarnPct: 2.5,
+  riskHighPct: 4,
+  allocationWarnPct: 15,
+  allocationHighPct: 25,
+};
+
+function readDashboardThresholds() {
+  if (typeof window === "undefined") return DEFAULT_DASHBOARD_THRESHOLDS;
+  try {
+    const saved = localStorage.getItem("dashboardThresholdSettings");
+    if (!saved) return DEFAULT_DASHBOARD_THRESHOLDS;
+    return {
+      ...DEFAULT_DASHBOARD_THRESHOLDS,
+      ...JSON.parse(saved),
+    } as DashboardThresholdSettings;
+  } catch {
+    return DEFAULT_DASHBOARD_THRESHOLDS;
+  }
+}
+
 function pnlTone(v: number) {
   if (v > 0) return "profit";
   if (v < 0) return "loss";
   return "default";
 }
 
-function computeOpenPositions(trades: TradeWithTxns[], userCapital: number) {
+function computeOpenPositions(
+  trades: TradeWithTxns[],
+  userCapital: number,
+  settings: DashboardThresholdSettings,
+) {
   return trades
     .filter((t) => t.status === "OPEN")
     .map((t) => {
       const entry = getWeightedEntryPrice(t);
-      const qty = getTotalEntryQty(t);
+      const firstEntry = getEntryTransactions(t)[0]?.price ?? entry;
+      const entryQty = getTotalEntryQty(t);
+      const exitQty = getTotalExitQty(t);
+      const qty = Math.max(0, entryQty - exitQty);
       const cmp = t.closingPrice && t.closingPrice > 0 ? t.closingPrice : entry;
       const sl = t.stopLoss;
       const mtmPnl = calculateOpenPnl(t);
-      const capital = t.capitalUsed || entry * qty;
+      const capital = entry * qty;
       const allocationPct = userCapital > 0 ? (capital / userCapital) * 100 : 0;
       const riskAmount = sl ? Math.abs(entry - sl) * qty : 0;
       const riskPct = userCapital > 0 ? (riskAmount / userCapital) * 100 : 0;
+      const slPct = sl && firstEntry > 0 ? Math.abs(((sl - firstEntry) / firstEntry) * 100) : null;
       const rMultiple = riskAmount > 0 ? mtmPnl / riskAmount : 0;
 
       let status: "OpenRisk" | "BreakEven" | "Profitable";
-      if (rMultiple > 2) status = "Profitable";
-      else if (rMultiple >= 1) status = "BreakEven";
+      if (rMultiple > settings.profitableR) status = "Profitable";
+      else if (rMultiple >= settings.breakEvenR) status = "BreakEven";
       else status = "OpenRisk";
 
       return {
@@ -84,6 +126,7 @@ function computeOpenPositions(trades: TradeWithTxns[], userCapital: number) {
         entry,
         cmp,
         sl,
+        slPct,
         riskPct,
         allocationPct,
         mtmPnl,
@@ -91,12 +134,23 @@ function computeOpenPositions(trades: TradeWithTxns[], userCapital: number) {
         status,
         capital,
       };
-    });
+    })
+    .filter((position) => position.qty > 0);
 }
 
 function metricToneClass(value: number | null) {
   if (value === null || value === 0) return "text-slate-500";
   return value > 0 ? "text-profit" : "text-loss";
+}
+
+function thresholdToneClass(value: number, warn: number, high: number) {
+  if (value > high) return "text-loss";
+  if (value > warn) return "text-amber-600";
+  return "text-profit";
+}
+
+function displaySymbol(symbol: string, max = 12) {
+  return symbol.length > max ? `${symbol.slice(0, max - 1)}…` : symbol;
 }
 
 export function DashboardPageClient({
@@ -115,12 +169,26 @@ export function DashboardPageClient({
   const [showAmounts, setShowAmounts] = useState(true);
   const [lastUpdated] = useState(() => new Date());
   const [selectedMonthKey, setSelectedMonthKey] = useState("");
+  const [thresholdSettings, setThresholdSettings] = useState(
+    DEFAULT_DASHBOARD_THRESHOLDS,
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem("dashboardPeriod") as Period | null;
     if (saved && PERIOD_TABS.some((t) => t.key === saved)) {
       setPeriod(saved);
     }
+    setThresholdSettings(readDashboardThresholds());
+  }, []);
+
+  useEffect(() => {
+    const refreshThresholds = () => setThresholdSettings(readDashboardThresholds());
+    window.addEventListener("storage", refreshThresholds);
+    window.addEventListener("dashboard-threshold-settings-updated", refreshThresholds);
+    return () => {
+      window.removeEventListener("storage", refreshThresholds);
+      window.removeEventListener("dashboard-threshold-settings-updated", refreshThresholds);
+    };
   }, []);
 
   const handlePeriodChange = (key: Period) => {
@@ -232,7 +300,11 @@ export function DashboardPageClient({
         : 0;
     const avgRR = avgLossR > 0 ? avgWinR / avgLossR : avgWinR;
 
-    const openPositions = computeOpenPositions(filteredTrades, userCapital).slice(0, 6);
+    const openPositions = computeOpenPositions(
+      filteredTrades,
+      userCapital,
+      thresholdSettings,
+    );
 
     const capitalDeployed = openPositions.reduce(
       (s, p) => s + p.capital,
@@ -273,17 +345,13 @@ export function DashboardPageClient({
         : 0;
 
     const dayMap = new Map<string, number[]>();
-    filteredTrades.forEach((t) => {
+    opened.forEach((t) => {
       const day = format(
         new Date(t.firstEntryAt ?? t.createdAt),
         "yyyy-MM-dd",
       );
       if (!dayMap.has(day)) dayMap.set(day, []);
-      const pnl =
-        t.status === "CLOSED"
-          ? (t.netPnl ?? 0)
-          : calculateOpenPnl(t);
-      dayMap.get(day)!.push(pnl);
+      dayMap.get(day)!.push(calculateOpenPnl(t));
     });
     let bestDay = 0;
     let bestDayLabel = "";
@@ -402,7 +470,7 @@ export function DashboardPageClient({
       largestLoss,
       currentStreak,
     };
-  }, [filteredTrades, userCapital, metrics]);
+  }, [filteredTrades, userCapital, metrics, thresholdSettings]);
 
   const equityData = useEquityCurveData(filteredTrades, userCapital);
   const monthlyData = useMonthlyPnlData(filteredTrades);
@@ -966,16 +1034,16 @@ export function DashboardPageClient({
             </span>
           </div>
           {derived.openPositions.length > 0 ? (
-            <div className="divide-y divide-line/50">
-              {derived.openPositions.slice(0, 5).map((pos) => (
+            <div className="max-h-[360px] divide-y divide-line/50 overflow-y-auto">
+              {derived.openPositions.map((pos) => (
                 <div key={pos.symbol} className="px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-ink">
-                        {pos.symbol}
+                        <span title={pos.symbol}>{displaySymbol(pos.symbol)}</span>
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        Qty {showAmounts ? pos.qty : "••"} · Entry {showAmounts ? formatPrice(pos.entry) : "•••"}
+                        Open Qty {showAmounts ? pos.qty : "••"} · Avg Entry {showAmounts ? formatPrice(pos.entry) : "•••"}
                       </p>
                     </div>
                     <span
@@ -999,13 +1067,13 @@ export function DashboardPageClient({
                     </div>
                     <div>
                       <p className="text-slate-400">Risk</p>
-                      <p className="font-mono font-semibold text-ink">
+                      <p className={`font-mono font-semibold ${thresholdToneClass(pos.riskPct, thresholdSettings.riskWarnPct, thresholdSettings.riskHighPct)}`}>
                         {pos.riskPct.toFixed(1)}%
                       </p>
                     </div>
                     <div>
                       <p className="text-slate-400">Alloc</p>
-                      <p className="font-mono font-semibold text-ink">
+                      <p className={`font-mono font-semibold ${thresholdToneClass(pos.allocationPct, thresholdSettings.allocationWarnPct, thresholdSettings.allocationHighPct)}`}>
                         {pos.allocationPct.toFixed(1)}%
                       </p>
                     </div>
@@ -1037,7 +1105,7 @@ export function DashboardPageClient({
           </div>
 
           {derived.openPositions.length > 0 ? (
-            <div className="min-h-0 flex-1 overflow-x-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full text-[10px] sm:text-[11px]">
                 <thead>
                   <tr className="border-b border-line text-left text-[9px] uppercase tracking-wider text-slate-400">
@@ -1045,16 +1113,13 @@ export function DashboardPageClient({
                       Stock
                     </th>
                     <th className={`sticky top-0 bg-white px-2 py-1 font-medium text-right ${showAmounts ? "" : "text-slate-300"}`}>
-                      {showAmounts ? "Qty" : "••"}
+                      {showAmounts ? "Open Qty" : "••"}
                     </th>
                     <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
-                      Entry
+                      Avg Entry
                     </th>
                     <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
-                      CMP
-                    </th>
-                    <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
-                      SL
+                      SL %
                     </th>
                     <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
                       Risk %
@@ -1079,8 +1144,8 @@ export function DashboardPageClient({
                       key={pos.symbol}
                       className="border-b border-line/50 transition hover:bg-slate-50/50"
                     >
-                      <td className="px-2 py-1 font-medium text-ink">
-                        {pos.symbol}
+                      <td className="max-w-[92px] truncate px-2 py-1 font-medium text-ink" title={pos.symbol}>
+                        {displaySymbol(pos.symbol)}
                       </td>
                       <td className="px-2 py-1 text-right text-slate-600">
                         {showAmounts ? pos.qty : "••"}
@@ -1088,30 +1153,27 @@ export function DashboardPageClient({
                       <td className="px-2 py-1 text-right font-mono text-slate-600">
                         {showAmounts ? formatPrice(pos.entry) : "•••"}
                       </td>
-                      <td className="px-2 py-1 text-right font-mono text-slate-600">
-                        {showAmounts ? formatPrice(pos.cmp) : "•••"}
-                      </td>
                       <td className="px-2 py-1 text-right font-mono text-slate-500">
-                        {showAmounts ? (pos.sl ? formatPrice(pos.sl) : "--") : "•••"}
+                        {pos.slPct !== null ? `${pos.slPct.toFixed(1)}%` : "--"}
                       </td>
                       <td
                         className={`px-2 py-1 text-right font-mono font-medium ${
-                          pos.riskPct <= 2.5
-                            ? "text-profit"
-                            : pos.riskPct <= 4
-                              ? "text-amber-600"
-                              : "text-loss"
+                          thresholdToneClass(
+                            pos.riskPct,
+                            thresholdSettings.riskWarnPct,
+                            thresholdSettings.riskHighPct,
+                          )
                         }`}
                       >
                         {pos.riskPct.toFixed(2)}%
                       </td>
                       <td
                         className={`px-2 py-1 text-right font-mono font-medium ${
-                          pos.allocationPct <= 15
-                            ? "text-profit"
-                            : pos.allocationPct <= 25
-                              ? "text-amber-600"
-                              : "text-loss"
+                          thresholdToneClass(
+                            pos.allocationPct,
+                            thresholdSettings.allocationWarnPct,
+                            thresholdSettings.allocationHighPct,
+                          )
                         }`}
                       >
                         {pos.allocationPct.toFixed(1)}%
@@ -1155,15 +1217,19 @@ export function DashboardPageClient({
               <div className="flex gap-4 border-t border-line/50 px-3 py-1 text-[9px] text-slate-400">
                 <span>
                   Risk:{" "}
-                  <span className="text-profit">&le;2.5%</span>{" "}
-                  <span className="text-amber-600">2.5-4%</span>{" "}
-                  <span className="text-loss">&gt;4%</span>
+                  <span className="text-profit">&le;{thresholdSettings.riskWarnPct}%</span>{" "}
+                  <span className="text-amber-600">
+                    {thresholdSettings.riskWarnPct}-{thresholdSettings.riskHighPct}%
+                  </span>{" "}
+                  <span className="text-loss">&gt;{thresholdSettings.riskHighPct}%</span>
                 </span>
                 <span>
                   Alloc:{" "}
-                  <span className="text-profit">&le;15%</span>{" "}
-                  <span className="text-amber-600">15-25%</span>{" "}
-                  <span className="text-loss">&gt;25%</span>
+                  <span className="text-profit">&le;{thresholdSettings.allocationWarnPct}%</span>{" "}
+                  <span className="text-amber-600">
+                    {thresholdSettings.allocationWarnPct}-{thresholdSettings.allocationHighPct}%
+                  </span>{" "}
+                  <span className="text-loss">&gt;{thresholdSettings.allocationHighPct}%</span>
                 </span>
               </div>
             </div>
@@ -1222,7 +1288,7 @@ export function DashboardPageClient({
           <span className="text-slate-400">Avg P&L/Day:</span>
           <span
             className={`font-semibold ${
-              derived.totalDays > 0 && derived.totalPnl / derived.totalDays >= 0
+              derived.totalDays > 0 && derived.unrealizedPnl / derived.totalDays >= 0
                 ? "text-profit"
                 : "text-loss"
             }`}
@@ -1230,7 +1296,7 @@ export function DashboardPageClient({
             {showAmounts
               ? formatCurrency(
                   derived.totalDays > 0
-                    ? derived.totalPnl / derived.totalDays
+                    ? derived.unrealizedPnl / derived.totalDays
                     : 0,
                 )
               : "•••"}
@@ -1241,15 +1307,15 @@ export function DashboardPageClient({
           <span className="text-slate-400">Avg P&L/Trade:</span>
           <span
             className={`font-semibold ${
-              metrics.totalTrades + metrics.openTrades > 0 && derived.totalPnl >= 0
+              metrics.openTrades > 0 && derived.unrealizedPnl >= 0
                 ? "text-profit"
                 : "text-loss"
             }`}
           >
             {showAmounts
               ? formatCurrency(
-                  metrics.totalTrades + metrics.openTrades > 0
-                    ? derived.totalPnl / (metrics.totalTrades + metrics.openTrades)
+                  metrics.openTrades > 0
+                    ? derived.unrealizedPnl / metrics.openTrades
                     : 0,
                 )
               : "•••"}
@@ -1259,7 +1325,7 @@ export function DashboardPageClient({
         <div className="flex items-center gap-1.5 whitespace-nowrap">
           <span className="text-slate-400">Total Trades:</span>
           <span className="font-semibold text-ink">
-            {metrics.totalTrades}
+            {metrics.openTrades}
           </span>
         </div>
       </div>
