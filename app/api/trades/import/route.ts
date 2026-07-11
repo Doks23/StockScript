@@ -187,6 +187,50 @@ export async function POST(request: Request) {
 
     const currentCount = await prisma.trade.count({ where: { userId: user.id } });
 
+    const existingTrades = await prisma.trade.findMany({
+      where: { userId: user.id },
+      include: { transactions: { orderBy: { dateTime: "asc" as const } } },
+      orderBy: { firstEntryAt: "desc" },
+      take: 500,
+    });
+
+    const duplicateWarnings: { symbol: string; message: string }[] = [];
+
+    for (const importedTrade of importTrades) {
+      const matchingExisting = existingTrades.filter(
+        (et) => et.symbol === importedTrade.symbol
+      );
+
+      for (const existing of matchingExisting) {
+        const existingDates = existing.transactions.map((t) => new Date(t.dateTime).getTime());
+        const existingPrices = existing.transactions.map((t) => t.price);
+        const importedDates = importedTrade.transactions.map((t) => t.dateTime.getTime());
+        const importedPrices = importedTrade.transactions.map((t) => t.price);
+
+        const dateOverlap = importedDates.filter((id) =>
+          existingDates.some((ed) => Math.abs(id - ed) < 24 * 60 * 60 * 1000)
+        ).length;
+
+        const priceOverlap = importedPrices.filter((ip) =>
+          existingPrices.some((ep) => Math.abs(ip - ep) / ep < 0.02)
+        ).length;
+
+        const totalImported = importedTrade.transactions.length;
+        const totalExisting = existing.transactions.length;
+        const matchScore = (dateOverlap + priceOverlap) / Math.max(totalImported + totalExisting, 1);
+
+        if (matchScore > 0.3) {
+          const existingDate = existing.firstEntryAt
+            ? new Date(existing.firstEntryAt).toLocaleDateString("en-IN")
+            : "unknown date";
+          duplicateWarnings.push({
+            symbol: importedTrade.symbol,
+            message: `Potential duplicate of existing ${importedTrade.symbol} trade from ${existingDate} (${dateOverlap} transaction(s) overlap)`,
+          });
+        }
+      }
+    }
+
     const createdTrades = [];
     let rowIndex = currentCount;
 
@@ -252,6 +296,7 @@ export async function POST(request: Request) {
         closed: createdTrades.filter((t) => t.status === "CLOSED").length,
         brokerDetected: detectedFormat,
         parseErrors,
+        duplicateWarnings,
       },
       { status: 201 }
     );

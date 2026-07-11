@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Edit2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Edit2, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
@@ -526,6 +526,15 @@ export function JournalTable({
                       {statusUi.label}
                     </span>
                   )}
+                  {t.qtyMismatch && (
+                    <span
+                      className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700"
+                      title="Buy qty ≠ sell qty for this closed trade — review for errors"
+                    >
+                      <AlertTriangle className="inline h-2.5 w-2.5 mr-0.5" />
+                      QTY
+                    </span>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {!isClosed && (
@@ -818,6 +827,15 @@ export function JournalTable({
                                   title={statusUi.title}
                                 >
                                   {statusUi.label}
+                                </span>
+                              )}
+                              {t.qtyMismatch && (
+                                <span
+                                  className="rounded-full border border-amber-300 bg-amber-50 px-1 py-0.5 text-[7px] font-semibold text-amber-700"
+                                  title="Buy qty ≠ sell qty for this closed trade — review for errors"
+                                >
+                                  <AlertTriangle className="inline h-2 w-2 mr-0.5" />
+                                  QTY
                                 </span>
                               )}
                             </div>

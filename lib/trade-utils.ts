@@ -580,6 +580,7 @@ export type GroupedTradeRow = {
   exitTrigger: string | null;
   proficiency: string | null;
   growthAreas: string | null;
+  qtyMismatch: boolean;
 };
 
 export function buildGroupedJournalRows(
@@ -638,6 +639,8 @@ export function buildGroupedJournalRows(
       stopLossPct = ((trade.stopLoss - firstEntryPrice) / firstEntryPrice) * 100;
     }
 
+    const qtyMismatch = derivedStatus === "CLOSED" && Math.abs(totalEntryQty - exitQ) > 0.001;
+
     return {
       id: trade.id,
       symbol: trade.symbol,
@@ -669,6 +672,7 @@ export function buildGroupedJournalRows(
       exitTrigger: trade.exitTrigger,
       proficiency: trade.proficiency,
       growthAreas: trade.growthAreas,
+      qtyMismatch,
     };
   });
 }

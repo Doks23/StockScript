@@ -37,6 +37,7 @@ type ImportResult = {
   closed: number;
   brokerDetected: string;
   parseErrors?: string[];
+  duplicateWarnings?: { symbol: string; message: string }[];
 };
 
 export function CSVImport({
@@ -353,6 +354,24 @@ export function CSVImport({
                     <li>...and {result.parseErrors.length - 3} more</li>
                   )}
                 </ul>
+              </div>
+            )}
+            {result.duplicateWarnings && result.duplicateWarnings.length > 0 && (
+              <div className="mt-2 bg-orange-50 border border-orange-200 rounded p-2 text-orange-800 text-xs">
+                <p className="font-semibold">
+                  ⚠ {result.duplicateWarnings.length} potential duplicate(s) detected:
+                </p>
+                <ul className="list-disc pl-4 mt-1 opacity-80">
+                  {result.duplicateWarnings
+                    .slice(0, 5)
+                    .map((w: { symbol: string; message: string }, i: number) => (
+                      <li key={i}>{w.message}</li>
+                    ))}
+                  {result.duplicateWarnings.length > 5 && (
+                    <li>...and {result.duplicateWarnings.length - 5} more</li>
+                  )}
+                </ul>
+                <p className="mt-1 text-orange-600">Review these in the journal and merge/delete if needed.</p>
               </div>
             )}
             <p className="mt-2 text-emerald-600 text-xs">
