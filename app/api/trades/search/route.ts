@@ -17,8 +17,10 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
     const pageSize = Math.min(50, Math.max(5, parseInt(sp.get("pageSize") || "20", 10)));
     const tag = sp.get("tag") || "";
+    const sortKey = sp.get("sortKey") || "";
+    const sortDir = sp.get("sortDir") === "asc" ? "asc" : "desc";
 
-    const cacheKey = `trades:search:${user.id}:${symbol}:${from}:${to}:${status}:${tag}:${page}:${pageSize}`;
+    const cacheKey = `trades:search:${user.id}:${symbol}:${from}:${to}:${status}:${tag}:${sortKey}:${sortDir}:${page}:${pageSize}`;
     const cached = getCached<typeof result>(cacheKey);
     if (cached) return NextResponse.json(cached);
 
@@ -55,6 +57,35 @@ export async function GET(req: NextRequest) {
     if (tag) {
       const t = tag.toLowerCase();
       filtered = allGrouped.filter((r) => r.symbol.toLowerCase().includes(t));
+    }
+
+    if (sortKey) {
+      const dateVal = (d: Date | string | null | undefined) => {
+        if (!d) return 0;
+        const t = new Date(d).getTime();
+        return Number.isNaN(t) ? 0 : t;
+      };
+      filtered = [...filtered].sort((a, b) => {
+        if (sortKey === "symbol") {
+          const cmp = a.symbol.localeCompare(b.symbol);
+          return sortDir === "asc" ? cmp : -cmp;
+        }
+        let av = 0;
+        let bv = 0;
+        switch (sortKey) {
+          case "entryDate": av = dateVal(a.entryLegs[0]?.dateTime); bv = dateVal(b.entryLegs[0]?.dateTime); break;
+          case "exitDate": av = dateVal(a.exitDateTime); bv = dateVal(b.exitDateTime); break;
+          case "openCapital": av = a.openCapital; bv = b.openCapital; break;
+          case "stopLossPct": av = a.stopLossPct ?? 0; bv = b.stopLossPct ?? 0; break;
+          case "allocationPct": av = a.allocationPct; bv = b.allocationPct; break;
+          case "ageDays": av = a.ageDays; bv = b.ageDays; break;
+          case "pnlPct": av = a.pnlPct; bv = b.pnlPct; break;
+          case "pnlAmount": av = a.pnlAmount; bv = b.pnlAmount; break;
+          case "avgEntryPrice": av = a.weightedEntryPrice; bv = b.weightedEntryPrice; break;
+          case "impactPct": av = a.impactPct; bv = b.impactPct; break;
+        }
+        return sortDir === "asc" ? av - bv : bv - av;
+      });
     }
 
     const totalCount = filtered.length;

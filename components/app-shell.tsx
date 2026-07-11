@@ -50,7 +50,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-canvas">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-3 pb-24 pt-3 sm:px-6 sm:pb-10 sm:pt-4 lg:px-8">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1720px] flex-col px-4 pb-24 pt-3 sm:px-8 sm:pb-10 sm:pt-4 lg:px-12">
         <header className="animate-reveal rounded-2xl border border-line bg-white/80 px-3 py-2.5 shadow-sm backdrop-blur sm:px-5 sm:py-4 xl:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-between">

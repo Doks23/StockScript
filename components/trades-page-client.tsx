@@ -1,11 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { CheckCircle2, Download, RefreshCw, X } from "lucide-react";
+import { CheckCircle2, Download, RefreshCw, X, Table2 } from "lucide-react";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters } from "@/components/journal-filters";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
+
+type SortKey =
+  | "symbol"
+  | "entryDate"
+  | "exitDate"
+  | "openCapital"
+  | "stopLossPct"
+  | "allocationPct"
+  | "ageDays"
+  | "avgEntryPrice"
+  | "pnlPct"
+  | "pnlAmount"
+  | "impactPct";
 
 type Filters = {
   symbol: string;
@@ -54,6 +68,8 @@ function TradesPageContent() {
     hideAmounts: false,
   });
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [toast, setToast] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,7 +83,7 @@ function TradesPageContent() {
     }
   }, [router, searchParams]);
 
-  const fetchData = useCallback(async (f: Filters, p: number) => {
+  const fetchData = useCallback(async (f: Filters, p: number, sk: SortKey | null, sd: "asc" | "desc") => {
     setLoading(true);
     setError(null);
     try {
@@ -77,7 +93,11 @@ function TradesPageContent() {
       if (f.to) sp.set("to", f.to);
       sp.set("status", f.status);
       sp.set("page", String(p));
-      sp.set("pageSize", "20");
+      sp.set("pageSize", "50");
+      if (sk) {
+        sp.set("sortKey", sk);
+        sp.set("sortDir", sd);
+      }
 
       const res = await fetch(`/api/trades/search?${sp.toString()}`);
       if (!res.ok) {
@@ -90,11 +110,11 @@ function TradesPageContent() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sortKey, sortDir]);
 
   useEffect(() => {
-    fetchData(filters, page);
-  }, [filters, page, fetchData]);
+    fetchData(filters, page, sortKey, sortDir);
+  }, [filters, page, sortKey, sortDir, fetchData]);
 
   useEffect(() => {
     setPage(1);
@@ -120,6 +140,18 @@ function TradesPageContent() {
     debounceRef.current = setTimeout(() => {
       setFilters((prev) => ({ ...prev, ...update }));
     }, 380);
+  }, []);
+
+  const handleSort = useCallback((key: SortKey) => {
+    setSortKey((prev) => {
+      if (prev === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      } else {
+        setSortDir("desc");
+      }
+      return key;
+    });
+    setPage(1);
   }, []);
 
   const metrics = data?.metrics;
@@ -164,6 +196,13 @@ function TradesPageContent() {
             onChange={onFilterChange}
             onDebouncedChange={onFilterDebounced}
           />
+          <Link
+            href="/trades/simple"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-3 sm:py-1.5"
+          >
+            <Table2 size={15} />
+            <span className="hidden sm:inline">Simple View</span>
+          </Link>
           <button
             onClick={handleDownload}
             className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-3 sm:py-1.5"
@@ -173,7 +212,7 @@ function TradesPageContent() {
             <span className="hidden sm:inline">Download</span>
           </button>
           <button
-            onClick={() => fetchData(filters, page)}
+            onClick={() => fetchData(filters, page, sortKey, sortDir)}
             disabled={loading}
             className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-3 sm:py-1.5"
             aria-label="Refresh"
@@ -227,7 +266,7 @@ function TradesPageContent() {
 
       {data && (
         <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
-          <JournalTable rows={data.trades} showAmounts={!filters.hideAmounts} onRefresh={() => fetchData(filters, page)} showSummary={false} />
+          <JournalTable rows={data.trades} showAmounts={!filters.hideAmounts} onRefresh={() => fetchData(filters, page, sortKey, sortDir)} showSummary={false} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
         </section>
       )}
 

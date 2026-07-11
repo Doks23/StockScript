@@ -283,25 +283,38 @@ export function JournalTable({
   showAmounts = true,
   onRefresh,
   showSummary = true,
+  sortKey: externalSortKey,
+  sortDir: externalSortDir,
+  onSort: externalOnSort,
 }: {
   rows: GroupedTradeRow[];
   showAmounts?: boolean;
   onRefresh?: () => void;
   showSummary?: boolean;
+  sortKey?: SortKey | null;
+  sortDir?: "asc" | "desc";
+  onSort?: (k: SortKey) => void;
 }) {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [merging, setMerging] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [internalSortKey, setInternalSortKey] = useState<SortKey | null>(null);
+  const [internalSortDir, setInternalSortDir] = useState<"asc" | "desc">("desc");
+
+  const sortKey = externalSortKey !== undefined ? externalSortKey : internalSortKey;
+  const sortDir = externalSortDir !== undefined ? externalSortDir : internalSortDir;
 
   function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    if (externalOnSort) {
+      externalOnSort(key);
     } else {
-      setSortKey(key);
-      setSortDir("desc");
+      if (internalSortKey === key) {
+        setInternalSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      } else {
+        setInternalSortKey(key);
+        setInternalSortDir("desc");
+      }
     }
   }
 
