@@ -55,6 +55,44 @@ const getTradeStatusUi = (row: GroupedTradeRow) => {
   };
 };
 
+function dateKeyOf(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  return format(new Date(d), "yyyy-MM-dd");
+}
+
+// Signature of the actual entry transaction (BUY for LONG, SELL for SHORT).
+function entryFingerprint(row: GroupedTradeRow): string | null {
+  const firstEntry = row.entryLegs[0];
+  if (!firstEntry) return null;
+  const actualType = row.tradeType === "LONG" ? "BUY" : "SELL";
+  return `${row.symbol}|${actualType}|${firstEntry.qty}|${firstEntry.price}|${dateKeyOf(firstEntry.dateTime)}`;
+}
+
+// Signature of the actual exit transaction (SELL for LONG, BUY for SHORT).
+// Lets a standalone sell trade match against an exit leg already recorded on another trade.
+function exitFingerprint(row: GroupedTradeRow): string | null {
+  if (!row.exitQty || row.exitQty <= 0) return null;
+  const actualType = row.tradeType === "LONG" ? "SELL" : "BUY";
+  return `${row.symbol}|${actualType}|${row.exitQty}|${row.exitPrice}|${dateKeyOf(row.exitDateTime)}`;
+}
+
+function findDuplicateIds(rows: GroupedTradeRow[]): Set<string> {
+  const groups = new Map<string, Set<string>>();
+  for (const row of rows) {
+    for (const fp of [entryFingerprint(row), exitFingerprint(row)]) {
+      if (!fp) continue;
+      const ids = groups.get(fp) ?? new Set<string>();
+      ids.add(row.id);
+      groups.set(fp, ids);
+    }
+  }
+  const duplicateIds = new Set<string>();
+  for (const ids of groups.values()) {
+    if (ids.size > 1) ids.forEach((id) => duplicateIds.add(id));
+  }
+  return duplicateIds;
+}
+
 function splitAttr(value?: string | null) {
   if (!value) return [];
   return value
@@ -363,6 +401,8 @@ export function JournalTable({
     return { realizedPnl, unrealizedPnl, totalPnl, totalPnlPct, totalAlloc, totalImpact };
   }, [rows]);
 
+  const duplicateIds = useMemo(() => findDuplicateIds(rows), [rows]);
+
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
   const someSelected = selectedIds.size > 0;
   const selectedRows = rows.filter((r) => selectedIds.has(r.id));
@@ -488,12 +528,13 @@ export function JournalTable({
           const firstEntry = t.entryLegs[0];
           const lastExit = t.exitLegs?.[t.exitLegs.length - 1];
           const showPnl = hasPnlData(t);
+          const isDuplicate = duplicateIds.has(t.id);
           return (
             <div
               key={t.id}
               className={`rounded-2xl border border-line border-l-4 ${accent} ${statusUi.rowClass} p-3 shadow-sm ${
                 isSelected ? "ring-2 ring-blue-300" : ""
-              } ${isDeleting ? "opacity-40" : ""}`}
+              } ${isDuplicate ? "ring-2 ring-rose-400 bg-rose-50/60" : ""} ${isDeleting ? "opacity-40" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
@@ -533,6 +574,14 @@ export function JournalTable({
                     >
                       <AlertTriangle className="inline h-2.5 w-2.5 mr-0.5" />
                       QTY
+                    </span>
+                  )}
+                  {isDuplicate && (
+                    <span
+                      className="shrink-0 rounded-full border border-rose-300 bg-rose-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-rose-700"
+                      title="Same symbol, date, price and quantity as another trade — possible duplicate"
+                    >
+                      DUP
                     </span>
                   )}
                 </div>
@@ -786,7 +835,10 @@ export function JournalTable({
                 ? "border-l-4 border-l-red-400"
                 : "border-l-4 border-l-slate-200";
 
-              const rowBg = isSelected
+              const isDuplicate = duplicateIds.has(t.id);
+              const rowBg = isDuplicate
+                ? "bg-rose-50"
+                : isSelected
                 ? "bg-blue-50"
                 : statusUi.rowClass;
 
@@ -799,7 +851,7 @@ export function JournalTable({
 
                     return (
                       <tr key={`${t.id}-${idx}`}
-                        className={`${rowBg} hover:bg-slate-50 transition-colors ${isDeleting ? "opacity-40" : ""} ${isFirst ? borderColor : "border-l-4 border-l-transparent"}`}>
+                        className={`${rowBg} hover:bg-slate-50 transition-colors ${isDeleting ? "opacity-40" : ""} ${isFirst ? borderColor : "border-l-4 border-l-transparent"} ${isDuplicate ? "outline outline-1 -outline-offset-1 outline-rose-300" : ""}`}>
 
                         {isFirst && (
                           <td className="px-1 py-2 text-center align-middle" rowSpan={maxLegs}>
@@ -836,6 +888,14 @@ export function JournalTable({
                                 >
                                   <AlertTriangle className="inline h-2 w-2 mr-0.5" />
                                   QTY
+                                </span>
+                              )}
+                              {isDuplicate && (
+                                <span
+                                  className="rounded-full border border-rose-300 bg-rose-100 px-1 py-0.5 text-[8px] font-semibold tracking-wide text-rose-700"
+                                  title="Same symbol, date, price and quantity as another trade — possible duplicate"
+                                >
+                                  DUP
                                 </span>
                               )}
                             </div>
