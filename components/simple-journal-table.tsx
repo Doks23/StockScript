@@ -50,8 +50,8 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
           const cmp = a.symbol.localeCompare(b.symbol);
           return sortDir === "asc" ? cmp : -cmp;
         case "entryDate":
-          av = a.entryDate.getTime();
-          bv = b.entryDate.getTime();
+          av = new Date(a.entryDate).getTime();
+          bv = new Date(b.entryDate).getTime();
           break;
         case "avgEntryPrice": av = a.weightedEntryPrice; bv = b.weightedEntryPrice; break;
         case "avgExitPrice": av = a.exitPrice; bv = b.exitPrice; break;
@@ -99,7 +99,7 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
           {sortedRows.map((row) => (
             <tr key={row.id} className="transition-colors hover:bg-slate-50/60">
               <td className="whitespace-nowrap px-3 py-2.5 text-sm font-semibold text-ink">{row.symbol}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.entryDate.toLocaleDateString("en-IN")}</td>
+              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{new Date(row.entryDate).toLocaleDateString("en-IN")}</td>
               <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>
               <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.exitPrice > 0 ? fmtPrice.format(row.exitPrice) : "—"}</td>
               <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.stopLossPct != null ? `${row.stopLossPct.toFixed(1)}%` : "—"}</td>
