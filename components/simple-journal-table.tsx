@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 
 const fmtPrice = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -10,6 +10,7 @@ const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-5
 
 type SortKey =
   | "symbol"
+  | "entryDate"
   | "avgEntryPrice"
   | "avgExitPrice"
   | "stopLossPct"
@@ -48,6 +49,10 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
         case "symbol":
           const cmp = a.symbol.localeCompare(b.symbol);
           return sortDir === "asc" ? cmp : -cmp;
+        case "entryDate":
+          av = a.entryDate.getTime();
+          bv = b.entryDate.getTime();
+          break;
         case "avgEntryPrice": av = a.weightedEntryPrice; bv = b.weightedEntryPrice; break;
         case "avgExitPrice": av = a.exitPrice; bv = b.exitPrice; break;
         case "stopLossPct": av = a.stopLossPct ?? 0; bv = b.stopLossPct ?? 0; break;
@@ -79,6 +84,7 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
         <thead>
           <tr className="border-b border-line bg-slate-50">
             {th("symbol", "Symbol")}
+            {th("entryDate", "Entry Date")}
             {th("avgEntryPrice", "Avg Entry")}
             {th("avgExitPrice", "Avg Exit")}
             {th("stopLossPct", "SL %")}
@@ -87,13 +93,13 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
             {th("openQty", "Open Qty")}
             {th("pnlPct", "PNL %")}
             {th("impactPct", "Impact %")}
-            <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Flag</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
           {sortedRows.map((row) => (
             <tr key={row.id} className="transition-colors hover:bg-slate-50/60">
               <td className="whitespace-nowrap px-3 py-2.5 text-sm font-semibold text-ink">{row.symbol}</td>
+              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.entryDate.toLocaleDateString("en-IN")}</td>
               <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>
               <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.exitPrice > 0 ? fmtPrice.format(row.exitPrice) : "—"}</td>
               <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.stopLossPct != null ? `${row.stopLossPct.toFixed(1)}%` : "—"}</td>
@@ -102,17 +108,6 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
               <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.openQty}</td>
               <td className={`whitespace-nowrap px-3 py-2.5 text-sm font-medium ${pnlColor(row.pnlPct)}`}>{fmtPct(row.pnlPct)}</td>
               <td className={`whitespace-nowrap px-3 py-2.5 text-sm font-medium ${pnlColor(row.impactPct)}`}>{fmtPct(row.impactPct)}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm">
-                {row.qtyMismatch && (
-                  <span
-                    className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
-                    title="Buy qty ≠ sell qty for this closed trade — review for errors"
-                  >
-                    <AlertTriangle className="h-2.5 w-2.5" />
-                    QTY
-                  </span>
-                )}
-              </td>
             </tr>
           ))}
           {sortedRows.length === 0 && (

@@ -581,6 +581,7 @@ export type GroupedTradeRow = {
   proficiency: string | null;
   growthAreas: string | null;
   qtyMismatch: boolean;
+  entryDate: Date;
 };
 
 export function buildGroupedJournalRows(
@@ -673,6 +674,7 @@ export function buildGroupedJournalRows(
       proficiency: trade.proficiency,
       growthAreas: trade.growthAreas,
       qtyMismatch,
+      entryDate: firstEntry,
     };
   });
 }
