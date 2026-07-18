@@ -741,7 +741,7 @@ export function JournalTable({
       </div>
 
       <div className="hidden w-full overflow-hidden lg:block">
-        <table className="w-full table-fixed whitespace-nowrap text-right text-[10px] text-slate-700">
+        <table className="w-full table-fixed whitespace-nowrap text-right text-[12px] text-slate-700">
           <colgroup>
             <col className="w-[2.2%]" />
             <col className="w-[9.8%]" />
@@ -764,35 +764,35 @@ export function JournalTable({
             <col className="w-[2.2%]" />
           </colgroup>
           <thead>
-            <tr className="bg-slate-100 text-slate-600 text-[9px] uppercase tracking-wide border-b border-line">
-              <th className="w-[2.2%] px-1 py-2 text-center">
+            <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wide border-b border-line">
+              <th className="w-[2.2%] px-1.5 py-2.5 text-center">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
                   className="h-3.5 w-3.5 rounded border-slate-400 accent-slate-500 cursor-pointer" />
               </th>
               <SortTh sKey="symbol" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[8.8%] px-1.5 py-2 text-left">Symbol</SortTh>
-              <th className="px-1 py-2 text-center" colSpan={3}>Entry</th>
-              <th className="px-1 py-2 text-center border-l border-slate-300" colSpan={3}>Exit</th>
+                className="w-[8.8%] px-2 py-2.5 text-left">Symbol</SortTh>
+              <th className="px-1.5 py-2.5 text-center" colSpan={3}>Entry</th>
+              <th className="px-1.5 py-2.5 text-center border-l border-slate-300" colSpan={3}>Exit</th>
               <SortTh sKey="stopLossPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[4.8%] px-1 py-2 text-center border-l border-slate-300">SL%</SortTh>
+                className="w-[4.8%] px-1.5 py-2.5 text-center border-l border-slate-300">SL%</SortTh>
               <SortTh sKey="ageDays" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[3.8%] px-1 py-2 text-center">Age</SortTh>
+                className="w-[3.8%] px-1.5 py-2.5 text-center">Age</SortTh>
               <SortTh sKey="openCapital" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[6%] px-1 py-2 text-center border-l border-slate-300">Open Cap</SortTh>
+                className="w-[6%] px-1.5 py-2.5 text-center border-l border-slate-300">Open Cap</SortTh>
               <SortTh sKey="allocationPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[4.8%] px-1 py-2 text-center">Alloc%</SortTh>
-              <th className="w-[4.8%] px-1 py-2 text-center">Open Qty</th>
+                className="w-[4.8%] px-1.5 py-2.5 text-center">Alloc%</SortTh>
+              <th className="w-[4.8%] px-1.5 py-2.5 text-center">Open Qty</th>
               <SortTh sKey="avgEntryPrice" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5.5%] px-1 py-2 text-center">Avg Entry</SortTh>
+                className="w-[5.5%] px-1.5 py-2.5 text-center">Avg Entry</SortTh>
               <SortTh sKey="pnlPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5%] px-1 py-2 text-center border-l border-slate-300">P&amp;L%</SortTh>
+                className="w-[5%] px-1.5 py-2.5 text-center border-l border-slate-300">P&amp;L%</SortTh>
               <SortTh sKey="pnlAmount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5.8%] px-1 py-2 text-center">P&amp;L</SortTh>
+                className="w-[5.8%] px-1.5 py-2.5 text-center">P&amp;L</SortTh>
               <SortTh sKey="impactPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5%] px-1 py-2 text-center">Impact%</SortTh>
-              <th className="w-[8.4%] px-1 py-2 text-center text-[9px] text-slate-400" colSpan={2}>EOD</th>
+                className="w-[5%] px-1.5 py-2.5 text-center">Impact%</SortTh>
+              <th className="w-[8.4%] px-1.5 py-2.5 text-center text-[11px] text-slate-400" colSpan={2}>EOD</th>
             </tr>
-            <tr className="bg-white text-slate-400 text-[10px] border-b border-line">
+            <tr className="bg-white text-slate-400 text-[12px] border-b border-line">
               <th />
               <th className="px-1.5 py-1 text-left">L/S</th>
               <th className="w-[4.5%] px-1 py-1">Qty</th>
@@ -854,28 +854,28 @@ export function JournalTable({
                         className={`${rowBg} hover:bg-slate-50 transition-colors ${isDeleting ? "opacity-40" : ""} ${isFirst ? borderColor : "border-l-4 border-l-transparent"} ${isDuplicate ? "outline outline-1 -outline-offset-1 outline-rose-300" : ""}`}>
 
                         {isFirst && (
-                          <td className="px-1 py-2 text-center align-middle" rowSpan={maxLegs}>
+                          <td className="px-1.5 py-2.5 text-center align-middle" rowSpan={maxLegs}>
                             <input type="checkbox" checked={isSelected} onChange={() => toggleOne(t.id)}
                               className="h-3.5 w-3.5 rounded border-slate-300 accent-slate-700 cursor-pointer" />
                           </td>
                         )}
 
                         {isFirst && (
-                          <td className="px-1.5 py-2 text-left align-middle" rowSpan={maxLegs}>
+                          <td className="px-2 py-2.5 text-left align-middle" rowSpan={maxLegs}>
                             <div className="flex min-w-0 items-center gap-1">
-                              <span className={`shrink-0 w-4 h-4 flex items-center justify-center rounded text-[9px] font-bold ${
+                              <span className={`shrink-0 w-4 h-4 flex items-center justify-center rounded text-[11px] font-bold ${
                                 t.tradeType === "LONG" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
                               }`}>
                                 {t.tradeType === "LONG" ? "L" : "S"}
                               </span>
                               <Link href={`/trades/${encodeURIComponent(t.symbol)}`}
                                 title={t.symbol}
-                                className="min-w-0 max-w-[74px] truncate font-semibold text-slate-800 hover:text-blue-600 transition text-[10px] uppercase tracking-wide">
+                                className="min-w-0 max-w-[74px] truncate font-semibold text-slate-800 hover:text-blue-600 transition text-[12px] uppercase tracking-wide">
                                 {shortSymbol(t.symbol, 11)}
                               </Link>
                               {statusUi.label && (
                                 <span
-                                  className={`rounded-full border px-1 py-0.5 text-[8px] font-semibold tracking-wide ${statusUi.chipClass}`}
+                                  className={`rounded-full border px-1 py-0.5 text-[10px] font-semibold tracking-wide ${statusUi.chipClass}`}
                                   title={statusUi.title}
                                 >
                                   {statusUi.label}
@@ -883,7 +883,7 @@ export function JournalTable({
                               )}
                               {t.qtyMismatch && (
                                 <span
-                                  className="rounded-full border border-amber-300 bg-amber-50 px-1 py-0.5 text-[7px] font-semibold text-amber-700"
+                                  className="rounded-full border border-amber-300 bg-amber-50 px-1 py-0.5 text-[9px] font-semibold text-amber-700"
                                   title="Buy qty ≠ sell qty for this closed trade — review for errors"
                                 >
                                   <AlertTriangle className="inline h-2 w-2 mr-0.5" />
@@ -892,7 +892,7 @@ export function JournalTable({
                               )}
                               {isDuplicate && (
                                 <span
-                                  className="rounded-full border border-rose-300 bg-rose-100 px-1 py-0.5 text-[8px] font-semibold tracking-wide text-rose-700"
+                                  className="rounded-full border border-rose-300 bg-rose-100 px-1 py-0.5 text-[10px] font-semibold tracking-wide text-rose-700"
                                   title="Same symbol, date, price and quantity as another trade — possible duplicate"
                                 >
                                   DUP
@@ -903,33 +903,33 @@ export function JournalTable({
                           </td>
                         )}
 
-                        <td className="px-1 py-2 text-right tabular-nums text-slate-600">
+                        <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
                             : eLeg?.qty ? fmtQty(eLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-1 py-2 text-right tabular-nums text-slate-700 font-medium">
+                        <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium">
                           {eLeg?.price ? fmtPrice(eLeg.price) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-1 py-2 text-right text-slate-500 text-[10px]">
+                        <td className="px-1.5 py-2.5 text-right text-slate-500 text-[12px]">
                           {eLeg?.dateTime ? fmtDate(eLeg.dateTime) : <span className="text-slate-300">—</span>}
                         </td>
 
-                        <td className="px-1 py-2 text-right tabular-nums text-slate-600 border-l border-slate-100">
+                        <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 border-l border-slate-100">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
                             : xLeg?.qty > 0 ? fmtQty(xLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-1 py-2 text-right tabular-nums text-slate-700 font-medium">
+                        <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium">
                           {xLeg?.price > 0 ? fmtPrice(xLeg.price) : <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-1 py-2 text-right text-slate-500 text-[10px]">
+                        <td className="px-1.5 py-2.5 text-right text-slate-500 text-[12px]">
                           {xLeg?.dateTime ? fmtDate(xLeg.dateTime) : <span className="text-slate-300">—</span>}
                         </td>
 
                         {isFirst && (
                           <>
-                            <td className="px-1 py-2 text-right align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right align-middle border-l border-slate-100" rowSpan={maxLegs}>
                               <StopLossInput
                                 tradeId={t.id}
                                 stopLoss={t.stopLoss}
@@ -937,26 +937,26 @@ export function JournalTable({
                                 onUpdate={() => onRefresh?.()}
                               />
                             </td>
-                            <td className="px-1 py-2 text-right tabular-nums align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle" rowSpan={maxLegs}>
                               <span className={t.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}>
                                 {t.ageDays}
                               </span>
                             </td>
-                            <td className="px-1 py-2 text-right tabular-nums text-slate-600 align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 align-middle border-l border-slate-100" rowSpan={maxLegs}>
                               {!showAmounts
                                 ? <span className="text-slate-300">•••</span>
                                 : t.openCapital > 0 ? fmtAmt(t.openCapital) : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className="px-1 py-2 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
                               {fmtPctNoSign(t.allocationPct)}
                             </td>
-                            <td className="px-1 py-2 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
                               {showAmounts ? fmtQty(t.openQty) : <span className="text-slate-300">•••</span>}
                             </td>
-                            <td className="px-1 py-2 text-right tabular-nums text-slate-700 font-medium align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium align-middle" rowSpan={maxLegs}>
                               {t.weightedEntryPrice > 0 ? fmtPrice(t.weightedEntryPrice) : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className={`px-1 py-2 text-right align-middle border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                            <td className={`px-1.5 py-2.5 text-right align-middle border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
                               {!showPnl ? (
                                 <span className="text-slate-300">—</span>
                               ) : t.derivedStatus === "CLOSED" || (t.unrealizedPnl === 0) ? (
@@ -964,20 +964,20 @@ export function JournalTable({
                               ) : t.realizedPnl === 0 ? (
                                 <span className="font-semibold tabular-nums">
                                   {fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}
-                                  <span className="text-[9px] text-slate-400 ml-0.5">MTM</span>
+                                  <span className="text-[11px] text-slate-400 ml-0.5">MTM</span>
                                 </span>
                               ) : (
                                 <span className="tabular-nums leading-tight">
-                                  <span className={`block font-semibold text-[11px] ${pnlColor(t.realizedPnl)}`}>
+                                  <span className={`block font-semibold text-[13px] ${pnlColor(t.realizedPnl)}`}>
                                     {fmtPct(t.realizedPnl / (t.capital || 1) * 100)}
                                   </span>
-                                  <span className={`block text-[10px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
+                                  <span className={`block text-[12px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
                                     U:{fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}
                                   </span>
                                 </span>
                               )}
                             </td>
-                            <td className={`px-1 py-2 text-right align-middle tabular-nums ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                            <td className={`px-1.5 py-2.5 text-right align-middle tabular-nums ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
                               {!showAmounts ? (
                                 <span className="text-slate-300">•••</span>
                               ) : !showPnl ? (
@@ -987,32 +987,32 @@ export function JournalTable({
                               ) : t.realizedPnl === 0 ? (
                                 <span className="font-semibold">
                                   {`${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
-                                  <span className="text-[9px] text-slate-400 ml-0.5">MTM</span>
+                                  <span className="text-[11px] text-slate-400 ml-0.5">MTM</span>
                                 </span>
                               ) : (
                                 <span className="tabular-nums leading-tight">
-                                  <span className={`block font-semibold text-[11px] ${pnlColor(t.realizedPnl)}`}>
+                                  <span className={`block font-semibold text-[13px] ${pnlColor(t.realizedPnl)}`}>
                                     {`${t.realizedPnl >= 0 ? "+" : ""}${fmtAmt(t.realizedPnl)}`}
                                   </span>
-                                  <span className={`block text-[10px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
+                                  <span className={`block text-[12px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
                                     U:{`${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
                                   </span>
                                 </span>
                               )}
                             </td>
-                            <td className={`px-1 py-2 text-right tabular-nums font-medium align-middle ${pnlColor(t.impactPct)}`} rowSpan={maxLegs}>
+                            <td className={`px-1.5 py-2.5 text-right tabular-nums font-medium align-middle ${pnlColor(t.impactPct)}`} rowSpan={maxLegs}>
                               {showPnl
                                 ? fmtPct(t.impactPct)
                                 : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className="px-1 py-2 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle border-l border-slate-100" rowSpan={maxLegs}>
                               <ClosingPriceInput
                                 tradeId={t.id}
                                 initialValue={t.closingPrice}
                                 onUpdate={() => onRefresh?.()}
                               />
                             </td>
-                            <td className="px-1 py-2 text-center align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-center align-middle" rowSpan={maxLegs}>
                               <Link href={`/trades/${encodeURIComponent(t.symbol)}/edit/${t.id}`}
                                 className="inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" title="Edit">
                                 <Edit2 size={12} />

@@ -43,6 +43,7 @@ export type InitialTradeData = {
   competitionId: string | null;
   setup: string | null;
   planFollowed: boolean | null;
+  reviewed: boolean;
   exitTrigger: string | null;
   proficiency: string | null;
   growthAreas: string | null;
@@ -247,6 +248,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         planFollowedValue === ""
           ? null
           : planFollowedValue === "true",
+      reviewed: formData.get("reviewed") === "on",
       exitTrigger: getMultiSelectValues(formData, "exitTrigger"),
       proficiency: getMultiSelectValues(formData, "proficiency"),
       growthAreas: getMultiSelectValues(formData, "growthAreas"),
@@ -536,6 +538,15 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
             defaultValue={initialData?.closingPrice ?? ""}
             className="form-input h-9 w-full sm:w-[100px]"
           />
+        </label>
+        <label className="col-span-2 flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-slate-600 sm:col-span-1">
+          <input
+            name="reviewed"
+            type="checkbox"
+            defaultChecked={!!initialData?.reviewed}
+            className="h-4 w-4 rounded border-slate-300 accent-accent"
+          />
+          Reviewed
         </label>
       </div>
 

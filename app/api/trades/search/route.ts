@@ -14,18 +14,21 @@ export async function GET(req: NextRequest) {
     const from = sp.get("from") || "";
     const to = sp.get("to") || "";
     const status = sp.get("status") || "OPEN";
+    const reviewed = sp.get("reviewed") || "";
     const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
     const pageSize = Math.min(50, Math.max(5, parseInt(sp.get("pageSize") || "20", 10)));
     const tag = sp.get("tag") || "";
     const sortKey = sp.get("sortKey") || "";
     const sortDir = sp.get("sortDir") === "asc" ? "asc" : "desc";
 
-    const cacheKey = `trades:search:${user.id}:${symbol}:${from}:${to}:${status}:${tag}:${sortKey}:${sortDir}:${page}:${pageSize}`;
+    const cacheKey = `trades:search:${user.id}:${symbol}:${from}:${to}:${status}:${reviewed}:${tag}:${sortKey}:${sortDir}:${page}:${pageSize}`;
     const cached = getCached<typeof result>(cacheKey);
     if (cached) return NextResponse.json(cached);
 
     const where: Record<string, unknown> = { userId: user.id };
     if (status !== "ALL") where.status = status;
+    if (reviewed === "REVIEWED") where.reviewed = true;
+    if (reviewed === "UNREVIEWED") where.reviewed = false;
     if (symbol) where.symbol = { contains: symbol.trim().toUpperCase() };
     if (from || to) {
       const dateFilter: Record<string, Date> = {};

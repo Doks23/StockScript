@@ -63,6 +63,7 @@ model Trade {
   planFollowed  Boolean?
   proficiency   String?
   setup         String?
+  reviewed      Boolean       @default(false)
   competition   Competition?  @relation(fields: [competitionId], references: [id])
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   images        TradeImage[]

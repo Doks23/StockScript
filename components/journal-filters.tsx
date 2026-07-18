@@ -8,6 +8,7 @@ export type Filters = {
   from: string;
   to: string;
   status: string;
+  reviewed: string;
   hideAmounts: boolean;
 };
 
@@ -34,6 +35,7 @@ export function JournalFilters({
     (values.from ? 1 : 0) +
     (values.to ? 1 : 0) +
     (values.status !== "OPEN" ? 1 : 0) +
+    (values.reviewed !== "ALL" ? 1 : 0) +
     (values.hideAmounts ? 1 : 0);
 
   return (
@@ -121,6 +123,16 @@ export function JournalFilters({
           ))}
         </div>
 
+        <select
+          value={values.reviewed}
+          onChange={(e) => onChange({ reviewed: e.target.value })}
+          className="journal-input h-[36px] text-sm text-slate-600"
+        >
+          <option value="ALL">Reviewed: All</option>
+          <option value="REVIEWED">Reviewed only</option>
+          <option value="UNREVIEWED">Unreviewed only</option>
+        </select>
+
         <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-slate-600">
           <input
             type="checkbox"
@@ -184,6 +196,21 @@ export function JournalFilters({
                 </label>
               </div>
 
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">
+                  Reviewed
+                </span>
+                <select
+                  value={values.reviewed}
+                  onChange={(e) => onChange({ reviewed: e.target.value })}
+                  className="journal-input w-full"
+                >
+                  <option value="ALL">All</option>
+                  <option value="REVIEWED">Reviewed only</option>
+                  <option value="UNREVIEWED">Unreviewed only</option>
+                </select>
+              </label>
+
               <label className="flex items-center justify-between rounded-2xl border border-line bg-canvas px-4 py-3 text-sm font-medium text-slate-700">
                 <span>Hide ₹ amounts</span>
                 <input
@@ -201,6 +228,7 @@ export function JournalFilters({
                     from: "",
                     to: "",
                     status: "OPEN",
+                    reviewed: "ALL",
                     hideAmounts: false,
                   });
                 }}

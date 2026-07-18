@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         notes: payload.notes,
         setup: payload.setup,
         planFollowed: payload.planFollowed,
+        reviewed: payload.reviewed,
         exitTrigger: payload.exitTrigger,
         proficiency: payload.proficiency,
         growthAreas: payload.growthAreas,

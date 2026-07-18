@@ -89,6 +89,7 @@ export const tradePayloadSchema = z
     notes: z.string().max(2000).optional(),
     setup: optionalJournalAttribute,
     planFollowed: z.boolean().optional().nullable(),
+    reviewed: z.boolean().optional(),
     exitTrigger: optionalJournalAttribute,
     proficiency: optionalJournalAttribute,
     growthAreas: optionalJournalAttribute,
@@ -533,6 +534,7 @@ export function normalizeTradePayload(
     notes: payload.notes?.trim() ?? "",
     setup: parseJournalAttributeList(payload.setup).join(", ") || null,
     planFollowed: payload.planFollowed ?? null,
+    reviewed: payload.reviewed ?? false,
     exitTrigger: parseJournalAttributeList(payload.exitTrigger).join(", ") || null,
     proficiency: parseJournalAttributeList(payload.proficiency).join(", ") || null,
     growthAreas: parseJournalAttributeList(payload.growthAreas).join(", ") || null,
@@ -577,6 +579,7 @@ export type GroupedTradeRow = {
   closingPrice: number | null;
   setup: string | null;
   planFollowed: boolean | null;
+  reviewed: boolean;
   exitTrigger: string | null;
   proficiency: string | null;
   growthAreas: string | null;
@@ -670,6 +673,7 @@ export function buildGroupedJournalRows(
       closingPrice: trade.closingPrice,
       setup: trade.setup,
       planFollowed: trade.planFollowed,
+      reviewed: trade.reviewed,
       exitTrigger: trade.exitTrigger,
       proficiency: trade.proficiency,
       growthAreas: trade.growthAreas,

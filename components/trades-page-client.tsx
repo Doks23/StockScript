@@ -26,6 +26,7 @@ type Filters = {
   from: string;
   to: string;
   status: string;
+  reviewed: string;
   hideAmounts: boolean;
 };
 
@@ -65,6 +66,7 @@ function TradesPageContent() {
     from: "",
     to: "",
     status: "OPEN",
+    reviewed: "ALL",
     hideAmounts: false,
   });
   const [page, setPage] = useState(1);
@@ -92,6 +94,7 @@ function TradesPageContent() {
       if (f.from) sp.set("from", f.from);
       if (f.to) sp.set("to", f.to);
       sp.set("status", f.status);
+      if (f.reviewed !== "ALL") sp.set("reviewed", f.reviewed);
       sp.set("page", String(p));
       sp.set("pageSize", "50");
       if (sk) {

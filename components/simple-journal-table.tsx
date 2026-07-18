@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, Circle } from "lucide-react";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 
 const fmtPrice = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -18,7 +18,8 @@ type SortKey =
   | "allocationPct"
   | "openQty"
   | "pnlPct"
-  | "impactPct";
+  | "impactPct"
+  | "reviewed";
 
 function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
   if (!active) return <ArrowUpDown className="inline ml-0.5 h-2.5 w-2.5 opacity-30" />;
@@ -61,6 +62,7 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
         case "openQty": av = a.openQty; bv = b.openQty; break;
         case "pnlPct": av = a.pnlPct; bv = b.pnlPct; break;
         case "impactPct": av = a.impactPct; bv = b.impactPct; break;
+        case "reviewed": av = a.reviewed ? 1 : 0; bv = b.reviewed ? 1 : 0; break;
       }
       return sortDir === "asc" ? av - bv : bv - av;
     });
@@ -69,7 +71,7 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
   function th(key: SortKey, label: string, className = "") {
     return (
       <th
-        className={`cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 ${className}`}
+        className={`cursor-pointer select-none whitespace-nowrap px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 ${className}`}
         onClick={() => handleSort(key)}
       >
         {label}
@@ -93,26 +95,38 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
             {th("openQty", "Open Qty")}
             {th("pnlPct", "PNL %")}
             {th("impactPct", "Impact %")}
+            {th("reviewed", "Reviewed")}
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
           {sortedRows.map((row) => (
             <tr key={row.id} className="transition-colors hover:bg-slate-50/60">
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm font-semibold text-ink">{row.symbol}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{new Date(row.entryDate).toLocaleDateString("en-IN")}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.exitPrice > 0 ? fmtPrice.format(row.exitPrice) : "—"}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.stopLossPct != null ? `${row.stopLossPct.toFixed(1)}%` : "—"}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.ageDays}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.allocationPct.toFixed(1)}%</td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-sm text-slate-700">{row.openQty}</td>
-              <td className={`whitespace-nowrap px-3 py-2.5 text-sm font-medium ${pnlColor(row.pnlPct)}`}>{fmtPct(row.pnlPct)}</td>
-              <td className={`whitespace-nowrap px-3 py-2.5 text-sm font-medium ${pnlColor(row.impactPct)}`}>{fmtPct(row.impactPct)}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base font-semibold text-ink">{row.symbol}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{new Date(row.entryDate).toLocaleDateString("en-IN")}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.exitPrice > 0 ? fmtPrice.format(row.exitPrice) : "—"}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.stopLossPct != null ? `${row.stopLossPct.toFixed(1)}%` : "—"}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.ageDays}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.allocationPct.toFixed(1)}%</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.openQty}</td>
+              <td className={`whitespace-nowrap px-3 py-3 text-base font-medium ${pnlColor(row.pnlPct)}`}>{fmtPct(row.pnlPct)}</td>
+              <td className={`whitespace-nowrap px-3 py-3 text-base font-medium ${pnlColor(row.impactPct)}`}>{fmtPct(row.impactPct)}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-base">
+                {row.reviewed ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-600" title="Reviewed">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-slate-300" title="Not reviewed">
+                    <Circle className="h-4 w-4" />
+                  </span>
+                )}
+              </td>
             </tr>
           ))}
           {sortedRows.length === 0 && (
             <tr>
-              <td colSpan={10} className="px-3 py-8 text-center text-sm text-slate-400">No trades found.</td>
+              <td colSpan={11} className="px-3 py-8 text-center text-base text-slate-400">No trades found.</td>
             </tr>
           )}
         </tbody>
