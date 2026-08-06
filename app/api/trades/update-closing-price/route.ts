@@ -12,15 +12,27 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "tradeId and closingPrice are required." }, { status: 400 });
     }
 
-    const trade = await prisma.trade.update({
-      where: { id: tradeId },
-      data: { closingPrice: Number(closingPrice) },
-    });
-
-    if (trade.userId !== user.id) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+    const price = Number(closingPrice);
+    if (!Number.isFinite(price) || price < 0) {
+      return NextResponse.json(
+        { error: "closingPrice must be a non-negative number." },
+        { status: 400 },
+      );
     }
 
+    // Ownership is part of the filter rather than a check after the fact. The
+    // previous order wrote first and returned 403 second, so the update had
+    // already landed on another user's trade by the time it was rejected.
+    const result = await prisma.trade.updateMany({
+      where: { id: tradeId, userId: user.id },
+      data: { closingPrice: price },
+    });
+
+    if (result.count === 0) {
+      return NextResponse.json({ error: "Trade not found." }, { status: 404 });
+    }
+
+    const trade = await prisma.trade.findUnique({ where: { id: tradeId } });
     return NextResponse.json({ trade }, { status: 200 });
   } catch (error) {
     return handleApiError(error, "Unable to update closing price.");

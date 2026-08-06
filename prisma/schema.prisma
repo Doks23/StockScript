@@ -31,6 +31,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   sessions                Session[]
   trades                  Trade[]
+  symbolQuoteMaps         SymbolQuoteMap[]
   approver                User?                    @relation("UserApprovals", fields: [approvedBy], references: [id])
   approvalsGiven          User[]                   @relation("UserApprovals")
   competitionStats        UserCompetitionStat[]
@@ -101,6 +102,27 @@ model Transaction {
   // happens to reuse an id. Rows with a null externalTradeId are unaffected,
   // since Postgres treats nulls as distinct in a unique index.
   @@unique([externalTradeId, dateTime])
+}
+
+/// Confirmed mapping from a journal symbol to the quote provider's symbol.
+///
+/// Journal symbols are often company names rather than tickers, and some names
+/// collide with a real but unrelated ticker (APOLLO.NS is Apollo Micro Systems).
+/// A guess is therefore never applied on its own - it is stored here only once a
+/// human has accepted it, after which EOD refresh is a single click.
+///
+/// Scoped per user: two traders can legitimately mean different companies by the
+/// same shorthand, and one person's correction must not silently repoint another
+/// person's position.
+model SymbolQuoteMap {
+  userId      String
+  symbol      String // journal symbol, uppercased
+  quoteSymbol String // provider symbol, e.g. "KALYANKJIL.NS"
+  displayName String? // company name when confirmed, for spotting a bad mapping later
+  confirmedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, symbol])
 }
 
 model TradeImage {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { CheckCircle2, Download, RefreshCw, X, Table2 } from "lucide-react";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters } from "@/components/journal-filters";
+import { EodPriceSync } from "@/components/eod-price-sync";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
@@ -265,6 +266,10 @@ function TradesPageContent() {
       )}
       {error && (
         <div className="text-center py-12 text-red-500 text-sm">{error}</div>
+      )}
+
+      {data && (
+        <EodPriceSync onUpdated={() => fetchData(filters, page, sortKey, sortDir)} />
       )}
 
       {data && (

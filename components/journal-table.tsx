@@ -188,8 +188,15 @@ function SortTh({
 
 function StopLossInput({ tradeId, stopLoss, entryPrice, onUpdate }: { tradeId: string; stopLoss: number | null; entryPrice: number; onUpdate: () => void }) {
   const stopLossPct = stopLoss && entryPrice > 0 ? Math.abs(((stopLoss - entryPrice) / entryPrice) * 100) : null;
-  const [value, setValue] = useState(stopLoss?.toString() || "");
+  const [value, setValue] = useState(toPaise(stopLoss));
   const [isEditing, setIsEditing] = useState(false);
+
+  // Same first-mount-only seeding problem as ClosingPriceInput below.
+  const [lastSeen, setLastSeen] = useState(stopLoss);
+  if (lastSeen !== stopLoss) {
+    setLastSeen(stopLoss);
+    if (!isEditing) setValue(toPaise(stopLoss));
+  }
 
   async function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
@@ -259,9 +266,30 @@ function StopLossInput({ tradeId, stopLoss, entryPrice, onUpdate }: { tradeId: s
   );
 }
 
+/**
+ * Prices are stored as floats, so a value written as 2763.90 reads back as
+ * 2763.89990234375. Trim to paise for anything shown or edited - rows saved
+ * before rounding was applied at the source still need this.
+ */
+function toPaise(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "";
+  return String(Math.round(value * 100) / 100);
+}
+
 function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: string; initialValue: number | null; onUpdate: () => void }) {
-  const [value, setValue] = useState(initialValue?.toString() || "");
+  const [value, setValue] = useState(toPaise(initialValue));
   const [isEditing, setIsEditing] = useState(false);
+
+  // useState seeds only on first mount. Without this, a price written by
+  // something other than this box - the EOD sync, an edit elsewhere - lands in
+  // the database and is re-fetched by the parent, but the box keeps showing the
+  // value it mounted with. Re-seed when the prop actually changes, and leave the
+  // field alone mid-edit so a background refresh cannot eat what is being typed.
+  const [lastSeen, setLastSeen] = useState(initialValue);
+  if (lastSeen !== initialValue) {
+    setLastSeen(initialValue);
+    if (!isEditing) setValue(toPaise(initialValue));
+  }
   const numericValue = Number(value);
   const title =
     value && Number.isFinite(numericValue)
@@ -287,7 +315,7 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
       }
     } else if (e.key === "Escape") {
       setIsEditing(false);
-      setValue(initialValue?.toString() || "");
+      setValue(toPaise(initialValue));
     }
   }
 
@@ -299,7 +327,7 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
         className="cursor-pointer rounded-md border border-transparent px-1.5 py-0.5 text-[11px] tabular-nums text-slate-500 italic transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
         title={title}
       >
-        {value || "set"}
+        {value && Number.isFinite(numericValue) ? numericValue.toFixed(2) : value || "set"}
       </button>
     );
   }
