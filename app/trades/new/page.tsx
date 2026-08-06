@@ -1,5 +1,6 @@
 import { TradeForm } from "@/components/trade-form";
 import { CSVImport } from "@/components/csv-import";
+import { DhanSync } from "@/components/dhan-sync";
 import { requireActiveUser } from "@/lib/auth";
 import { getCompetitions } from "@/lib/queries";
 import { TradeEntryTabs } from "./trade-entry-tabs";
@@ -21,7 +22,12 @@ export default async function TradeEntryPage() {
 
       <TradeEntryTabs
         manualForm={<TradeForm competitions={competitionList} />}
-        importForm={<CSVImport competitions={competitionList} />}
+        importForm={
+          <div className="space-y-6">
+            <DhanSync competitions={competitionList} />
+            <CSVImport competitions={competitionList} />
+          </div>
+        }
       />
     </div>
   );

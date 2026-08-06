@@ -7,6 +7,13 @@ export type RawTransaction = {
   price: number;
   quantity: number;
   charges?: number;
+  /**
+   * Opaque broker reference (Dhan exchangeTradeId) carried straight through to
+   * the matched leg. Two fills of the same order can share symbol, timestamp,
+   * price and quantity, so callers must not try to re-identify a leg by its
+   * contents afterwards - the id has to travel with it.
+   */
+  ref?: string;
 };
 
 export type TxLeg = {
@@ -15,6 +22,7 @@ export type TxLeg = {
   quantity: number;
   date: Date;
   charges?: number;
+  ref?: string;
 };
 
 export type MatchedTrade = {
@@ -104,6 +112,7 @@ export function buildTradesFromTransactions(
             quantity: t.quantity,
             date: t.date,
             charges: t.charges,
+            ref: t.ref,
           })),
         });
 
@@ -128,6 +137,7 @@ export function buildTradesFromTransactions(
           quantity: t.quantity,
           date: t.date,
           charges: t.charges,
+          ref: t.ref,
         })),
       });
     }

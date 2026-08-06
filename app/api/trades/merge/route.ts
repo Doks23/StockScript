@@ -192,6 +192,12 @@ export async function POST(request: Request) {
               quantity: t.quantity,
               dateTime: t.dateTime,
               order: i,
+              // Broker provenance must survive the delete-and-recreate. Losing
+              // it makes the fill invisible to the Dhan sync's duplicate check,
+              // so the next sync would import it all over again.
+              externalTradeId: t.externalTradeId,
+              externalOrderId: t.externalOrderId,
+              source: t.source,
             })),
           },
         },

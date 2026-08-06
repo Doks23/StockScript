@@ -87,7 +87,20 @@ model Transaction {
   order    Int             @default(0)
   trade    Trade           @relation(fields: [tradeId], references: [id], onDelete: Cascade)
 
+  // Broker sync provenance. All nullable / defaulted so existing rows are untouched.
+  externalTradeId String? // Dhan exchangeTradeId - exchange-unique, used for dedupe
+  externalOrderId String? // Dhan orderId, audit trail only
+  source          String  @default("MANUAL") // MANUAL | CSV | DHAN_API
+
   @@index([tradeId, type, dateTime])
+  @@index([externalTradeId])
+  // Backstop for the sync's duplicate check, which is otherwise a read then a
+  // write with nothing in between. dateTime is part of the key because Dhan's
+  // exchangeTradeId is only documented as unique per exchange per trading day,
+  // not globally - pairing them avoids rejecting a legitimate later fill that
+  // happens to reuse an id. Rows with a null externalTradeId are unaffected,
+  // since Postgres treats nulls as distinct in a unique index.
+  @@unique([externalTradeId, dateTime])
 }
 
 model TradeImage {
