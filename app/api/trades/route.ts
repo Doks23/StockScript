@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 import {
   calculateTradeMetrics,
   normalizeTradePayload,
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
       },
     });
 
+    invalidateUserTrades(user.id);
     return NextResponse.json({ trade }, { status: 201 });
   } catch (error) {
     return handleApiError(error, "Unable to create trade.");

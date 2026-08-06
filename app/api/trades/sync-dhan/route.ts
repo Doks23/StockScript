@@ -21,6 +21,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 import { buildTradesFromTransactions } from "@/lib/trade-matcher";
 import { calculateTradeMetrics, deriveTradeTypeAndStatus } from "@/lib/trade-utils";
 import type { SegmentValue } from "@/lib/trade-utils";
@@ -394,6 +395,8 @@ export async function POST(request: Request) {
       // itself is three statements, so this should never be approached.
       { timeout: 60_000, maxWait: 15_000 },
     );
+
+    invalidateUserTrades(user.id);
 
     return NextResponse.json(
       {

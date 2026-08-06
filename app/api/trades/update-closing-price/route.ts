@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 
 export async function PATCH(request: Request) {
   try {
@@ -31,6 +32,8 @@ export async function PATCH(request: Request) {
     if (result.count === 0) {
       return NextResponse.json({ error: "Trade not found." }, { status: 404 });
     }
+
+    invalidateUserTrades(user.id);
 
     const trade = await prisma.trade.findUnique({ where: { id: tradeId } });
     return NextResponse.json({ trade }, { status: 200 });

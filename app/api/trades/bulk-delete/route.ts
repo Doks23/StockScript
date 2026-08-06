@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
       where: { id: { in: ids }, userId: user.id },
     });
 
+    invalidateUserTrades(user.id);
     return NextResponse.json({ deleted: count });
   } catch (error) {
     return handleApiError(error, "Unable to delete trades.");

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 import { deriveTradeTypeAndStatus } from "@/lib/trade-utils";
 
 type MergeTrade = Awaited<ReturnType<typeof prisma.trade.findMany>>[number];
@@ -204,6 +205,7 @@ export async function POST(request: Request) {
       });
     });
 
+    invalidateUserTrades(user.id);
     return NextResponse.json({ merged: true, primaryId: primary.id });
   } catch (error) {
     return handleApiError(error, "Unable to merge trades.");

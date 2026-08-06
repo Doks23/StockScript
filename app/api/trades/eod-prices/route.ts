@@ -21,6 +21,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 import { buildGroupedJournalRows } from "@/lib/trade-utils";
 import { QuoteError, fetchQuoteFlexible, resolveSymbol } from "@/lib/quotes/yahoo";
 
@@ -248,6 +249,8 @@ export async function POST(request: Request) {
       },
       { timeout: 60_000, maxWait: 15_000 },
     );
+
+    invalidateUserTrades(user.id);
 
     return NextResponse.json(
       { ...summary, dryRun: false, updated },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 import {
   calculateTradeMetrics,
   normalizeTradePayload,
@@ -125,6 +126,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       });
     });
 
+    invalidateUserTrades(user.id);
     return NextResponse.json({ trade });
   } catch (error) {
     return handleApiError(error, "Unable to update trade.");
@@ -144,6 +146,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
     await prisma.trade.delete({ where: { id: existingTrade.id } });
 
+    invalidateUserTrades(user.id);
     return NextResponse.json({ deleted: true });
   } catch (error) {
     return handleApiError(error, "Unable to delete trade.");

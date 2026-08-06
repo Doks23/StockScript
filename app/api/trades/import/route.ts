@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { invalidateUserTrades } from "@/lib/cache";
 import { csvToTransactions, parseCSVText, detectBrokerProfile, BROKER_PROFILES } from "@/lib/csv-parser";
 import type { TradeSegment, TransactionType } from "@prisma/client";
 import { buildTradesFromTransactions } from "@/lib/trade-matcher";
@@ -288,6 +289,8 @@ export async function POST(request: Request) {
 
       createdTrades.push(trade);
     }
+
+    invalidateUserTrades(user.id);
 
     return NextResponse.json(
       {
