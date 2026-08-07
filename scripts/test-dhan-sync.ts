@@ -240,12 +240,59 @@ console.log("\n8. Dedupe simulation (what the endpoint does)");
   );
   check("identical re-sync yields nothing", allSeen.length, 0);
 
-  const noId = mapDhanFills([fill({ exchangeTradeId: null })]);
+  // Dhan's trade-history endpoint returns "0" for exchangeTradeId on every row
+  // and repeats one orderId across unrelated fills, so a broker id cannot be
+  // relied on. Fills without a usable one get a content-derived key instead of
+  // being dropped - dropping them is what made the sync import nothing forever.
+  for (const placeholder of [null, "0", "000", "NA", ""] as const) {
+    const derived = mapDhanFills([fill({ exchangeTradeId: placeholder })]);
+    check(
+      `placeholder exchangeTradeId ${JSON.stringify(placeholder)} still yields a dedupe key`,
+      derived.mapped.filter((item) => item.externalTradeId?.startsWith("dhan:v1:")).length,
+      1,
+    );
+  }
+
+  // Re-syncing the same range must produce the same keys, so nothing re-imports.
+  const first = mapDhanFills([
+    fill({ exchangeTradeId: "0", tradingSymbol: "TCS" }),
+    fill({ exchangeTradeId: "0", tradingSymbol: "INFY" }),
+  ]);
+  const second = mapDhanFills([
+    fill({ exchangeTradeId: "0", tradingSymbol: "TCS" }),
+    fill({ exchangeTradeId: "0", tradingSymbol: "INFY" }),
+  ]);
+  const storedKeys = new Set(first.mapped.map((item) => item.externalTradeId));
   check(
-    "fill with no dedupe id is excluded from writes",
-    noId.mapped.filter((item) => item.externalTradeId).length,
+    "re-sync with placeholder ids imports nothing",
+    second.mapped.filter((item) => !storedKeys.has(item.externalTradeId)).length,
     0,
   );
+
+  // Two genuinely distinct fills of one order: identical on every visible field.
+  const split = mapDhanFills([
+    fill({ exchangeTradeId: "0" }),
+    fill({ exchangeTradeId: "0" }),
+  ]);
+  check(
+    "two identical fills get two distinct keys",
+    new Set(split.mapped.map((item) => item.externalTradeId)).size,
+    2,
+  );
+  const splitAgain = mapDhanFills([
+    fill({ exchangeTradeId: "0" }),
+    fill({ exchangeTradeId: "0" }),
+  ]);
+  const splitStored = new Set(split.mapped.map((item) => item.externalTradeId));
+  check(
+    "re-syncing those two identical fills imports neither",
+    splitAgain.mapped.filter((item) => !splitStored.has(item.externalTradeId)).length,
+    0,
+  );
+
+  // A real broker id, when one is actually supplied, still wins.
+  const realId = mapDhanFills([fill({ exchangeTradeId: "EXCH-993" })]);
+  check("a genuine exchangeTradeId is used as-is", realId.mapped[0].externalTradeId, "EXCH-993");
 }
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

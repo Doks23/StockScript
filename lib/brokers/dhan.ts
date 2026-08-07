@@ -466,8 +466,6 @@ export function mapDhanFills(fills: DhanFill[]): MapResult {
       return;
     }
 
-    const externalTradeId = fill.exchangeTradeId?.trim() || null;
-
     mapped.push({
       transaction: {
         ticker: symbol,
@@ -476,12 +474,8 @@ export function mapDhanFills(fills: DhanFill[]): MapResult {
         price,
         quantity,
         charges: fillCharges(fill),
-        // Travels through the matcher so the leg keeps its own id. Two fills of
-        // one order can be identical on symbol/time/price/qty, so this must not
-        // be recovered by content matching later.
-        ref: externalTradeId ?? undefined,
       },
-      externalTradeId,
+      externalTradeId: brokerTradeId(fill),
       externalOrderId: fill.orderId?.trim() || null,
       segment: fillSegment(fill),
     });
@@ -491,5 +485,72 @@ export function mapDhanFills(fills: DhanFill[]): MapResult {
   // the order Dhan returned.
   mapped.sort((a, b) => a.transaction.date.getTime() - b.transaction.date.getTime());
 
+  assignDedupeKeys(mapped);
+
   return { mapped, skippedNonEquity, errors };
+}
+
+/**
+ * Dhan's own trade id, but only when it is actually one.
+ *
+ * The docs describe exchangeTradeId as "trade specific identification generated
+ * by exchange", yet the trade-history endpoint returns the literal "0" on every
+ * row, with orderId repeated identically across unrelated fills on unrelated
+ * days. Treating those as identities makes every fill look like the same fill.
+ */
+function brokerTradeId(fill: DhanFill): string | null {
+  const raw = fill.exchangeTradeId?.trim();
+  if (!raw) return null;
+  // "0" / "NA" / all-zeroes are placeholders, not identifiers.
+  if (/^0+$/.test(raw) || raw.toUpperCase() === "NA") return null;
+  return raw;
+}
+
+/**
+ * Give every fill a stable identity for duplicate detection.
+ *
+ * Where the broker supplies a real id we use it. Otherwise we derive one from
+ * the fill's own content - symbol, exact execution time, side, price, quantity -
+ * which is reproducible across syncs, so re-pulling a date range recognises what
+ * it already has.
+ *
+ * Genuinely identical fills (one order filled in two pieces at the same price in
+ * the same second) are distinguished by their position within that group, so two
+ * such fills get two keys and both survive, while a re-sync of the same range
+ * still produces exactly the same two keys and imports neither.
+ */
+export function assignDedupeKeys(mapped: MappedFill[]): void {
+  const seen = new Map<string, number>();
+
+  for (const item of mapped) {
+    if (!item.externalTradeId) {
+      const fingerprint = contentFingerprint(
+        item.transaction.ticker,
+        item.transaction.date,
+        item.transaction.type,
+        item.transaction.price,
+        item.transaction.quantity,
+      );
+      const occurrence = (seen.get(fingerprint) ?? 0) + 1;
+      seen.set(fingerprint, occurrence);
+      item.externalTradeId = `${fingerprint}:${occurrence}`;
+    }
+    // The matcher copies ref onto each leg, so the id survives trade building.
+    item.transaction.ref = item.externalTradeId;
+  }
+}
+
+/**
+ * Deterministic identity for one fill. Must stay byte-identical across runs and
+ * match what the backfill computes from stored rows, so it is built only from
+ * values that round-trip exactly through the database.
+ */
+export function contentFingerprint(
+  ticker: string,
+  date: Date,
+  type: "BUY" | "SELL",
+  price: number,
+  quantity: number,
+): string {
+  return `dhan:v1:${ticker}:${date.getTime()}:${type}:${price}:${quantity}`;
 }
