@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, Circle } from "lucide-react";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
-import { tradingViewUrl } from "@/lib/tradingview";
+import { SymbolChartLink } from "@/components/symbol-chart-link";
 
 const fmtPrice = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
@@ -103,15 +103,12 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
           {sortedRows.map((row) => (
             <tr key={row.id} className="transition-colors hover:bg-slate-50/60">
               <td className="whitespace-nowrap px-3 py-3 text-base font-semibold text-ink">
-                <a
-                  href={tradingViewUrl(row.symbol)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={`Open ${row.symbol} on TradingView`}
+                <SymbolChartLink
+                  symbol={row.symbol}
                   className="transition hover:text-blue-600"
                 >
                   {row.symbol}
-                </a>
+                </SymbolChartLink>
               </td>
               <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{new Date(row.entryDate).toLocaleDateString("en-IN")}</td>
               <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>

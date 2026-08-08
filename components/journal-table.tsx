@@ -5,7 +5,7 @@ import { Edit2, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle } from "lucide-re
 import Link from "next/link";
 import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
-import { tradingViewUrl } from "@/lib/tradingview";
+import { SymbolChartLink } from "@/components/symbol-chart-link";
 
 const fmtAmtIntl = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 const fmtPriceIntl = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -582,15 +582,12 @@ export function JournalTable({
                   >
                     {t.tradeType === "LONG" ? "L" : "S"}
                   </span>
-                  <a
-                    href={tradingViewUrl(t.symbol)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={`Open ${t.symbol} on TradingView`}
+                  <SymbolChartLink
+                    symbol={t.symbol}
                     className="truncate text-[13px] font-semibold uppercase tracking-wide text-slate-800 transition hover:text-blue-600"
                   >
                     {t.symbol}
-                  </a>
+                  </SymbolChartLink>
                   {statusUi.label && (
                     <span
                       className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide ${statusUi.chipClass}`}
@@ -900,14 +897,11 @@ export function JournalTable({
                               }`}>
                                 {t.tradeType === "LONG" ? "L" : "S"}
                               </span>
-                              <a
-                                href={tradingViewUrl(t.symbol)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={`Open ${t.symbol} on TradingView`}
+                              <SymbolChartLink
+                                symbol={t.symbol}
                                 className="min-w-0 max-w-[74px] truncate font-semibold text-slate-800 hover:text-blue-600 transition text-[12px] uppercase tracking-wide">
                                 {shortSymbol(t.symbol, 11)}
-                              </a>
+                              </SymbolChartLink>
                               {statusUi.label && (
                                 <span
                                   className={`rounded-full border px-1 py-0.5 text-[10px] font-semibold tracking-wide ${statusUi.chipClass}`}
