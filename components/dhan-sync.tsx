@@ -46,8 +46,14 @@ type SyncResult = {
 
 export function DhanSync({
   competitions,
+  onImported,
 }: {
   competitions: { id: string; name: string }[];
+  /**
+   * Called instead of navigating once trades are actually written, so a caller
+   * that already sits on the journal can close its dialog and refresh in place.
+   */
+  onImported?: (imported: number) => void;
 }) {
   const router = useRouter();
   const [accessToken, setAccessToken] = useState("");
@@ -88,7 +94,12 @@ export function DhanSync({
       if (commit) {
         setPhase("committed");
         setAccessToken("");
-        router.refresh();
+        const imported = (data as SyncResult).imported ?? 0;
+        // The point of an import is the journal it lands in, so end up there
+        // either way - in place when the caller is already on it, otherwise by
+        // navigating, with the count carried across for the confirmation.
+        if (onImported) onImported(imported);
+        else router.push(`/trades?imported=${imported}`);
       } else {
         setPhase("previewed");
         // Keep the resolved range visible and editable for the commit call.

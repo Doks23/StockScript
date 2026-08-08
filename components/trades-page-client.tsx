@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { CheckCircle2, Download, RefreshCw, X, Table2 } from "lucide-react";
+import { CheckCircle2, Download, RefreshCw, X, Table2, CloudDownload } from "lucide-react";
+import { DhanSync } from "@/components/dhan-sync";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters } from "@/components/journal-filters";
 import {
@@ -60,7 +61,9 @@ const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-5
 const signedAmt = (n: number) => `${n >= 0 ? "+" : ""}${fmtAmt.format(n)}`;
 const hiddenAmt = "•••";
 
-function TradesPageContent() {
+type Competition = { id: string; name: string };
+
+function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<SearchResult | null>(null);
@@ -78,12 +81,27 @@ function TradesPageContent() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [toast, setToast] = useState("");
+  const [dhanOpen, setDhanOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const saved = searchParams.get("saved");
     if (saved === "created" || saved === "updated") {
       setToast(saved === "created" ? "Trade created." : "Trade updated.");
+      const timer = setTimeout(() => setToast(""), 3500);
+      router.replace("/trades", { scroll: false });
+      return () => clearTimeout(timer);
+    }
+
+    // Set by an import that ran on the full entry page and sent us back here.
+    const imported = searchParams.get("imported");
+    if (imported !== null) {
+      const count = Number(imported);
+      setToast(
+        Number.isFinite(count)
+          ? `Imported ${count} trade${count === 1 ? "" : "s"} from Dhan.`
+          : "Imported trades from Dhan.",
+      );
       const timer = setTimeout(() => setToast(""), 3500);
       router.replace("/trades", { scroll: false });
       return () => clearTimeout(timer);
@@ -166,6 +184,22 @@ function TradesPageContent() {
     setPage(1);
   }, []);
 
+  // Escape closes the sync dialog, and the journal behind it stays put rather
+  // than scrolling under a form that is taller than the viewport.
+  useEffect(() => {
+    if (!dhanOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setDhanOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [dhanOpen]);
+
   const metrics = data?.metrics;
   const totalPages = data?.totalPages || 1;
 
@@ -197,6 +231,40 @@ function TradesPageContent() {
                 <X size={16} />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {dhanOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Sync from Dhan"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDhanOpen(false);
+          }}
+          className="fixed inset-0 z-50 overflow-y-auto bg-ink/40 p-3 backdrop-blur-[1px] sm:p-6"
+        >
+          <div className="mx-auto w-full max-w-2xl">
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDhanOpen(false)}
+                aria-label="Close"
+                className="rounded-full bg-white/90 p-1.5 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <DhanSync
+              competitions={competitions}
+              onImported={(count) => {
+                setDhanOpen(false);
+                setToast(`Imported ${count} trade${count === 1 ? "" : "s"} from Dhan.`);
+                setTimeout(() => setToast(""), 3500);
+                fetchData(filters, page, sortKey, sortDir);
+              }}
+            />
           </div>
         </div>
       )}
@@ -237,6 +305,14 @@ function TradesPageContent() {
               <span className="hidden xl:inline">Refresh</span>
             </button>
             <EodPriceSyncTrigger sync={eodSync} />
+            <button
+              onClick={() => setDhanOpen(true)}
+              title="Sync trades from Dhan"
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[11px] font-medium text-white transition hover:opacity-90"
+            >
+              <CloudDownload size={14} />
+              <span className="hidden xl:inline">Dhan</span>
+            </button>
           </div>
         </div>
       </section>
@@ -315,10 +391,14 @@ function TradesPageContent() {
   );
 }
 
-export function TradesPageClient() {
+export function TradesPageClient({
+  competitions = [],
+}: {
+  competitions?: Competition[];
+}) {
   return (
     <Suspense fallback={<div className="text-center py-12 text-slate-400 text-sm">Loading page…</div>}>
-      <TradesPageContent />
+      <TradesPageContent competitions={competitions} />
     </Suspense>
   );
 }

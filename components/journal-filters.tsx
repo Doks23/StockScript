@@ -85,7 +85,7 @@ export function JournalFilters({
         <input
           defaultValue={values.symbol}
           placeholder="Search…"
-          className="journal-input journal-input-sm w-[110px] shrink-0"
+          className="journal-input journal-input-sm w-[94px] shrink-0"
           onChange={(e) => debounced({ symbol: e.target.value })}
         />
 
