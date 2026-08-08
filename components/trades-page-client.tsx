@@ -270,7 +270,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       )}
 
       <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-3">
-        <div className="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto lg:overflow-visible">
           <JournalFilters
             values={filters}
             onChange={onFilterChange}
@@ -279,16 +279,16 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
           <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
             <Link
               href="/trades/simple"
-              title="Simple view"
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-2.5"
+              data-tip="Simple view"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-2.5"
             >
               <Table2 size={14} />
               <span className="hidden xl:inline">Simple</span>
             </Link>
             <button
               onClick={handleDownload}
-              title="Download CSV"
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-2.5"
+              data-tip="Download as CSV"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-2.5"
               aria-label="Download CSV"
             >
               <Download size={14} />
@@ -297,8 +297,8 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
             <button
               onClick={() => fetchData(filters, page, sortKey, sortDir)}
               disabled={loading}
-              title="Reload the journal"
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
+              data-tip="Reload the journal"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
               aria-label="Refresh"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -307,8 +307,8 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
             <EodPriceSyncTrigger sync={eodSync} />
             <button
               onClick={() => setDhanOpen(true)}
-              title="Sync trades from Dhan"
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[11px] font-medium text-white transition hover:opacity-90"
+              data-tip="Sync trades from Dhan"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[11px] font-medium text-white transition hover:opacity-90"
             >
               <CloudDownload size={14} />
               <span className="hidden xl:inline">Dhan</span>

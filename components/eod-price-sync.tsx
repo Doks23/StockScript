@@ -10,7 +10,7 @@
  */
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, IndianRupee, Loader2 } from "lucide-react";
 
 type PricedRow = {
   symbol: string;
@@ -141,13 +141,13 @@ export function EodPriceSyncTrigger({ sync }: { sync: EodPriceSync }) {
         type="button"
         disabled={sync.isLoading}
         onClick={sync.fetchPrices}
-        title="Fetch the latest close for every open position"
-        className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-slate-800 px-2.5 text-[11px] font-medium text-white transition hover:bg-slate-700 disabled:opacity-40"
+        data-tip={sync.isLoading ? "Fetching…" : "Update ₹ prices for open positions"}
+        className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accentDeep px-2.5 text-[11px] font-medium text-white transition hover:opacity-90 disabled:opacity-40"
       >
         {sync.isLoading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
-          <RefreshCw className="h-3.5 w-3.5" />
+          <IndianRupee className="h-3.5 w-3.5" />
         )}
         <span className="hidden xl:inline">Prices</span>
       </button>
@@ -157,7 +157,8 @@ export function EodPriceSyncTrigger({ sync }: { sync: EodPriceSync }) {
           type="button"
           disabled={sync.isLoading}
           onClick={sync.apply}
-          className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[11px] font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+          data-tip={`Save ${sync.readyCount} price${sync.readyCount === 1 ? "" : "s"} to the journal`}
+          className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[11px] font-medium text-white transition hover:opacity-90 disabled:opacity-40"
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
           Apply {sync.readyCount}

@@ -109,6 +109,44 @@ a {
       border-color 0.2s,
       box-shadow 0.2s;
   }
+  /**
+   * Hover tooltip, driven by a data-tip attribute.
+   *
+   * The ribbon hides its button labels below 1280px, which leaves a row of bare
+   * icons; the native title tooltip is slow and unstyled, so this stands in.
+   * It renders outside the button, so any ancestor that clips overflow will cut
+   * it off - the ribbon row deliberately drops its overflow container at the
+   * widths where these are visible.
+   */
+  .tip {
+    position: relative;
+  }
+  .tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-2px);
+    z-index: 40;
+    white-space: nowrap;
+    border-radius: 6px;
+    background: #0f1720;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+  .tip:hover::after,
+  .tip:focus-visible::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
   /* Compact variant for the journal ribbon, where every control shares one line. */
   .journal-input-sm {
     height: 32px;
