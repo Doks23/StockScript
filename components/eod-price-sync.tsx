@@ -142,14 +142,14 @@ export function EodPriceSyncTrigger({ sync }: { sync: EodPriceSync }) {
         disabled={sync.isLoading}
         onClick={sync.fetchPrices}
         data-tip={sync.isLoading ? "Fetching…" : "Update ₹ prices for open positions"}
-        className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accentDeep px-2.5 text-[11px] font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+        className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
       >
         {sync.isLoading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
           <IndianRupee className="h-3.5 w-3.5" />
         )}
-        <span className="hidden xl:inline">Prices</span>
+        <span className="hidden xl:inline">Update</span>
       </button>
 
       {showApply && (
@@ -294,7 +294,7 @@ export function EodPriceSyncPanel({ sync }: { sync: EodPriceSync }) {
             </div>
           ))}
           <p className="text-[10px] text-slate-500">
-            Enter a ticker then press Prices again to check it before applying.
+            Enter a ticker then press Update again to check it before applying.
           </p>
         </div>
       )}

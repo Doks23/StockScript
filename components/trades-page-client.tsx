@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { CheckCircle2, Download, RefreshCw, X, Table2, CloudDownload } from "lucide-react";
 import { DhanSync } from "@/components/dhan-sync";
 import { JournalTable } from "@/components/journal-table";
-import { JournalFilters } from "@/components/journal-filters";
+import { JournalFilters, useJournalFilters } from "@/components/journal-filters";
+import type { Filters } from "@/components/journal-filters";
 import {
   EodPriceSyncPanel,
   EodPriceSyncTrigger,
@@ -26,15 +27,6 @@ type SortKey =
   | "pnlPct"
   | "pnlAmount"
   | "impactPct";
-
-type Filters = {
-  symbol: string;
-  from: string;
-  to: string;
-  status: string;
-  reviewed: string;
-  hideAmounts: boolean;
-};
 
 type Metrics = {
   totalTrades: number;
@@ -69,20 +61,19 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   const [data, setData] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filters>({
-    symbol: "",
-    from: "",
-    to: "",
-    status: "OPEN",
-    reviewed: "ALL",
-    hideAmounts: false,
-  });
+  const {
+    filters,
+    restored: filtersRestored,
+    resetToken,
+    change: onFilterChange,
+    changeDebounced: onFilterDebounced,
+    reset: resetFilters,
+  } = useJournalFilters();
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [toast, setToast] = useState("");
   const [dhanOpen, setDhanOpen] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const saved = searchParams.get("saved");
@@ -139,8 +130,11 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   }, [sortKey, sortDir]);
 
   useEffect(() => {
+    // Waits for the saved filters, so the journal loads the remembered view once
+    // rather than the default view followed by the remembered one.
+    if (!filtersRestored) return;
     fetchData(filters, page, sortKey, sortDir);
-  }, [filters, page, sortKey, sortDir, fetchData]);
+  }, [filters, filtersRestored, page, sortKey, sortDir, fetchData]);
 
   // Held here rather than inside one component because the trigger sits in the
   // ribbon and the results table renders further down the page.
@@ -150,9 +144,12 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
     setPage(1);
   }, [filters]);
 
-  const onFilterChange = useCallback((update: Partial<Filters>) => {
-    setFilters((prev) => ({ ...prev, ...update }));
-  }, []);
+  // Refresh doubles as the way out of a filter set that is remembered from an
+  // earlier visit: back to page one of the default "Open" journal.
+  const handleRefresh = useCallback(() => {
+    setPage(1);
+    resetFilters();
+  }, [resetFilters]);
 
   const handleDownload = useCallback(() => {
     const sp = new URLSearchParams();
@@ -164,13 +161,6 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
     a.href = `/api/trades/export?${sp.toString()}`;
     a.click();
   }, [filters]);
-
-  const onFilterDebounced = useCallback((update: Partial<Filters>) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setFilters((prev) => ({ ...prev, ...update }));
-    }, 380);
-  }, []);
 
   const handleSort = useCallback((key: SortKey) => {
     setSortKey((prev) => {
@@ -275,6 +265,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
             values={filters}
             onChange={onFilterChange}
             onDebouncedChange={onFilterDebounced}
+            resetToken={resetToken}
           />
           <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
             <Link
@@ -295,9 +286,9 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               <span className="hidden xl:inline">CSV</span>
             </button>
             <button
-              onClick={() => fetchData(filters, page, sortKey, sortDir)}
+              onClick={handleRefresh}
               disabled={loading}
-              data-tip="Reload the journal"
+              data-tip="Reload and clear filters"
               className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
               aria-label="Refresh"
             >

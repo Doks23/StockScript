@@ -1,20 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { JournalFilters } from "@/components/journal-filters";
-import { SimpleJournalTable } from "@/components/simple-journal-table";
+import { useCallback, useEffect, useState, Suspense } from "react";
+import { JournalFilters, useJournalFilters } from "@/components/journal-filters";
+import type { Filters } from "@/components/journal-filters";
+import {
+  SimpleJournalTable,
+  SIMPLE_JOURNAL_FONT_DEFAULT,
+} from "@/components/simple-journal-table";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
-
-type Filters = {
-  symbol: string;
-  from: string;
-  to: string;
-  status: string;
-  reviewed: string;
-  hideAmounts: boolean;
-};
 
 type SearchResult = {
   trades: GroupedTradeRow[];
@@ -24,20 +19,39 @@ type SearchResult = {
   pageSize: number;
 };
 
+const FONT_KEY = "simpleJournalFontSize";
+const FONT_MIN = 11;
+const FONT_MAX = 18;
+
 function SimpleJournalContent() {
   const [data, setData] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filters>({
-    symbol: "",
-    from: "",
-    to: "",
-    status: "OPEN",
-    reviewed: "ALL",
-    hideAmounts: false,
-  });
+  const {
+    filters,
+    restored: filtersRestored,
+    resetToken,
+    change: onFilterChange,
+    changeDebounced: onFilterDebounced,
+    reset: resetFilters,
+  } = useJournalFilters();
   const [page, setPage] = useState(1);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [fontPx, setFontPx] = useState(SIMPLE_JOURNAL_FONT_DEFAULT);
+
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem(FONT_KEY));
+    if (Number.isFinite(saved) && saved >= FONT_MIN && saved <= FONT_MAX) {
+      setFontPx(saved);
+    }
+  }, []);
+
+  const changeFont = useCallback((delta: number) => {
+    setFontPx((prev) => {
+      const next = Math.min(FONT_MAX, Math.max(FONT_MIN, prev + delta));
+      window.localStorage.setItem(FONT_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   const fetchData = useCallback(async (f: Filters, p: number) => {
     setLoading(true);
@@ -66,23 +80,21 @@ function SimpleJournalContent() {
   }, []);
 
   useEffect(() => {
+    // Held until the saved filters are back, so the remembered view loads once.
+    if (!filtersRestored) return;
     fetchData(filters, page);
-  }, [filters, page, fetchData]);
+  }, [filters, filtersRestored, page, fetchData]);
 
   useEffect(() => {
     setPage(1);
   }, [filters]);
 
-  const onFilterChange = useCallback((update: Partial<Filters>) => {
-    setFilters((prev) => ({ ...prev, ...update }));
-  }, []);
-
-  const onFilterDebounced = useCallback((update: Partial<Filters>) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setFilters((prev) => ({ ...prev, ...update }));
-    }, 380);
-  }, []);
+  // Same deal as the full journal: Refresh reloads and drops any remembered
+  // filters back to the default "Open" view.
+  const handleRefresh = useCallback(() => {
+    setPage(1);
+    resetFilters();
+  }, [resetFilters]);
 
   const totalPages = data?.totalPages || 1;
 
@@ -100,12 +112,50 @@ function SimpleJournalContent() {
       </div>
 
       <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-5 sm:py-3">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto lg:overflow-visible">
           <JournalFilters
             values={filters}
             onChange={onFilterChange}
             onDebouncedChange={onFilterDebounced}
+            resetToken={resetToken}
           />
+          <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
+            <div className="flex h-8 shrink-0 items-center rounded-lg border border-line bg-white">
+              <button
+                type="button"
+                onClick={() => changeFont(-1)}
+                disabled={fontPx <= FONT_MIN}
+                data-tip="Smaller text"
+                aria-label="Smaller text"
+                className="tip h-full rounded-l-lg px-2 text-[11px] font-semibold text-slate-600 transition hover:bg-canvas disabled:opacity-30"
+              >
+                A−
+              </button>
+              <span className="w-6 text-center text-[10px] tabular-nums text-slate-400">
+                {fontPx}
+              </span>
+              <button
+                type="button"
+                onClick={() => changeFont(1)}
+                disabled={fontPx >= FONT_MAX}
+                data-tip="Larger text"
+                aria-label="Larger text"
+                className="tip h-full rounded-r-lg px-2 text-[13px] font-semibold text-slate-600 transition hover:bg-canvas disabled:opacity-30"
+              >
+                A+
+              </button>
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              data-tip="Reload and clear filters"
+              aria-label="Refresh"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <span className="hidden xl:inline">Refresh</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -118,7 +168,11 @@ function SimpleJournalContent() {
 
       {data && (
         <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
-          <SimpleJournalTable rows={data.trades} />
+          <SimpleJournalTable
+            rows={data.trades}
+            showAmounts={!filters.hideAmounts}
+            fontPx={fontPx}
+          />
         </section>
       )}
 

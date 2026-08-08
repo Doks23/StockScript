@@ -2,12 +2,19 @@
 
 import React, { useState, useMemo } from "react";
 import { ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, Circle } from "lucide-react";
+import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 import { SymbolChartLink } from "@/components/symbol-chart-link";
 
 const fmtPrice = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-500" : "text-slate-400";
+// Same as the detailed journal - the two views are read side by side.
+const fmtDate = (d: Date | string | null | undefined) =>
+  d ? format(new Date(d), "dd MMM yy") : "—";
+const hiddenAmt = <span className="text-slate-300">•••</span>;
+
+export const SIMPLE_JOURNAL_FONT_DEFAULT = 13;
 
 type SortKey =
   | "symbol"
@@ -29,7 +36,15 @@ function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
     : <ArrowDown className="inline ml-0.5 h-2.5 w-2.5 opacity-80" />;
 }
 
-export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
+export function SimpleJournalTable({
+  rows,
+  showAmounts = true,
+  fontPx = SIMPLE_JOURNAL_FONT_DEFAULT,
+}: {
+  rows: GroupedTradeRow[];
+  showAmounts?: boolean;
+  fontPx?: number;
+}) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -72,7 +87,7 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
   function th(key: SortKey, label: string, className = "") {
     return (
       <th
-        className={`cursor-pointer select-none whitespace-nowrap px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 ${className}`}
+        className={`cursor-pointer select-none whitespace-nowrap px-3 py-2.5 text-left text-[0.82em] font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 ${className}`}
         onClick={() => handleSort(key)}
       >
         {label}
@@ -82,7 +97,9 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    // Sizing the wrapper rather than each cell: the rows carry no font size of
+    // their own, so one number here scales the whole table.
+    <div className="overflow-x-auto" style={{ fontSize: `${fontPx}px` }}>
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-line bg-slate-50">
@@ -102,7 +119,7 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
         <tbody className="divide-y divide-line">
           {sortedRows.map((row) => (
             <tr key={row.id} className="transition-colors hover:bg-slate-50/60">
-              <td className="whitespace-nowrap px-3 py-3 text-base font-semibold text-ink">
+              <td className="whitespace-nowrap px-3 py-3 font-semibold text-ink">
                 <SymbolChartLink
                   symbol={row.symbol}
                   className="transition hover:text-blue-600"
@@ -110,16 +127,16 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
                   {row.symbol}
                 </SymbolChartLink>
               </td>
-              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{new Date(row.entryDate).toLocaleDateString("en-IN")}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.exitPrice > 0 ? fmtPrice.format(row.exitPrice) : "—"}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.stopLossPct != null ? `${row.stopLossPct.toFixed(1)}%` : "—"}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.ageDays}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.allocationPct.toFixed(1)}%</td>
-              <td className="whitespace-nowrap px-3 py-3 text-base text-slate-700">{row.openQty}</td>
-              <td className={`whitespace-nowrap px-3 py-3 text-base font-medium ${pnlColor(row.pnlPct)}`}>{fmtPct(row.pnlPct)}</td>
-              <td className={`whitespace-nowrap px-3 py-3 text-base font-medium ${pnlColor(row.impactPct)}`}>{fmtPct(row.impactPct)}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-base">
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{fmtDate(row.entryDate)}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.exitPrice > 0 ? fmtPrice.format(row.exitPrice) : "—"}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.stopLossPct != null ? `${row.stopLossPct.toFixed(1)}%` : "—"}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.ageDays}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.allocationPct.toFixed(1)}%</td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{showAmounts ? row.openQty : hiddenAmt}</td>
+              <td className={`whitespace-nowrap px-3 py-3 font-medium ${pnlColor(row.pnlPct)}`}>{fmtPct(row.pnlPct)}</td>
+              <td className={`whitespace-nowrap px-3 py-3 font-medium ${pnlColor(row.impactPct)}`}>{fmtPct(row.impactPct)}</td>
+              <td className="whitespace-nowrap px-3 py-3">
                 {row.reviewed ? (
                   <span className="inline-flex items-center gap-1 text-emerald-600" title="Reviewed">
                     <CheckCircle2 className="h-4 w-4" />
@@ -134,7 +151,7 @@ export function SimpleJournalTable({ rows }: { rows: GroupedTradeRow[] }) {
           ))}
           {sortedRows.length === 0 && (
             <tr>
-              <td colSpan={11} className="px-3 py-8 text-center text-base text-slate-400">No trades found.</td>
+              <td colSpan={11} className="px-3 py-8 text-center text-slate-400">No trades found.</td>
             </tr>
           )}
         </tbody>

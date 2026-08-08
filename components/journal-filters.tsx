@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 
 export type Filters = {
@@ -12,23 +12,130 @@ export type Filters = {
   hideAmounts: boolean;
 };
 
+export const DEFAULT_JOURNAL_FILTERS: Filters = {
+  symbol: "",
+  from: "",
+  to: "",
+  status: "OPEN",
+  reviewed: "ALL",
+  hideAmounts: false,
+};
+
+const STORAGE_KEY = "journalFilters";
+const STATUS_VALUES = ["OPEN", "CLOSED", "ALL"];
+const REVIEWED_VALUES = ["ALL", "REVIEWED", "UNREVIEWED"];
+
+// Anything could be sitting in storage - an older shape, a hand-edited value -
+// so every field is checked rather than trusted.
+function parseSavedFilters(raw: string): Filters {
+  const saved = JSON.parse(raw) as Partial<Filters>;
+  const str = (value: unknown) => (typeof value === "string" ? value : "");
+  return {
+    symbol: str(saved.symbol),
+    from: str(saved.from),
+    to: str(saved.to),
+    status: STATUS_VALUES.includes(str(saved.status))
+      ? str(saved.status)
+      : DEFAULT_JOURNAL_FILTERS.status,
+    reviewed: REVIEWED_VALUES.includes(str(saved.reviewed))
+      ? str(saved.reviewed)
+      : DEFAULT_JOURNAL_FILTERS.reviewed,
+    hideAmounts: saved.hideAmounts === true,
+  };
+}
+
+/**
+ * Filter state for both journals, remembered across visits.
+ *
+ * Storage is read after mount rather than during render, so the server and the
+ * first client render agree; `restored` lets the page hold its first fetch until
+ * then instead of loading the default view and immediately reloading the saved
+ * one. Refresh calls `reset` to get back to the default "Open" view.
+ */
+export function useJournalFilters() {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_JOURNAL_FILTERS);
+  const [restored, setRestored] = useState(false);
+  const [resetToken, setResetToken] = useState(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) setFilters(parseSavedFilters(saved));
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+  }, [filters, restored]);
+
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
+
+  const change = useCallback((update: Partial<Filters>) => {
+    setFilters((prev) => ({ ...prev, ...update }));
+  }, []);
+
+  const changeDebounced = useCallback((update: Partial<Filters>) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setFilters((prev) => ({ ...prev, ...update }));
+    }, 380);
+  }, []);
+
+  // A fresh object every time, so a refresh from an already-default view still
+  // counts as a change and reloads the journal. Dropping the pending debounce
+  // matters too: a half-typed search must not land after the reset.
+  const reset = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setFilters({ ...DEFAULT_JOURNAL_FILTERS });
+    setResetToken((token) => token + 1);
+  }, []);
+
+  return { filters, restored, resetToken, change, changeDebounced, reset };
+}
+
 type JournalFiltersProps = {
   values: Filters;
   onChange: (update: Partial<Filters>) => void;
   onDebouncedChange: (update: Partial<Filters>) => void;
+  /** Bumped by `useJournalFilters().reset`; forces the search box to follow. */
+  resetToken?: number;
 };
 
 export function JournalFilters({
   values,
   onChange,
   onDebouncedChange,
+  resetToken = 0,
 }: JournalFiltersProps) {
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const debounced = (update: Partial<Filters>) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => onDebouncedChange(update), 380);
+  // The search box shows what is being typed, while `values.symbol` only catches
+  // up once the debounce upstream fires. So the draft leads while typing, and
+  // follows whenever the value moves on its own - restored filters, or a Refresh
+  // reset - rather than pinning the box to stale text.
+  const [symbolDraft, setSymbolDraft] = useState(values.symbol);
+  const [seen, setSeen] = useState({ symbol: values.symbol, resetToken });
+  const typing = useRef(false);
+
+  if (seen.symbol !== values.symbol || seen.resetToken !== resetToken) {
+    // A reset overrules a keystroke that has not been reported yet.
+    if (seen.resetToken !== resetToken) typing.current = false;
+    setSeen({ symbol: values.symbol, resetToken });
+    if (values.symbol === symbolDraft) typing.current = false;
+    else if (!typing.current) setSymbolDraft(values.symbol);
+  }
+
+  const onSymbolInput = (value: string) => {
+    typing.current = true;
+    setSymbolDraft(value);
+    onDebouncedChange({ symbol: value });
   };
 
   const activeCount =
@@ -43,10 +150,10 @@ export function JournalFilters({
       {/* Mobile compact bar: search + status pills + filter sheet trigger */}
       <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:hidden">
         <input
-          defaultValue={values.symbol}
+          value={symbolDraft}
           placeholder="Search…"
           className="journal-input h-9 min-w-0 flex-1 px-2.5"
-          onChange={(e) => debounced({ symbol: e.target.value })}
+          onChange={(e) => onSymbolInput(e.target.value)}
         />
         <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-line bg-canvas p-0.5">
           {["OPEN", "CLOSED", "ALL"].map((s) => (
@@ -83,10 +190,10 @@ export function JournalFilters({
           actions included, stays on a single line. */}
       <div className="hidden shrink-0 flex-nowrap items-center gap-1.5 sm:flex">
         <input
-          defaultValue={values.symbol}
+          value={symbolDraft}
           placeholder="Search…"
           className="journal-input journal-input-sm w-[94px] shrink-0"
-          onChange={(e) => debounced({ symbol: e.target.value })}
+          onChange={(e) => onSymbolInput(e.target.value)}
         />
 
         <input
@@ -224,15 +331,7 @@ export function JournalFilters({
 
               <button
                 type="button"
-                onClick={() => {
-                  onChange({
-                    from: "",
-                    to: "",
-                    status: "OPEN",
-                    reviewed: "ALL",
-                    hideAmounts: false,
-                  });
-                }}
+                onClick={() => onChange({ ...DEFAULT_JOURNAL_FILTERS })}
                 className="w-full rounded-2xl border border-line px-4 py-2.5 text-sm font-medium text-slate-600"
               >
                 Reset
