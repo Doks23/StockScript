@@ -79,65 +79,66 @@ export function JournalFilters({
         </button>
       </div>
 
-      {/* Desktop bar */}
-      <div className="hidden flex-wrap items-center gap-3 sm:flex">
+      {/* Desktop bar - deliberately nowrap and compact so the whole ribbon,
+          actions included, stays on a single line. */}
+      <div className="hidden shrink-0 flex-nowrap items-center gap-1.5 sm:flex">
         <input
           defaultValue={values.symbol}
-          placeholder="Search symbol…"
-          className="journal-input min-w-[140px]"
+          placeholder="Search…"
+          className="journal-input journal-input-sm w-[110px] shrink-0"
           onChange={(e) => debounced({ symbol: e.target.value })}
         />
 
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
-          From
-        </span>
         <input
           type="date"
           value={values.from}
-          className="journal-input"
+          title="From date"
+          className="journal-input journal-input-sm shrink-0"
           onChange={(e) => onChange({ from: e.target.value })}
         />
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
-          To
-        </span>
+        <span className="shrink-0 text-[11px] text-slate-400">–</span>
         <input
           type="date"
           value={values.to}
-          className="journal-input"
+          title="To date"
+          className="journal-input journal-input-sm shrink-0"
           onChange={(e) => onChange({ to: e.target.value })}
         />
 
-        <div className="flex h-[36px] items-center gap-3 rounded-[8px] border border-line bg-canvas px-3 text-sm text-slate-600 shadow-sm">
-          {["ALL", "OPEN", "CLOSED"].map((s) => (
-            <label key={s} className="flex cursor-pointer items-center gap-1.5">
-              <input
-                type="radio"
-                name="status"
-                value={s}
-                checked={values.status === s}
-                onChange={(e) => onChange({ status: e.target.value })}
-                className="accent-accent"
-              />
+        {/* Segmented pills rather than radios: same choice, half the width. */}
+        <div className="flex h-8 shrink-0 items-center gap-0.5 rounded-lg border border-line bg-canvas px-0.5">
+          {["OPEN", "CLOSED", "ALL"].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onChange({ status: s })}
+              className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${
+                values.status === s
+                  ? "bg-white text-ink shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
               {s === "OPEN" ? "Open" : s === "CLOSED" ? "Closed" : "All"}
-            </label>
+            </button>
           ))}
         </div>
 
         <select
           value={values.reviewed}
           onChange={(e) => onChange({ reviewed: e.target.value })}
-          className="journal-input h-[36px] text-sm text-slate-600"
+          title="Reviewed filter"
+          className="journal-input journal-input-sm shrink-0 text-slate-600"
         >
           <option value="ALL">Reviewed: All</option>
-          <option value="REVIEWED">Reviewed only</option>
-          <option value="UNREVIEWED">Unreviewed only</option>
+          <option value="REVIEWED">Reviewed</option>
+          <option value="UNREVIEWED">Unreviewed</option>
         </select>
 
-        <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-slate-600">
+        <label className="inline-flex shrink-0 cursor-pointer select-none items-center gap-1 text-[11px] font-medium text-slate-600">
           <input
             type="checkbox"
             checked={values.hideAmounts}
-            className="h-4 w-4 rounded border-slate-300 accent-slate-700"
+            className="h-3.5 w-3.5 rounded border-slate-300 accent-slate-700"
             onChange={(e) => onChange({ hideAmounts: e.target.checked })}
           />
           Hide ₹

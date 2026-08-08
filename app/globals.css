@@ -109,6 +109,13 @@ a {
       border-color 0.2s,
       box-shadow 0.2s;
   }
+  /* Compact variant for the journal ribbon, where every control shares one line. */
+  .journal-input-sm {
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
   .journal-input:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px var(--color-primary-light);

@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { CheckCircle2, Download, RefreshCw, X, Table2 } from "lucide-react";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters } from "@/components/journal-filters";
-import { EodPriceSync } from "@/components/eod-price-sync";
+import {
+  EodPriceSyncPanel,
+  EodPriceSyncTrigger,
+  useEodPriceSync,
+} from "@/components/eod-price-sync";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
@@ -120,6 +124,10 @@ function TradesPageContent() {
     fetchData(filters, page, sortKey, sortDir);
   }, [filters, page, sortKey, sortDir, fetchData]);
 
+  // Held here rather than inside one component because the trigger sits in the
+  // ribbon and the results table renders further down the page.
+  const eodSync = useEodPriceSync(() => fetchData(filters, page, sortKey, sortDir));
+
   useEffect(() => {
     setPage(1);
   }, [filters]);
@@ -193,37 +201,43 @@ function TradesPageContent() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-5 sm:py-3">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-4">
+      <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto">
           <JournalFilters
             values={filters}
             onChange={onFilterChange}
             onDebouncedChange={onFilterDebounced}
           />
-          <Link
-            href="/trades/simple"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-3 sm:py-1.5"
-          >
-            <Table2 size={15} />
-            <span className="hidden sm:inline">Simple View</span>
-          </Link>
-          <button
-            onClick={handleDownload}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-3 sm:py-1.5"
-            aria-label="Download CSV"
-          >
-            <Download size={15} />
-            <span className="hidden sm:inline">Download</span>
-          </button>
-          <button
-            onClick={() => fetchData(filters, page, sortKey, sortDir)}
-            disabled={loading}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white p-1.5 text-sm text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-3 sm:py-1.5"
-            aria-label="Refresh"
-          >
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
+            <Link
+              href="/trades/simple"
+              title="Simple view"
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-2.5"
+            >
+              <Table2 size={14} />
+              <span className="hidden xl:inline">Simple</span>
+            </Link>
+            <button
+              onClick={handleDownload}
+              title="Download CSV"
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-2.5"
+              aria-label="Download CSV"
+            >
+              <Download size={14} />
+              <span className="hidden xl:inline">CSV</span>
+            </button>
+            <button
+              onClick={() => fetchData(filters, page, sortKey, sortDir)}
+              disabled={loading}
+              title="Reload the journal"
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
+              aria-label="Refresh"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <span className="hidden xl:inline">Refresh</span>
+            </button>
+            <EodPriceSyncTrigger sync={eodSync} />
+          </div>
         </div>
       </section>
 
@@ -268,9 +282,7 @@ function TradesPageContent() {
         <div className="text-center py-12 text-red-500 text-sm">{error}</div>
       )}
 
-      {data && (
-        <EodPriceSync onUpdated={() => fetchData(filters, page, sortKey, sortDir)} />
-      )}
+      <EodPriceSyncPanel sync={eodSync} />
 
       {data && (
         <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">

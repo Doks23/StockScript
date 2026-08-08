@@ -1,7 +1,16 @@
 "use client";
 
+/**
+ * EOD price refresh, split into a trigger and a results panel.
+ *
+ * The button lives in the journal ribbon alongside the other actions, while the
+ * table it produces renders further down the page, so the two halves share one
+ * hook rather than one component. The panel renders nothing until there is
+ * something to report - it is a result, not a permanent fixture.
+ */
+
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, TrendingUp } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 
 type PricedRow = {
   symbol: string;
@@ -45,7 +54,9 @@ function asOfLabel(iso: string | null) {
   });
 }
 
-export function EodPriceSync({ onUpdated }: { onUpdated?: () => void }) {
+export type EodPriceSync = ReturnType<typeof useEodPriceSync>;
+
+export function useEodPriceSync(onUpdated?: () => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
@@ -107,45 +118,62 @@ export function EodPriceSync({ onUpdated }: { onUpdated?: () => void }) {
     confirmable.filter((row) => accepted[row.symbol]).length +
     Object.values(manual).filter((t) => t.trim()).length;
 
+  return {
+    isLoading,
+    error,
+    result,
+    readyCount,
+    accepted,
+    setAccepted,
+    manual,
+    setManual,
+    fetchPrices: () => call(false),
+    apply: () => call(true),
+  };
+}
+
+export function EodPriceSyncTrigger({ sync }: { sync: EodPriceSync }) {
+  const showApply = sync.result?.dryRun && sync.readyCount > 0;
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={sync.isLoading}
+        onClick={sync.fetchPrices}
+        title="Fetch the latest close for every open position"
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-slate-800 px-2.5 text-[11px] font-medium text-white transition hover:bg-slate-700 disabled:opacity-40"
+      >
+        {sync.isLoading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <RefreshCw className="h-3.5 w-3.5" />
+        )}
+        <span className="hidden xl:inline">Prices</span>
+      </button>
+
+      {showApply && (
+        <button
+          type="button"
+          disabled={sync.isLoading}
+          onClick={sync.apply}
+          className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[11px] font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Apply {sync.readyCount}
+        </button>
+      )}
+    </>
+  );
+}
+
+export function EodPriceSyncPanel({ sync }: { sync: EodPriceSync }) {
+  const { error, result, accepted, setAccepted, manual, setManual } = sync;
+
+  if (!error && !result) return null;
+
   return (
     <div className="space-y-3 rounded-xl border border-line bg-panel p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <TrendingUp className="h-4 w-4 text-accent" />
-            EOD prices for open positions
-          </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Pulls the latest daily close from Yahoo Finance and fills in the closing price that
-            drives unrealized P&amp;L.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={() => call(false)}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-          >
-            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Fetch prices
-          </button>
-
-          {result && result.dryRun && readyCount > 0 && (
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => call(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Apply to {readyCount}
-            </button>
-          )}
-        </div>
-      </div>
-
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -265,7 +293,7 @@ export function EodPriceSync({ onUpdated }: { onUpdated?: () => void }) {
             </div>
           ))}
           <p className="text-[10px] text-slate-500">
-            Enter a ticker then press Fetch prices again to check it before applying.
+            Enter a ticker then press Prices again to check it before applying.
           </p>
         </div>
       )}

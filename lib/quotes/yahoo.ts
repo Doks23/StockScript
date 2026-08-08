@@ -67,6 +67,8 @@ const chartSchema = z.object({
             longName: z.string().nullish(),
             shortName: z.string().nullish(),
             regularMarketPrice: z.number().nullish(),
+            /** Seconds since epoch. Says which session regularMarketPrice is from. */
+            regularMarketTime: z.number().nullish(),
             chartPreviousClose: z.number().nullish(),
           }),
           timestamp: z.array(z.number()).nullish(),
@@ -170,11 +172,23 @@ async function getJson(url: string): Promise<unknown | null> {
 }
 
 /**
- * Last settled daily close for one exact Yahoo symbol, or null if unknown.
+ * Latest price for one exact Yahoo symbol, or null if unknown.
  *
- * Prefers the final daily candle over meta.regularMarketPrice so the value is a
- * genuine session close with a date attached. Mid-session the last candle is
- * today's partial bar, so asOf tells the caller which day they actually got.
+ * Reads two sources and takes whichever is more recent, because neither is
+ * reliably the newest on its own:
+ *
+ *   - the daily candles, which carry a genuine session close per day, but whose
+ *     most recent bar is regularly published with a null close - Yahoo creates
+ *     the day's bar at the open and backfills it late, or not at all for thinner
+ *     names. Walking back past that null silently returns YESTERDAY's close, so
+ *     an open position gets marked a day stale with nothing to show for it.
+ *   - meta.regularMarketPrice, which does carry that day's close, timestamped at
+ *     the closing bell. Mid-session it is a live intraday price rather than a
+ *     close, which is the right mark for unrealized P&L anyway, and asOf reports
+ *     the moment it came from either way.
+ *
+ * Comparing timestamps rather than preferring one source means neither failure
+ * mode - a stale candle or a mid-session meta - can quietly win.
  */
 export async function fetchQuote(quoteSymbol: string): Promise<Quote | null> {
   const raw = await getJson(
@@ -191,6 +205,7 @@ export async function fetchQuote(quoteSymbol: string): Promise<Quote | null> {
   const closes = result.indicators?.quote?.[0]?.close ?? [];
   const stamps = result.timestamp ?? [];
 
+  // Newest candle that actually carries a close.
   let price: number | null = null;
   let asOf: Date | null = null;
   for (let i = closes.length - 1; i >= 0; i--) {
@@ -202,11 +217,29 @@ export async function fetchQuote(quoteSymbol: string): Promise<Quote | null> {
     }
   }
 
-  // Fall back to the meta price only if the series was unusable.
+  // Take the meta price when it is newer than that candle - or when the series
+  // gave nothing at all. An undated meta price cannot be compared, so it only
+  // stands in for a missing one.
+  const metaPrice = result.meta.regularMarketPrice;
+  if (typeof metaPrice === "number" && Number.isFinite(metaPrice) && metaPrice > 0) {
+    const metaTime = result.meta.regularMarketTime;
+    const metaAsOf =
+      typeof metaTime === "number" && Number.isFinite(metaTime)
+        ? new Date(metaTime * 1000)
+        : null;
+
+    if (price === null || (metaAsOf !== null && (asOf === null || metaAsOf > asOf))) {
+      price = metaPrice;
+      asOf = metaAsOf;
+    }
+  }
+
+  // Last resort: the previous close, which at least exists.
   if (price === null) {
-    const meta = result.meta.regularMarketPrice ?? result.meta.chartPreviousClose;
-    if (typeof meta !== "number" || !Number.isFinite(meta)) return null;
-    price = meta;
+    const previous = result.meta.chartPreviousClose;
+    if (typeof previous !== "number" || !Number.isFinite(previous)) return null;
+    price = previous;
+    asOf = null;
   }
 
   if (price <= 0) return null;
