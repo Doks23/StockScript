@@ -61,6 +61,26 @@ function dateKeyOf(d: Date | string | null | undefined): string {
   return format(new Date(d), "yyyy-MM-dd");
 }
 
+/**
+ * A leg's quantity, marked when it stands for several fills of one order.
+ *
+ * The price beside it is then a weighted average rather than a price that was
+ * actually printed, so the count is worth showing - quietly, since on most rows
+ * there is nothing to say.
+ */
+function LegQty({ leg }: { leg: { qty: number; price: number; fills: number } }) {
+  if (leg.fills <= 1) return <>{fmtQty(leg.qty)}</>;
+  return (
+    <span
+      className="cursor-help"
+      title={`${leg.fills} fills in one order, averaged to ${leg.price.toFixed(2)}`}
+    >
+      {fmtQty(leg.qty)}
+      <span className="ml-0.5 text-[10px] text-slate-400">×{leg.fills}</span>
+    </span>
+  );
+}
+
 // Signature of the actual entry transaction (BUY for LONG, SELL for SHORT).
 function entryFingerprint(row: GroupedTradeRow): string | null {
   const firstEntry = row.entryLegs[0];
@@ -935,7 +955,7 @@ export function JournalTable({
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
-                            : eLeg?.qty ? fmtQty(eLeg.qty) : <span className="text-slate-300">—</span>}
+                            : eLeg?.qty ? <LegQty leg={eLeg} /> : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium">
                           {eLeg?.price ? fmtPrice(eLeg.price) : <span className="text-slate-300">—</span>}
@@ -947,7 +967,7 @@ export function JournalTable({
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 border-l border-slate-100">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
-                            : xLeg?.qty > 0 ? fmtQty(xLeg.qty) : <span className="text-slate-300">—</span>}
+                            : xLeg?.qty > 0 ? <LegQty leg={xLeg} /> : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium">
                           {xLeg?.price > 0 ? fmtPrice(xLeg.price) : <span className="text-slate-300">—</span>}

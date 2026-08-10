@@ -151,7 +151,10 @@ export const loginSchema = z.object({
 export type TradeTx = Pick<
   Transaction,
   "type" | "price" | "quantity" | "dateTime"
->;
+> & {
+  /** Present on broker-synced rows. Used to collapse one order's fills into one leg. */
+  externalOrderId?: string | null;
+};
 
 export type TradeWithTxns = Trade & { transactions: TradeTx[] };
 
@@ -549,7 +552,63 @@ export type EntryLeg = {
   qty: number;
   price: number;
   dateTime: Date;
+  /** Broker fills behind this leg. 1 unless an order filled in pieces. */
+  fills: number;
+  /** The order these fills belong to, when the leg came from a broker sync. */
+  orderId?: string | null;
 };
+
+/**
+ * Broker fills → journal legs, one leg per order.
+ *
+ * An order for 76 shares can come back as eight fills a few paise apart. That
+ * is exchange mechanics, not eight decisions, and rendering it as eight rows
+ * buries the trade. Fills sharing an order id collapse into a single leg at
+ * their quantity-weighted average price - the same number Dhan's own order
+ * screen shows - stamped with the first fill's time.
+ *
+ * Rows with no order id are never merged. Manual and CSV entries have none, so
+ * nothing that predates the broker syncs changes shape here.
+ *
+ * This is presentation only. The individual fills stay in the database, which
+ * is what the de-duplication between the two Dhan syncs is built on, and what
+ * the trade editor still shows.
+ */
+export function consolidateLegs(txns: TradeTx[]): EntryLeg[] {
+  const legs: EntryLeg[] = [];
+  const legByOrder = new Map<string, EntryLeg>();
+
+  for (const tx of txns) {
+    const orderId = tx.externalOrderId?.trim();
+    const leg = orderId ? legByOrder.get(orderId) : undefined;
+
+    if (!leg) {
+      const fresh: EntryLeg = {
+        qty: tx.quantity,
+        price: tx.price,
+        dateTime: new Date(tx.dateTime),
+        fills: 1,
+        orderId: orderId || null,
+      };
+      legs.push(fresh);
+      if (orderId) legByOrder.set(orderId, fresh);
+      continue;
+    }
+
+    // Weighted average, computed before qty is overwritten.
+    const combinedQty = leg.qty + tx.quantity;
+    leg.price =
+      combinedQty > 0
+        ? (leg.price * leg.qty + tx.price * tx.quantity) / combinedQty
+        : leg.price;
+    leg.qty = combinedQty;
+    leg.fills++;
+    // Callers pass fills in ascending time order, so the leg already carries
+    // the earliest one - when the order started filling.
+  }
+
+  return legs;
+}
 
 export type GroupedTradeRow = {
   id: string;
@@ -603,17 +662,11 @@ export function buildGroupedJournalRows(
     const entries = getEntryTransactions(trade);
     const exits = getExitTransactions(trade);
 
-    const entryLegs: EntryLeg[] = entries.map((t) => ({
-      qty: t.quantity,
-      price: t.price,
-      dateTime: new Date(t.dateTime),
-    }));
-
-    const exitLegs: EntryLeg[] = exits.map((t) => ({
-      qty: t.quantity,
-      price: t.price,
-      dateTime: new Date(t.dateTime),
-    }));
+    // One leg per order, not per fill. Totals are untouched - the quantities
+    // and prices this collapses are the same ones weightedEntry already
+    // averages over, so nothing downstream shifts.
+    const entryLegs = consolidateLegs(entries);
+    const exitLegs = consolidateLegs(exits);
 
     const totalEntryQty = getTotalEntryQty(trade);
     const weightedEntry = getWeightedEntryPrice(trade);
