@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
-import { CheckCircle2, Download, RefreshCw, X, Table2, CloudDownload } from "lucide-react";
+import { CheckCircle2, Download, RefreshCw, X, Table2, CloudDownload, Zap } from "lucide-react";
 import { DhanSync } from "@/components/dhan-sync";
+import { DhanTodaySync } from "@/components/dhan-today-sync";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters, useJournalFilters } from "@/components/journal-filters";
 import type { Filters } from "@/components/journal-filters";
@@ -74,6 +75,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [toast, setToast] = useState("");
   const [dhanOpen, setDhanOpen] = useState(false);
+  const [todayOpen, setTodayOpen] = useState(false);
 
   useEffect(() => {
     const saved = searchParams.get("saved");
@@ -177,9 +179,11 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   // Escape closes the sync dialog, and the journal behind it stays put rather
   // than scrolling under a form that is taller than the viewport.
   useEffect(() => {
-    if (!dhanOpen) return;
+    if (!dhanOpen && !todayOpen) return;
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setDhanOpen(false);
+      if (e.key !== "Escape") return;
+      setDhanOpen(false);
+      setTodayOpen(false);
     }
     document.addEventListener("keydown", onKeyDown);
     const previousOverflow = document.body.style.overflow;
@@ -188,7 +192,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [dhanOpen]);
+  }, [dhanOpen, todayOpen]);
 
   const metrics = data?.metrics;
   const totalPages = data?.totalPages || 1;
@@ -259,6 +263,45 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
         </div>
       )}
 
+      {todayOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Sync today's fills from Dhan"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setTodayOpen(false);
+          }}
+          className="fixed inset-0 z-50 overflow-y-auto bg-ink/40 p-3 backdrop-blur-[1px] sm:p-6"
+        >
+          <div className="mx-auto w-full max-w-2xl">
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setTodayOpen(false)}
+                aria-label="Close"
+                className="rounded-full bg-white/90 p-1.5 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <DhanTodaySync
+              competitions={competitions}
+              onApplied={(applied) => {
+                // Charge top-ups report 0 trades but still change the numbers,
+                // so the journal reloads either way and only the wording differs.
+                if (applied > 0) {
+                  setToast(
+                    `Today's fills applied to ${applied} trade${applied === 1 ? "" : "s"}.`,
+                  );
+                  setTimeout(() => setToast(""), 3500);
+                }
+                fetchData(filters, page, sortKey, sortDir);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-3">
         <div className="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto lg:overflow-visible">
           <JournalFilters
@@ -296,6 +339,14 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               <span className="hidden xl:inline">Refresh</span>
             </button>
             <EodPriceSyncTrigger sync={eodSync} />
+            <button
+              onClick={() => setTodayOpen(true)}
+              data-tip="Sync today's fills from Dhan"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-accent bg-white px-2.5 text-[11px] font-medium text-accent transition hover:bg-canvas"
+            >
+              <Zap size={14} />
+              <span className="hidden xl:inline">Today</span>
+            </button>
             <button
               onClick={() => setDhanOpen(true)}
               data-tip="Sync trades from Dhan"
