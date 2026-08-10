@@ -407,8 +407,8 @@ export function JournalTable({
         case "stopLossPct": av = a.stopLossPct ?? 0; bv = b.stopLossPct ?? 0; break;
         case "allocationPct": av = a.allocationPct; bv = b.allocationPct; break;
         case "ageDays": av = a.ageDays; bv = b.ageDays; break;
-        case "pnlPct": av = a.pnlPct; bv = b.pnlPct; break;
-        case "pnlAmount": av = a.pnlAmount; bv = b.pnlAmount; break;
+        case "pnlPct": av = a.displayPnlPct; bv = b.displayPnlPct; break;
+        case "pnlAmount": av = a.displayPnlAmount; bv = b.displayPnlAmount; break;
         case "avgEntryPrice": av = a.weightedEntryPrice; bv = b.weightedEntryPrice; break;
         case "impactPct": av = a.impactPct; bv = b.impactPct; break;
       }
@@ -699,17 +699,17 @@ export function JournalTable({
                     </span>
                   ) : t.unrealizedPnl !== 0 && t.realizedPnl === 0 ? (
                     <span className={`text-base font-semibold tabular-nums ${pnlColor(t.unrealizedPnl)}`}>
-                      {fmtPct(t.unrealizedPnl / t.capital * 100)}
+                      {fmtPct(t.unrealizedPnlPct)}
                       <span className="text-[9px] text-slate-400 ml-1">MTM</span>
                     </span>
                   ) : (
                     <span className="tabular-nums leading-tight">
                       <span className={`block text-base font-semibold ${pnlColor(t.realizedPnl)}`}>
-                        {fmtPct(t.realizedPnl / (t.capital || 1) * 100)}
+                        {fmtPct(t.realizedPnlPct)}
                       </span>
                       {t.unrealizedPnl !== 0 && (
                         <span className={`block text-[11px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
-                          {`U: ${fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}`}
+                          {`U: ${fmtPct(t.unrealizedPnlPct)}`}
                         </span>
                       )}
                     </span>
@@ -985,28 +985,28 @@ export function JournalTable({
                             <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium align-middle" rowSpan={maxLegs}>
                               {t.weightedEntryPrice > 0 ? fmtPrice(t.weightedEntryPrice) : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className={`px-1.5 py-2.5 text-right align-middle border-l border-slate-100 ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                            <td className={`px-1.5 py-2.5 text-right align-middle border-l border-slate-100 ${pnlColor(t.displayPnlAmount)}`} rowSpan={maxLegs}>
                               {!showPnl ? (
                                 <span className="text-slate-300">—</span>
                               ) : t.derivedStatus === "CLOSED" || (t.unrealizedPnl === 0) ? (
                                 <span className="font-semibold tabular-nums">{fmtPct(t.pnlPct)}</span>
                               ) : t.realizedPnl === 0 ? (
                                 <span className="font-semibold tabular-nums">
-                                  {fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}
+                                  {fmtPct(t.unrealizedPnlPct)}
                                   <span className="text-[11px] text-slate-400 ml-0.5">MTM</span>
                                 </span>
                               ) : (
                                 <span className="tabular-nums leading-tight">
                                   <span className={`block font-semibold text-[13px] ${pnlColor(t.realizedPnl)}`}>
-                                    {fmtPct(t.realizedPnl / (t.capital || 1) * 100)}
+                                    {fmtPct(t.realizedPnlPct)}
                                   </span>
                                   <span className={`block text-[12px] ${pnlColor(t.unrealizedPnl)} opacity-60`}>
-                                    U:{fmtPct(t.unrealizedPnl / (t.capital || 1) * 100)}
+                                    U:{fmtPct(t.unrealizedPnlPct)}
                                   </span>
                                 </span>
                               )}
                             </td>
-                            <td className={`px-1.5 py-2.5 text-right align-middle tabular-nums ${pnlColor(t.pnlAmount)}`} rowSpan={maxLegs}>
+                            <td className={`px-1.5 py-2.5 text-right align-middle tabular-nums ${pnlColor(t.displayPnlAmount)}`} rowSpan={maxLegs}>
                               {!showAmounts ? (
                                 <span className="text-slate-300">•••</span>
                               ) : !showPnl ? (

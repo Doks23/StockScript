@@ -205,24 +205,24 @@ export default async function TraderDrillDownPage({ params }: Props) {
                               <td className="px-3 py-3 text-right tabular-nums text-slate-700 font-medium border-l border-line" rowSpan={maxLegs}>
                                 {trade.weightedEntryPrice > 0 ? fmtPrice(trade.weightedEntryPrice) : <span className="text-slate-300">—</span>}
                               </td>
-                              <td className={`px-3 py-3 text-right align-middle border-l border-line ${pnlColor(trade.pnlAmount)}`} rowSpan={maxLegs}>
+                              <td className={`px-3 py-3 text-right align-middle border-l border-line ${pnlColor(trade.displayPnlAmount)}`} rowSpan={maxLegs}>
                                 {!showPnl ? (
                                   <span className="text-slate-300">—</span>
                                 ) : trade.derivedStatus === "CLOSED" ? (
                                   <span className="font-semibold tabular-nums">{`${trade.pnlPct >= 0 ? "+" : ""}${fmtPct(trade.pnlPct)}`}</span>
                                 ) : trade.realizedPnl === 0 ? (
                                   <span className="font-semibold tabular-nums">
-                                    {`${trade.unrealizedPnl >= 0 ? "+" : ""}${fmtPct(trade.unrealizedPnl / (trade.capital || 1) * 100)}`}
+                                    {`${trade.unrealizedPnl >= 0 ? "+" : ""}${fmtPct(trade.unrealizedPnlPct)}`}
                                     <span className="text-[9px] text-slate-400 ml-0.5">MTM</span>
                                   </span>
                                 ) : (
                                   <span className="tabular-nums leading-tight">
                                     <span className={`block font-semibold text-[11px] ${pnlColor(trade.realizedPnl)}`}>
-                                      {`${trade.realizedPnl >= 0 ? "+" : ""}${fmtPct(trade.realizedPnl / (trade.capital || 1) * 100)}`}
+                                      {`${trade.realizedPnl >= 0 ? "+" : ""}${fmtPct(trade.realizedPnlPct)}`}
                                     </span>
                                     {trade.unrealizedPnl !== 0 && (
                                       <span className={`block text-[10px] ${pnlColor(trade.unrealizedPnl)} opacity-60`}>
-                                        {`U:${trade.unrealizedPnl >= 0 ? "+" : ""}${fmtPct(trade.unrealizedPnl / (trade.capital || 1) * 100)}`}
+                                        {`U:${trade.unrealizedPnl >= 0 ? "+" : ""}${fmtPct(trade.unrealizedPnlPct)}`}
                                       </span>
                                     )}
                                   </span>

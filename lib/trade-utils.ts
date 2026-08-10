@@ -568,7 +568,15 @@ export type GroupedTradeRow = {
   pnlAmount: number;
   realizedPnl: number;
   unrealizedPnl: number;
+  /** Realized P&L against the capital deployed on the exited quantity only. */
+  realizedPnlPct: number;
+  /** Unrealized P&L against the capital still open. */
+  unrealizedPnlPct: number;
+  /** The headline P&L the journal renders for this row (realized, or MTM when nothing is realized). */
+  displayPnlAmount: number;
+  displayPnlPct: number;
   capital: number;
+  realizedCapital: number;
   allocationPct: number;
   ageDays: number;
   impactPct: number;
@@ -626,6 +634,28 @@ export function buildGroupedJournalRows(
     const capital = trade.capitalUsed || weightedEntry * totalEntryQty;
     const pnlPct = capital > 0 ? (displayPnl / capital) * 100 : 0;
 
+    // Each leg's return is measured against the capital that leg actually used,
+    // not the whole position — a 100-share exit out of 714 is not a 714-share return.
+    const closedQty = Math.min(exitQ, totalEntryQty);
+    const realizedCapital =
+      totalEntryQty > 0 ? capital * (closedQty / totalEntryQty) : 0;
+    const unrealizedCapital =
+      totalEntryQty > 0 ? capital * (openQty / totalEntryQty) : 0;
+    const realizedPnlPct =
+      realizedCapital > 0 ? (realizedPnl / realizedCapital) * 100 : 0;
+    const unrealizedPnlPct =
+      unrealizedCapital > 0 ? (unrealizedPnl / unrealizedCapital) * 100 : 0;
+
+    // Mirrors what the journal cell shows, so sorting matches the visible number.
+    const showsMtmOnly =
+      !isActuallyClosed && realizedPnl === 0 && unrealizedPnl !== 0;
+    const displayPnlAmount = showsMtmOnly ? unrealizedPnl : realizedPnl;
+    const displayPnlPct = showsMtmOnly
+      ? unrealizedPnlPct
+      : isActuallyClosed
+        ? pnlPct
+        : realizedPnlPct;
+
     const openCapital = openQty > 0 ? weightedEntry * openQty : 0;
     const capitalForAlloc = openQty > 0 ? openCapital : capital;
     const allocationPct =
@@ -662,7 +692,12 @@ export function buildGroupedJournalRows(
       pnlAmount: displayPnl,
       realizedPnl,
       unrealizedPnl,
+      realizedPnlPct,
+      unrealizedPnlPct,
+      displayPnlAmount,
+      displayPnlPct,
       capital,
+      realizedCapital,
       allocationPct,
       ageDays,
       impactPct,

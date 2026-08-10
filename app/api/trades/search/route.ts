@@ -82,8 +82,8 @@ export async function GET(req: NextRequest) {
           case "stopLossPct": av = a.stopLossPct ?? 0; bv = b.stopLossPct ?? 0; break;
           case "allocationPct": av = a.allocationPct; bv = b.allocationPct; break;
           case "ageDays": av = a.ageDays; bv = b.ageDays; break;
-          case "pnlPct": av = a.pnlPct; bv = b.pnlPct; break;
-          case "pnlAmount": av = a.pnlAmount; bv = b.pnlAmount; break;
+          case "pnlPct": av = a.displayPnlPct; bv = b.displayPnlPct; break;
+          case "pnlAmount": av = a.displayPnlAmount; bv = b.displayPnlAmount; break;
           case "avgEntryPrice": av = a.weightedEntryPrice; bv = b.weightedEntryPrice; break;
           case "impactPct": av = a.impactPct; bv = b.impactPct; break;
         }
