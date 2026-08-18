@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,7 +12,7 @@ import {
   setupOptions,
   tradeTypeOptions,
 } from "@/lib/constants";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 type TxRow = { price: string; quantity: string; dateTime: string };
 
@@ -61,36 +62,97 @@ function toLocalDT(val?: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
-function buildInitialTxRows(
+/**
+ * One editable row per day, not one per fill.
+ *
+ * A single order comes back from the broker as eight fills a few paise apart,
+ * which turned this form into eight near-identical rows for one decision. Fills
+ * from the same day collapse into one row at their quantity-weighted average
+ * price, so the quantity on screen is the quantity traded that day - which is
+ * also what makes a double import obvious, since a re-synced day reads as
+ * doubled quantity rather than as more rows nobody counts.
+ *
+ * The fills are still there behind the count chip, and a day nobody touches is
+ * submitted exactly as it was loaded. That last part is load-bearing: the Dhan
+ * syncs de-duplicate on a per-fill fingerprint, so flattening a day into one
+ * leg on every save would leave the next sync importing the whole order again.
+ */
+type LegGroup = {
+  key: string;
+  fills: TxRow[];
+  expanded: boolean;
+};
+
+let nextGroupKey = 0;
+const makeGroup = (fills: TxRow[]): LegGroup => ({
+  key: `leg-${nextGroupKey++}`,
+  fills,
+  expanded: false,
+});
+
+const blankRow = (withDate: boolean): TxRow => ({
+  price: "",
+  quantity: "",
+  dateTime: withDate ? toLocalDT() : "",
+});
+
+/** The single row a day is shown as: earliest time, weighted price, total qty. */
+function groupDisplay(fills: TxRow[]): TxRow {
+  if (fills.length === 1) return fills[0];
+
+  let qty = 0;
+  let amount = 0;
+  for (const fill of fills) {
+    const fillQty = Number(fill.quantity) || 0;
+    qty += fillQty;
+    amount += (Number(fill.price) || 0) * fillQty;
+  }
+
+  // "YYYY-MM-DDTHH:mm" sorts chronologically as text.
+  const times = fills.map((fill) => fill.dateTime).filter(Boolean).sort();
+
+  return {
+    dateTime: times[0] ?? "",
+    price: qty > 0 ? String(Number((amount / qty).toFixed(2))) : fills[0]?.price ?? "",
+    quantity: String(Number(qty.toFixed(4))),
+  };
+}
+
+function buildInitialGroups(
   txns: Transaction[],
   tradeType: string,
   side: "entry" | "exit",
-): TxRow[] {
-  if (!txns || txns.length === 0)
-    return [
-      {
-        price: "",
-        quantity: "",
-        dateTime: side === "entry" ? toLocalDT() : "",
-      },
-    ];
+): LegGroup[] {
   const entryType = tradeType === "LONG" ? "BUY" : "SELL";
   const sideType =
     side === "entry" ? entryType : entryType === "BUY" ? "SELL" : "BUY";
-  const filtered = txns.filter((t) => t.type === sideType);
-  if (filtered.length === 0)
-    return [
-      {
-        price: "",
-        quantity: "",
-        dateTime: side === "entry" ? toLocalDT() : "",
-      },
-    ];
-  return filtered.map((t) => ({
-    price: String(t.price),
-    quantity: String(t.quantity),
-    dateTime: toLocalDT(t.dateTime),
-  }));
+  const filtered = (txns ?? []).filter((t) => t.type === sideType);
+
+  if (filtered.length === 0) return [makeGroup([blankRow(side === "entry")])];
+
+  const groups: LegGroup[] = [];
+  const byDay = new Map<string, LegGroup>();
+
+  for (const tx of filtered) {
+    const row: TxRow = {
+      price: String(tx.price),
+      quantity: String(tx.quantity),
+      dateTime: toLocalDT(tx.dateTime),
+    };
+    const day = row.dateTime.slice(0, 10);
+    const existing = day ? byDay.get(day) : undefined;
+
+    if (existing) {
+      existing.fills.push(row);
+      continue;
+    }
+
+    const group = makeGroup([row]);
+    groups.push(group);
+    if (day) byDay.set(day, group);
+  }
+
+  return groups;
 }
 
 function getMultiSelectValues(formData: FormData, name: string) {
@@ -109,6 +171,212 @@ function splitInitialValues(value?: string | null) {
     .filter(Boolean);
 }
 
+/**
+ * Handlers are written once against a setter, because the entry and exit
+ * columns differ only in which state they edit.
+ */
+function legHandlers(setGroups: Dispatch<SetStateAction<LegGroup[]>>) {
+  const edit = (key: string, change: (group: LegGroup) => LegGroup) =>
+    setGroups((groups) =>
+      groups.map((group) => (group.key === key ? change(group) : group)),
+    );
+
+  return {
+    add: () => setGroups((groups) => [...groups, makeGroup([blankRow(false)])]),
+
+    removeGroup: (key: string) =>
+      setGroups((groups) => groups.filter((group) => group.key !== key)),
+
+    toggle: (key: string) =>
+      edit(key, (group) => ({ ...group, expanded: !group.expanded })),
+
+    // Editing the day's own row means the user is stating one number for the
+    // whole day, so the fills behind it give way to that single leg.
+    updateGroup: (key: string, field: keyof TxRow, value: string) =>
+      edit(key, (group) => ({
+        ...group,
+        expanded: false,
+        fills: [{ ...groupDisplay(group.fills), [field]: value }],
+      })),
+
+    updateFill: (key: string, index: number, field: keyof TxRow, value: string) =>
+      edit(key, (group) => ({
+        ...group,
+        fills: group.fills.map((fill, i) =>
+          i === index ? { ...fill, [field]: value } : fill,
+        ),
+      })),
+
+    removeFill: (key: string, index: number) =>
+      setGroups((groups) =>
+        groups
+          .map((group) =>
+            group.key === key
+              ? { ...group, fills: group.fills.filter((_, i) => i !== index) }
+              : group,
+          )
+          .filter((group) => group.fills.length > 0),
+      ),
+  };
+}
+
+type LegHandlers = ReturnType<typeof legHandlers>;
+
+const FIELD_LABELS: [keyof TxRow, string][] = [
+  ["dateTime", "Date & Time"],
+  ["price", "Price"],
+  ["quantity", "Qty"],
+];
+
+function LegFields({
+  row,
+  required,
+  onChange,
+  compact = false,
+}: {
+  row: TxRow;
+  required: boolean;
+  onChange: (field: keyof TxRow, value: string) => void;
+  compact?: boolean;
+}) {
+  return (
+    <>
+      {FIELD_LABELS.map(([field, label]) => (
+        <div key={field} className="flex items-center gap-2 sm:contents">
+          <span className="min-w-[60px] text-[10px] text-slate-400 sm:hidden">{label}</span>
+          <input
+            type={field === "dateTime" ? "datetime-local" : "number"}
+            {...(field === "dateTime" ? {} : { step: "0.01", min: "0" })}
+            placeholder={label}
+            value={row[field]}
+            onChange={(e) => onChange(field, e.target.value)}
+            required={required}
+            className={`form-input h-9 flex-1 sm:flex-none ${
+              field === "dateTime" ? "text-xs" : "text-sm"
+            } ${compact ? "bg-slate-50" : ""}`}
+          />
+        </div>
+      ))}
+    </>
+  );
+}
+
+const LEG_GRID =
+  "flex flex-col gap-1.5 rounded-lg border border-slate-100 bg-white p-2 sm:grid sm:grid-cols-[3fr_2fr_2fr_auto_auto] sm:items-center sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0";
+
+function LegEditor({
+  title,
+  titleClass,
+  addClass,
+  groups,
+  handlers,
+  requireFirst,
+}: {
+  title: string;
+  titleClass: string;
+  addClass: string;
+  groups: LegGroup[];
+  handlers: LegHandlers;
+  requireFirst: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="mb-1 flex items-center justify-between">
+        <span className={`text-xs font-bold tracking-wider ${titleClass}`}>{title}</span>
+        <button
+          type="button"
+          onClick={handlers.add}
+          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold transition ${addClass}`}
+        >
+          <Plus className="h-3 w-3" /> Add
+        </button>
+      </div>
+
+      <div className="hidden grid-cols-[3fr_2fr_2fr_auto_auto] gap-2 px-1 text-[10px] text-slate-400 sm:grid">
+        <span>Date & Time</span>
+        <span>Price</span>
+        <span>Qty</span>
+        <span />
+        <span />
+      </div>
+
+      {groups.map((group, index) => {
+        const display = groupDisplay(group.fills);
+        const fillCount = group.fills.length;
+
+        return (
+          <div key={group.key} className="space-y-1.5">
+            <div className={LEG_GRID}>
+              <LegFields
+                row={display}
+                required={requireFirst && index === 0}
+                onChange={(field, value) => handlers.updateGroup(group.key, field, value)}
+              />
+
+              {fillCount > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => handlers.toggle(group.key)}
+                  aria-expanded={group.expanded}
+                  className="inline-flex shrink-0 items-center gap-0.5 self-start rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 sm:self-center"
+                >
+                  {group.expanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  {fillCount} fills
+                </button>
+              ) : (
+                <span className="hidden sm:block" />
+              )}
+
+              <button
+                type="button"
+                onClick={() => handlers.removeGroup(group.key)}
+                aria-label="Remove"
+                className="self-end text-slate-300 transition hover:text-red-400 sm:ml-0 sm:self-center"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {group.expanded && fillCount > 1 && (
+              <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
+                <p className="text-[10px] text-slate-400">
+                  The fills behind this day. Editing one keeps the rest; editing the row
+                  above replaces all {fillCount}.
+                </p>
+                {group.fills.map((fill, fillIndex) => (
+                  <div key={fillIndex} className={LEG_GRID}>
+                    <LegFields
+                      row={fill}
+                      required={false}
+                      compact
+                      onChange={(field, value) =>
+                        handlers.updateFill(group.key, fillIndex, field, value)
+                      }
+                    />
+                    <span className="hidden sm:block" />
+                    <button
+                      type="button"
+                      onClick={() => handlers.removeFill(group.key, fillIndex)}
+                      aria-label="Remove fill"
+                      className="self-end text-slate-300 transition hover:text-red-400 sm:self-center"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function TradeForm({ competitions, initialData }: TradeFormProps) {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -120,44 +388,26 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
     initialData?.tradeType || "LONG",
   );
 
-  const [entryRows, setEntryRows] = useState<TxRow[]>(() =>
-    buildInitialTxRows(
+  const [entryGroups, setEntryGroups] = useState<LegGroup[]>(() =>
+    buildInitialGroups(
       initialData?.transactions ?? [],
       initialData?.tradeType ?? "LONG",
       "entry",
     ),
   );
-  const [exitRows, setExitRows] = useState<TxRow[]>(() =>
-    buildInitialTxRows(
+  const [exitGroups, setExitGroups] = useState<LegGroup[]>(() =>
+    buildInitialGroups(
       initialData?.transactions ?? [],
       initialData?.tradeType ?? "LONG",
       "exit",
     ),
   );
 
-  function addEntryRow() {
-    setEntryRows((r) => [...r, { price: "", quantity: "", dateTime: "" }]);
-  }
-  function removeEntryRow(i: number) {
-    setEntryRows((r) => r.filter((_, idx) => idx !== i));
-  }
-  function updateEntryRow(i: number, field: keyof TxRow, value: string) {
-    setEntryRows((r) =>
-      r.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)),
-    );
-  }
+  const entryRows = entryGroups.flatMap((group) => group.fills);
+  const exitRows = exitGroups.flatMap((group) => group.fills);
 
-  function addExitRow() {
-    setExitRows((r) => [...r, { price: "", quantity: "", dateTime: "" }]);
-  }
-  function removeExitRow(i: number) {
-    setExitRows((r) => r.filter((_, idx) => idx !== i));
-  }
-  function updateExitRow(i: number, field: keyof TxRow, value: string) {
-    setExitRows((r) =>
-      r.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)),
-    );
-  }
+  const entryLegs = legHandlers(setEntryGroups);
+  const exitLegs = legHandlers(setExitGroups);
 
   async function handleSubmit(formData: FormData) {
     setError("");
@@ -353,149 +603,22 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
 
       {/* Transactions grid */}
       <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-3 sm:gap-6 sm:p-4 lg:grid-cols-2">
-        {/* ENTRY transactions */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-emerald-600 tracking-wider">
-              ENTRY {tradeType === "LONG" ? "(BUY)" : "(SELL)"}
-            </span>
-            <button
-              type="button"
-              onClick={addEntryRow}
-              className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100 transition"
-            >
-              <Plus className="h-3 w-3" /> Add
-            </button>
-          </div>
-          <div className="hidden sm:grid grid-cols-[3fr_2fr_2fr_auto] gap-2 text-[10px] text-slate-400 px-1">
-            <span>Date & Time</span>
-            <span>Price</span>
-            <span>Qty</span>
-            <span></span>
-          </div>
-          {entryRows.map((row, i) => (
-            <div
-              key={i}
-              className="flex flex-col gap-1.5 sm:grid sm:grid-cols-[3fr_2fr_2fr_auto] sm:gap-2 sm:items-center bg-white rounded-lg border border-slate-100 p-2 sm:p-0 sm:bg-transparent sm:border-0"
-            >
-              <div className="flex items-center gap-2 sm:contents">
-                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Date & Time</span>
-                <input
-                  type="datetime-local"
-                  value={row.dateTime}
-                  onChange={(e) => updateEntryRow(i, "dateTime", e.target.value)}
-                  required={i === 0}
-                  className="form-input text-xs h-9 flex-1 sm:flex-none"
-                />
-              </div>
-              <div className="flex items-center gap-2 sm:contents">
-                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Price</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Price"
-                  value={row.price}
-                  onChange={(e) => updateEntryRow(i, "price", e.target.value)}
-                  required={i === 0}
-                  className="form-input text-sm h-9 flex-1 sm:flex-none"
-                />
-              </div>
-              <div className="flex items-center gap-2 sm:contents">
-                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Qty</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Qty"
-                  value={row.quantity}
-                  onChange={(e) => updateEntryRow(i, "quantity", e.target.value)}
-                  required={i === 0}
-                  className="form-input text-sm h-9 flex-1 sm:flex-none"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removeEntryRow(i)}
-                className="self-end sm:self-center text-slate-300 hover:text-red-400 transition sm:ml-0"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* EXIT transactions */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-amber-600 tracking-wider">
-              EXIT {tradeType === "LONG" ? "(SELL)" : "(BUY)"}
-            </span>
-            <button
-              type="button"
-              onClick={addExitRow}
-              className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-100 transition"
-            >
-              <Plus className="h-3 w-3" /> Add
-            </button>
-          </div>
-          <div className="hidden sm:grid grid-cols-[3fr_2fr_2fr_auto] gap-2 text-[10px] text-slate-400 px-1">
-            <span>Date & Time</span>
-            <span>Price</span>
-            <span>Qty</span>
-            <span></span>
-          </div>
-          {exitRows.map((row, i) => (
-            <div
-              key={i}
-              className="flex flex-col gap-1.5 sm:grid sm:grid-cols-[3fr_2fr_2fr_auto] sm:gap-2 sm:items-center bg-white rounded-lg border border-slate-100 p-2 sm:p-0 sm:bg-transparent sm:border-0"
-            >
-              <div className="flex items-center gap-2 sm:contents">
-                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Date & Time</span>
-                <input
-                  type="datetime-local"
-                  value={row.dateTime}
-                  onChange={(e) => updateExitRow(i, "dateTime", e.target.value)}
-                  required={status === "CLOSED" && i === 0}
-                  className="form-input text-xs h-9 flex-1 sm:flex-none"
-                />
-              </div>
-              <div className="flex items-center gap-2 sm:contents">
-                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Price</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Price"
-                  value={row.price}
-                  onChange={(e) => updateExitRow(i, "price", e.target.value)}
-                  required={status === "CLOSED" && i === 0}
-                  className="form-input text-sm h-9 flex-1 sm:flex-none"
-                />
-              </div>
-              <div className="flex items-center gap-2 sm:contents">
-                <span className="text-[10px] text-slate-400 sm:hidden min-w-[60px]">Qty</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Qty"
-                  value={row.quantity}
-                  onChange={(e) => updateExitRow(i, "quantity", e.target.value)}
-                  required={status === "CLOSED" && i === 0}
-                  className="form-input text-sm h-9 flex-1 sm:flex-none"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removeExitRow(i)}
-                className="self-end sm:self-center text-slate-300 hover:text-red-400 transition sm:ml-0"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+        <LegEditor
+          title={`ENTRY ${tradeType === "LONG" ? "(BUY)" : "(SELL)"}`}
+          titleClass="text-emerald-600"
+          addClass="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+          groups={entryGroups}
+          handlers={entryLegs}
+          requireFirst
+        />
+        <LegEditor
+          title={`EXIT ${tradeType === "LONG" ? "(SELL)" : "(BUY)"}`}
+          titleClass="text-amber-600"
+          addClass="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+          groups={exitGroups}
+          handlers={exitLegs}
+          requireFirst={status === "CLOSED"}
+        />
       </div>
 
       {/* Stop Loss, Charges, EOD Closing Price */}
