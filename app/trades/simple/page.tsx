@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { JournalFilters, useJournalFilters } from "@/components/journal-filters";
 import type { Filters } from "@/components/journal-filters";
+import { JournalMetricsBar } from "@/components/journal-metrics";
+import type { JournalMetrics } from "@/components/journal-metrics";
 import {
   SimpleJournalTable,
   SIMPLE_JOURNAL_FONT_DEFAULT,
@@ -17,6 +19,7 @@ type SearchResult = {
   totalPages: number;
   page: number;
   pageSize: number;
+  metrics: JournalMetrics;
 };
 
 const FONT_KEY = "simpleJournalFontSize";
@@ -96,6 +99,7 @@ function SimpleJournalContent() {
     resetFilters();
   }, [resetFilters]);
 
+  const metrics = data?.metrics;
   const totalPages = data?.totalPages || 1;
 
   return (
@@ -158,6 +162,10 @@ function SimpleJournalContent() {
           </div>
         </div>
       </section>
+
+      {metrics && (
+        <JournalMetricsBar metrics={metrics} showAmounts={!filters.hideAmounts} />
+      )}
 
       {loading && !data && (
         <div className="text-center py-12 text-slate-400 text-sm">Loading trades…</div>

@@ -7,6 +7,8 @@ import { DhanTodaySync } from "@/components/dhan-today-sync";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters, useJournalFilters } from "@/components/journal-filters";
 import type { Filters } from "@/components/journal-filters";
+import { JournalMetricsBar } from "@/components/journal-metrics";
+import type { JournalMetrics } from "@/components/journal-metrics";
 import {
   EodPriceSyncPanel,
   EodPriceSyncTrigger,
@@ -29,30 +31,14 @@ type SortKey =
   | "pnlAmount"
   | "impactPct";
 
-type Metrics = {
-  totalTrades: number;
-  totalAlloc: number;
-  totalRealizedPnl: number;
-  totalOpenPnl: number;
-  totalUnrealizedPnl: number;
-  totalPnl: number;
-  totalImpact: number;
-};
-
 type SearchResult = {
   trades: GroupedTradeRow[];
   totalCount: number;
   totalPages: number;
   page: number;
   pageSize: number;
-  metrics: Metrics;
+  metrics: JournalMetrics;
 };
-
-const fmtAmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
-const fmtPct = (n: number) => `${n.toFixed(1)}%`;
-const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-500" : "text-slate-400";
-const signedAmt = (n: number) => `${n >= 0 ? "+" : ""}${fmtAmt.format(n)}`;
-const hiddenAmt = "•••";
 
 type Competition = { id: string; name: string };
 
@@ -286,7 +272,11 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
             </div>
             <DhanTodaySync
               competitions={competitions}
-              onApplied={(applied) => {
+              onApplied={(applied, needsAttention) => {
+                // A clean apply has nothing left to read, so the dialog gets out
+                // of the way and the toast carries the news; anything with a
+                // warning or an unmapped symbol stays up to be read.
+                if (!needsAttention) setTodayOpen(false);
                 // Charge top-ups report 0 trades but still change the numbers,
                 // so the journal reloads either way and only the wording differs.
                 if (applied > 0) {
@@ -360,37 +350,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       </section>
 
       {metrics && (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 rounded-xl bg-canvas border border-line text-[12px]">
-          <span className="text-slate-400 font-medium">{metrics.totalTrades} trades</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Alloc:</span>
-            <span className="font-semibold text-slate-700">{fmtPct(metrics.totalAlloc)}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">R:</span>
-            <span className={`font-semibold ${pnlColor(metrics.totalRealizedPnl)}`}>
-              {filters.hideAmounts ? hiddenAmt : signedAmt(metrics.totalRealizedPnl)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">U:</span>
-            <span className={`font-semibold ${pnlColor(metrics.totalUnrealizedPnl)}`}>
-              {filters.hideAmounts ? hiddenAmt : signedAmt(metrics.totalUnrealizedPnl)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">MTM:</span>
-            <span className={`font-semibold ${pnlColor(metrics.totalPnl)}`}>
-              {filters.hideAmounts ? hiddenAmt : signedAmt(metrics.totalPnl)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Impact:</span>
-            <span className={`font-semibold ${pnlColor(metrics.totalImpact)}`}>
-              {metrics.totalImpact >= 0 ? "+" : ""}{fmtPct(metrics.totalImpact)}
-            </span>
-          </div>
-        </div>
+        <JournalMetricsBar metrics={metrics} showAmounts={!filters.hideAmounts} />
       )}
 
       {loading && !data && (

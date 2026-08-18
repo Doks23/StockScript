@@ -6,11 +6,12 @@
  * The button lives in the journal ribbon alongside the other actions, while the
  * table it produces renders further down the page, so the two halves share one
  * hook rather than one component. The panel renders nothing until there is
- * something to report - it is a result, not a permanent fixture.
+ * something to report - it is a result, not a permanent fixture, so it can
+ * always be closed and clears itself once the prices are saved.
  */
 
-import { useState } from "react";
-import { AlertTriangle, CheckCircle2, IndianRupee, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, CheckCircle2, IndianRupee, Loader2, X } from "lucide-react";
 
 type PricedRow = {
   symbol: string;
@@ -112,6 +113,22 @@ export function useEodPriceSync(onUpdated?: () => void) {
     }
   }
 
+  const dismiss = useCallback(() => {
+    setResult(null);
+    setError("");
+    setAccepted({});
+    setManual({});
+  }, []);
+
+  // Once the prices are saved there is nothing left to act on, so the panel
+  // steps aside on its own - unless something still needs a ticker, which is
+  // the one case where the list is worth keeping on screen.
+  useEffect(() => {
+    if (!result || result.dryRun || result.problems.length > 0) return;
+    const timer = setTimeout(dismiss, 6000);
+    return () => clearTimeout(timer);
+  }, [result, dismiss]);
+
   const confirmable = (result?.priced ?? []).filter((row) => !row.mapped);
   const readyCount =
     (result?.priced ?? []).filter((row) => row.mapped).length +
@@ -129,6 +146,7 @@ export function useEodPriceSync(onUpdated?: () => void) {
     setManual,
     fetchPrices: () => call(false),
     apply: () => call(true),
+    dismiss,
   };
 }
 
@@ -169,12 +187,26 @@ export function EodPriceSyncTrigger({ sync }: { sync: EodPriceSync }) {
 }
 
 export function EodPriceSyncPanel({ sync }: { sync: EodPriceSync }) {
-  const { error, result, accepted, setAccepted, manual, setManual } = sync;
+  const { error, result, accepted, setAccepted, manual, setManual, dismiss } = sync;
 
   if (!error && !result) return null;
 
   return (
     <div className="space-y-3 rounded-xl border border-line bg-panel p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+          Price refresh
+        </p>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Close price refresh"
+          className="-m-1 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

@@ -78,7 +78,11 @@ export function DhanTodaySync({
   onApplied,
 }: {
   competitions: { id: string; name: string }[];
-  onApplied?: (applied: number) => void;
+  /**
+   * needsAttention says the result carries something worth reading, so the
+   * caller keeps the dialog open instead of closing it on a clean apply.
+   */
+  onApplied?: (applied: number, needsAttention: boolean) => void;
 }) {
   const [accessToken, setAccessToken] = useState("");
   const [competitionId, setCompetitionId] = useState("");
@@ -115,9 +119,15 @@ export function DhanTodaySync({
       setResult(data as TodayResult);
 
       if (commit) {
+        const applied = data as TodayResult;
         setPhase("applied");
         setAccessToken("");
-        onApplied?.((data as TodayResult).applied ?? 0);
+        onApplied?.(
+          applied.applied ?? 0,
+          applied.warnings.length > 0 ||
+            applied.parseErrors.length > 0 ||
+            applied.unmappedSymbols.length > 0,
+        );
       } else {
         setPhase("previewed");
       }
@@ -150,7 +160,8 @@ export function DhanTodaySync({
       }
 
       setCharges(data as ChargesResult);
-      if (commit) onApplied?.(0);
+      // Charges report their own match counts, so this half stays on screen.
+      if (commit) onApplied?.(0, true);
     } catch (err) {
       setError((err as Error).message || "Charge backfill failed.");
     } finally {
