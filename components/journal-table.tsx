@@ -373,6 +373,7 @@ export function JournalTable({
   sortKey: externalSortKey,
   sortDir: externalSortDir,
   onSort: externalOnSort,
+  startIndex = 0,
 }: {
   rows: GroupedTradeRow[];
   showAmounts?: boolean;
@@ -381,6 +382,8 @@ export function JournalTable({
   sortKey?: SortKey | null;
   sortDir?: "asc" | "desc";
   onSort?: (k: SortKey) => void;
+  /** Row offset of this page within the full result set, so # keeps counting across pages. */
+  startIndex?: number;
 }) {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -562,7 +565,8 @@ export function JournalTable({
 
       {/* Mobile card list */}
       <div className="space-y-2 lg:hidden">
-        {sortedRows.map((t) => {
+        {sortedRows.map((t, rowIndex) => {
+          const serial = startIndex + rowIndex + 1;
           const isClosed = t.derivedStatus === "CLOSED";
           const isSelected = selectedIds.has(t.id);
           const isDeleting = deletingIds.has(t.id);
@@ -587,6 +591,7 @@ export function JournalTable({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 tabular-nums text-[11px] text-slate-400">{serial}</span>
                   <input
                     type="checkbox"
                     checked={isSelected}
@@ -791,29 +796,32 @@ export function JournalTable({
 
       <div className="hidden w-full overflow-hidden lg:block">
         <table className="w-full table-fixed whitespace-nowrap text-right text-[12px] text-slate-700">
+          {/* 20 columns, widths summing to 100% - keep in step with both header rows. */}
           <colgroup>
+            <col className="w-[2.4%]" />
             <col className="w-[2.2%]" />
-            <col className="w-[9.8%]" />
+            <col className="w-[8.8%]" />
             <col className="w-[4.6%]" />
             <col className="w-[5.6%]" />
-            <col className="w-[6%]" />
+            <col className="w-[5.8%]" />
             <col className="w-[4.6%]" />
             <col className="w-[5.6%]" />
-            <col className="w-[6%]" />
+            <col className="w-[5.8%]" />
             <col className="w-[4.8%]" />
             <col className="w-[3.8%]" />
-            <col className="w-[6.4%]" />
+            <col className="w-[6%]" />
             <col className="w-[5%]" />
             <col className="w-[5%]" />
             <col className="w-[5.8%]" />
             <col className="w-[5.2%]" />
-            <col className="w-[6%]" />
+            <col className="w-[5.8%]" />
             <col className="w-[5.2%]" />
-            <col className="w-[6.2%]" />
+            <col className="w-[5.8%]" />
             <col className="w-[2.2%]" />
           </colgroup>
           <thead>
             <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wide border-b border-line">
+              <th rowSpan={2} className="px-1 py-2.5 text-center font-semibold text-slate-400">#</th>
               <th className="w-[2.2%] px-1.5 py-2.5 text-center">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
                   className="h-3.5 w-3.5 rounded border-slate-400 accent-slate-500 cursor-pointer" />
@@ -861,14 +869,14 @@ export function JournalTable({
               <th className="px-1 py-1 border-l border-slate-300" />
               <th className="px-1 py-1" />
               <th className="px-1 py-1" />
-              <th className="px-1 py-1" />
               <th className="px-1 py-1 border-l border-slate-300" />
               <th className="px-1 py-1" />
             </tr>
           </thead>
 
           <tbody className="divide-y divide-line">
-            {sortedRows.map((t) => {
+            {sortedRows.map((t, rowIndex) => {
+              const serial = startIndex + rowIndex + 1;
               const isClosed = t.derivedStatus === "CLOSED";
               const isDeleting = deletingIds.has(t.id);
               const isSelected = selectedIds.has(t.id);
@@ -901,6 +909,12 @@ export function JournalTable({
                     return (
                       <tr key={`${t.id}-${idx}`}
                         className={`${rowBg} hover:bg-slate-50 transition-colors ${isDeleting ? "opacity-40" : ""} ${isFirst ? borderColor : "border-l-4 border-l-transparent"} ${isDuplicate ? "outline outline-1 -outline-offset-1 outline-rose-300" : ""}`}>
+
+                        {isFirst && (
+                          <td className="px-1 py-2.5 text-center align-middle tabular-nums text-[11px] text-slate-400" rowSpan={maxLegs}>
+                            {serial}
+                          </td>
+                        )}
 
                         {isFirst && (
                           <td className="px-1.5 py-2.5 text-center align-middle" rowSpan={maxLegs}>
@@ -1079,7 +1093,7 @@ export function JournalTable({
 
             {rows.length === 0 && (
               <tr>
-                <td colSpan={19} className="py-16 text-center text-slate-400 text-sm">
+                <td colSpan={20} className="py-16 text-center text-slate-400 text-sm">
                   No trades found. Import a CSV or add a trade manually.
                 </td>
               </tr>
