@@ -944,6 +944,12 @@ export function DashboardPageClient({
                     <span className="text-profit">{selectedMonthlySummary.month.wins}W</span>
                     <span className="px-1 text-slate-300">/</span>
                     <span className="text-loss">{selectedMonthlySummary.month.losses}L</span>
+                    {selectedMonthlySummary.month.breakeven > 0 && (
+                      <>
+                        <span className="px-1 text-slate-300">/</span>
+                        <span className="text-slate-500">{selectedMonthlySummary.month.breakeven}BE</span>
+                      </>
+                    )}
                   </p>
                 </div>
 

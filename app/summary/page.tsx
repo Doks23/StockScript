@@ -4,13 +4,16 @@ import { requireActiveUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildGroupedJournalRows } from "@/lib/trade-utils";
 import {
+  BREAKEVEN_BAND_PRESETS,
   buildClosedSummaryTrades,
   buildMonthlySummary,
   buildSetupSummary,
   formatReturnPercent,
   formatSummaryNumber,
   formatSummaryPercent,
+  formatBreakevenBand,
   getClosedTradeYears,
+  resolveBreakevenBand,
   summarize,
   type SummaryMetricRow,
 } from "@/lib/journal-summary";
@@ -19,16 +22,26 @@ type Props = {
   searchParams: {
     tab?: string;
     year?: string;
+    be?: string;
   };
 };
+
+/** Every link on this page has to carry the whole view, or a click silently resets it. */
+function summaryHref({ tab, year, band }: { tab: string; year: number; band: number }) {
+  return `/summary?tab=${tab}&year=${year}&be=${formatBreakevenBand(band)}`;
+}
 
 const MONTH_COLUMNS = [
   { key: "totalTrades", label: "Trades", align: "right" as const },
   { key: "wins", label: "Wins", align: "right" as const },
   { key: "losses", label: "Losses", align: "right" as const },
+  { key: "breakeven", label: "Breakeven", align: "right" as const },
   { key: "winPct", label: "Win %", align: "right" as const },
   { key: "winAverage", label: "Avg Win", align: "right" as const },
   { key: "lossAverage", label: "Avg Loss", align: "right" as const },
+  { key: "avgStopLossPct", label: "Avg SL", align: "right" as const },
+  { key: "avgWinStopLossPct", label: "Avg SL Win", align: "right" as const },
+  { key: "avgLossStopLossPct", label: "Avg SL Loss", align: "right" as const },
   { key: "simpleRR", label: "RR", align: "right" as const },
   { key: "grossR", label: "Gross R", align: "right" as const },
   { key: "netR", label: "Net R", align: "right" as const },
@@ -43,9 +56,13 @@ const YEAR_COLUMNS = [
   { key: "totalTrades", label: "Trades", align: "right" as const },
   { key: "wins", label: "Wins", align: "right" as const },
   { key: "losses", label: "Losses", align: "right" as const },
+  { key: "breakeven", label: "Breakeven", align: "right" as const },
   { key: "winPct", label: "Win %", align: "right" as const },
   { key: "winAverage", label: "Avg Win", align: "right" as const },
   { key: "lossAverage", label: "Avg Loss", align: "right" as const },
+  { key: "avgStopLossPct", label: "Avg SL", align: "right" as const },
+  { key: "avgWinStopLossPct", label: "Avg SL Win", align: "right" as const },
+  { key: "avgLossStopLossPct", label: "Avg SL Loss", align: "right" as const },
   { key: "simpleRR", label: "RR", align: "right" as const },
   { key: "netR", label: "Net R", align: "right" as const },
   { key: "maxR", label: "Max R", align: "right" as const },
@@ -54,6 +71,8 @@ const YEAR_COLUMNS = [
 const LOSS_METRICS = new Set(["lossAverage"]);
 const PCT_COLS = new Set(["winPct", "winAverage", "maxWin", "maxLoss"]);
 const R_COLS = new Set(["grossR", "netR", "simpleRR", "awlr", "maxR"]);
+// Stop-loss width is neither good nor bad on its own, so it stays off the P&L palette.
+const SL_COLS = new Set(["avgStopLossPct", "avgWinStopLossPct", "avgLossStopLossPct"]);
 
 function pnlClass(value: number | null) {
   if (value === null) return "text-slate-400";
@@ -61,6 +80,8 @@ function pnlClass(value: number | null) {
 }
 
 function cellColor(columnKey: string, value: number | null) {
+  if (SL_COLS.has(columnKey)) return "text-amber-600";
+  if (columnKey === "breakeven") return value ? "text-slate-500" : "text-slate-300";
   if (LOSS_METRICS.has(columnKey)) return "text-red-500";
   if (PCT_COLS.has(columnKey) || R_COLS.has(columnKey)) return pnlClass(value);
   return "text-slate-700";
@@ -85,6 +106,7 @@ function metricValue(row: SummaryMetricRow, key: string) {
     case "defaultStopLossTrades":
     case "wins":
     case "losses":
+    case "breakeven":
       return (row as any)[key].toLocaleString("en-IN");
     case "winPct":
       return formatSummaryPercent((row as any).winPct);
@@ -92,6 +114,9 @@ function metricValue(row: SummaryMetricRow, key: string) {
     case "lossAverage":
     case "maxWin":
     case "maxLoss":
+    case "avgStopLossPct":
+    case "avgWinStopLossPct":
+    case "avgLossStopLossPct":
       return formatReturnPercent((row as any)[key]);
     case "avgWinDays":
     case "avgLossDays":
@@ -153,7 +178,7 @@ function MonthlySummaryTable({
   return (
     <div className="space-y-6">
       <div className="overflow-x-auto rounded-xl border border-line bg-white">
-        <table className="min-w-[1200px] w-full text-xs">
+        <table className="min-w-[1500px] w-full text-xs">
           <thead>
             <tr className="border-b border-line bg-slate-100 text-slate-600">
               <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold">Month</th>
@@ -215,13 +240,15 @@ function MonthlySummaryTable({
               <span className="text-sm font-bold text-slate-700">Yearly Average</span>
               <DirectionIcon value={yearlyAverage.netR} />
             </div>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-8">
               <MiniStat label="Net R" value={formatSummaryNumber(yearlyAverage.netR)} color={pnlClass(yearlyAverage.netR)} />
               <MiniStat label="Trades" value={yearlyAverage.totalTrades.toLocaleString("en-IN")} />
               <MiniStat label="Win %" value={formatSummaryPercent(yearlyAverage.winPct)} />
+              <MiniStat label="Breakeven" value={yearlyAverage.breakeven.toLocaleString("en-IN")} color="text-slate-500" />
               <MiniStat label="RR" value={formatSummaryNumber(yearlyAverage.simpleRR)} />
               <MiniStat label="Avg Win" value={formatReturnPercent(yearlyAverage.winAverage)} />
               <MiniStat label="Avg Loss" value={formatReturnPercent(yearlyAverage.lossAverage)} />
+              <MiniStat label="Avg SL" value={formatReturnPercent(yearlyAverage.avgStopLossPct)} color="text-amber-600" />
             </div>
           </div>
         </div>
@@ -244,9 +271,13 @@ function SetupSummaryTable({
     { key: "defaultStopLossTrades", label: "Default SL", align: "right" as const },
     { key: "wins", label: "Wins", align: "right" as const },
     { key: "losses", label: "Losses", align: "right" as const },
+    { key: "breakeven", label: "Breakeven", align: "right" as const },
     { key: "winPct", label: "Win %", align: "right" as const },
     { key: "winAverage", label: "Avg Win", align: "right" as const },
     { key: "lossAverage", label: "Avg Loss", align: "right" as const },
+    { key: "avgStopLossPct", label: "Avg SL", align: "right" as const },
+    { key: "avgWinStopLossPct", label: "Avg SL Win", align: "right" as const },
+    { key: "avgLossStopLossPct", label: "Avg SL Loss", align: "right" as const },
     { key: "simpleRR", label: "RR", align: "right" as const },
     { key: "awlr", label: "AWLR", align: "right" as const },
     { key: "grossR", label: "Gross R", align: "right" as const },
@@ -258,7 +289,7 @@ function SetupSummaryTable({
 
   return (
     <div className="overflow-x-auto rounded-xl border border-line bg-white">
-      <table className="min-w-[1200px] w-full text-xs">
+      <table className="min-w-[1500px] w-full text-xs">
         <thead>
           <tr className="border-b border-line bg-slate-100 text-slate-600">
             <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold">
@@ -317,14 +348,24 @@ function SetupSummaryTable({
   );
 }
 
-function YearComparisonRow({ year, row, isActive }: { year: number; row: SummaryMetricRow; isActive: boolean }) {
+function YearComparisonRow({
+  year,
+  row,
+  isActive,
+  band,
+}: {
+  year: number;
+  row: SummaryMetricRow;
+  isActive: boolean;
+  band: number;
+}) {
   const isPositive = row.netR > 0;
   const isNegative = row.netR < 0;
   const borderColor = isActive ? "border-accent" : "border-transparent hover:border-slate-300";
 
   return (
     <Link
-      href={`/summary?tab=monthly&year=${year}`}
+      href={summaryHref({ tab: "monthly", year, band })}
       className={`block rounded-xl border-2 ${borderColor} bg-white p-3 transition ${isActive ? "shadow-sm" : "hover:shadow-sm"}`}
     >
       <div className="flex items-center justify-between mb-2">
@@ -344,7 +385,11 @@ function YearComparisonRow({ year, row, isActive }: { year: number; row: Summary
 
 export default async function TradeSummaryPage({ searchParams }: Props) {
   const user = await requireActiveUser();
-  const activeTab = searchParams.tab === "monthly" ? "monthly" : "setup";
+  const activeTab = searchParams.tab === "setup" ? "setup" : "monthly";
+  const breakevenBand = resolveBreakevenBand(searchParams.be);
+  const bandOptions = Array.from(new Set([...BREAKEVEN_BAND_PRESETS, breakevenBand])).sort(
+    (a, b) => a - b,
+  );
 
   const [rawTrades, userData] = await Promise.all([
     prisma.trade.findMany({
@@ -374,8 +419,8 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
   const yearlyIds = new Set(yearlyRows.map((row) => row.id));
   const yearlyTrades = rawTrades.filter((trade) => yearlyIds.has(trade.id));
   const closedTrades = buildClosedSummaryTrades(yearlyRows, yearlyTrades);
-  const setupSummary = buildSetupSummary(closedTrades);
-  const monthlySummary = buildMonthlySummary(closedTrades);
+  const setupSummary = buildSetupSummary(closedTrades, breakevenBand);
+  const monthlySummary = buildMonthlySummary(closedTrades, breakevenBand);
   const activeSummary = activeTab === "monthly" ? monthlySummary : setupSummary;
   const defaultStopLossCount = closedTrades.filter((trade) => trade.usedDefaultStopLoss).length;
 
@@ -386,7 +431,7 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
     const yIds = new Set(yRows.map((r) => r.id));
     const yTrades = rawTrades.filter((t) => yIds.has(t.id));
     const closed = buildClosedSummaryTrades(yRows, yTrades);
-    return { year, summary: summarize(`${year}`, closed) };
+    return { year, summary: summarize(`${year}`, closed, breakevenBand) };
   });
 
   return (
@@ -418,6 +463,7 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
                 year={year}
                 row={summary}
                 isActive={year === selectedYear}
+                band={breakevenBand}
               />
             ))}
           </div>
@@ -425,10 +471,10 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
       )}
 
       <section className="rounded-2xl border border-line bg-panel p-3 shadow-sm sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
           <div className="flex w-fit gap-1 rounded-2xl border border-line bg-canvas p-1">
             <Link
-              href={`/summary?tab=setup&year=${selectedYear}`}
+              href={summaryHref({ tab: "setup", year: selectedYear, band: breakevenBand })}
               className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                 activeTab === "setup"
                   ? "bg-white text-ink shadow-sm"
@@ -438,7 +484,7 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
               Setup Summary
             </Link>
             <Link
-              href={`/summary?tab=monthly&year=${selectedYear}`}
+              href={summaryHref({ tab: "monthly", year: selectedYear, band: breakevenBand })}
               className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                 activeTab === "monthly"
                   ? "bg-white text-ink shadow-sm"
@@ -449,13 +495,32 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
             </Link>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+              Breakeven ±
+            </span>
+            {bandOptions.map((band) => (
+              <Link
+                key={band}
+                href={summaryHref({ tab: activeTab, year: selectedYear, band })}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold tabular-nums transition ${
+                  band === breakevenBand
+                    ? "bg-slate-700 text-white shadow-sm"
+                    : "border border-line bg-white text-slate-500 hover:border-slate-400 hover:text-slate-700"
+                }`}
+              >
+                {formatBreakevenBand(band)}%
+              </Link>
+            ))}
+          </div>
+
           {years.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Year</span>
               {years.map((year) => (
                 <Link
                   key={year}
-                  href={`/summary?tab=${activeTab}&year=${year}`}
+                  href={summaryHref({ tab: activeTab, year, band: breakevenBand })}
                   className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                     year === selectedYear
                       ? "bg-accent text-white shadow-sm"
@@ -480,6 +545,10 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
           </span>
           <span>
             Gross R = Net P/L % ÷ Stop Loss % · Net R = Gross R × Risk %
+          </span>
+          <span>
+            Breakeven = net return within ±{formatBreakevenBand(breakevenBand)}% of capital · Avg SL
+            = journal SL % (3% where none was set)
           </span>
           {defaultStopLossCount > 0 && (
             <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">

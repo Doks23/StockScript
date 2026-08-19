@@ -10,6 +10,7 @@ export type SummaryMetricRow = {
   defaultStopLossTrades: number;
   wins: number;
   losses: number;
+  breakeven: number;
   winPct: number | null;
   winAverage: number | null;
   lossAverage: number | null;
@@ -21,6 +22,9 @@ export type SummaryMetricRow = {
   minR: number | null;
   avgWinDays: number | null;
   avgLossDays: number | null;
+  avgStopLossPct: number | null;
+  avgWinStopLossPct: number | null;
+  avgLossStopLossPct: number | null;
 };
 
 type ClosedSummaryTrade = {
@@ -35,6 +39,34 @@ type ClosedSummaryTrade = {
   usedDefaultStopLoss: boolean;
   setups: string[];
 };
+
+/**
+ * A closed trade whose net return on capital lands inside +/- the breakeven band is
+ * counted as breakeven rather than as a win or a loss. It still counts towards
+ * Trades (and so towards the Win % denominator), but is kept out of Avg Win,
+ * Avg Loss, RR and the average-hold-days figures so it cannot dilute them.
+ *
+ * The band is a percent of capital and is tunable per view - see resolveBreakevenBand.
+ */
+export const BREAKEVEN_BAND_PCT = 0.25;
+
+/** Presets offered in the Trade Summary UI. Any value in range is still honoured. */
+export const BREAKEVEN_BAND_PRESETS = [0, 0.1, 0.25, 0.5, 1] as const;
+
+const MAX_BREAKEVEN_BAND_PCT = 5;
+
+/** Coerces an untrusted band (query string, stored setting) to a usable percent. */
+export function resolveBreakevenBand(value: unknown): number {
+  if (typeof value === "string" && value.trim() === "") return BREAKEVEN_BAND_PCT;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return BREAKEVEN_BAND_PCT;
+  return Math.min(parsed, MAX_BREAKEVEN_BAND_PCT);
+}
+
+/** Renders a band for display, trimming the trailing zeros off e.g. 0.50. */
+export function formatBreakevenBand(band: number) {
+  return `${Number(band.toFixed(2))}`;
+}
 
 const MONTHS = [
   "January",
@@ -98,6 +130,7 @@ function averageMetricRows(label: string, rows: SummaryMetricRow[]): SummaryMetr
     defaultStopLossTrades: activeRows.reduce((sum, row) => sum + row.defaultStopLossTrades, 0),
     wins: activeRows.reduce((sum, row) => sum + row.wins, 0),
     losses: activeRows.reduce((sum, row) => sum + row.losses, 0),
+    breakeven: activeRows.reduce((sum, row) => sum + row.breakeven, 0),
     winPct: average(activeRows.map((row) => row.winPct).filter((value): value is number => value !== null)),
     winAverage: average(activeRows.map((row) => row.winAverage).filter((value): value is number => value !== null)),
     lossAverage: average(activeRows.map((row) => row.lossAverage).filter((value): value is number => value !== null)),
@@ -109,26 +142,38 @@ function averageMetricRows(label: string, rows: SummaryMetricRow[]): SummaryMetr
     minR: minOrNull(activeRows.map((row) => row.minR).filter((value): value is number => value !== null)),
     avgWinDays: average(activeRows.map((row) => row.avgWinDays).filter((value): value is number => value !== null)),
     avgLossDays: average(activeRows.map((row) => row.avgLossDays).filter((value): value is number => value !== null)),
+    avgStopLossPct: average(activeRows.map((row) => row.avgStopLossPct).filter((value): value is number => value !== null)),
+    avgWinStopLossPct: average(activeRows.map((row) => row.avgWinStopLossPct).filter((value): value is number => value !== null)),
+    avgLossStopLossPct: average(activeRows.map((row) => row.avgLossStopLossPct).filter((value): value is number => value !== null)),
   };
 }
 
-export function summarize(label: string, trades: ClosedSummaryTrade[]): SummaryMetricRow {
-  const winning = trades.filter((trade) => trade.row.realizedPnl >= 0);
-  const losing = trades.filter((trade) => trade.row.realizedPnl < 0);
+export function summarize(
+  label: string,
+  trades: ClosedSummaryTrade[],
+  band: number = BREAKEVEN_BAND_PCT,
+): SummaryMetricRow {
+  const winning = trades.filter((trade) => trade.netPct > band);
+  const losing = trades.filter((trade) => trade.netPct < -band);
+  const breakeven = trades.filter((trade) => Math.abs(trade.netPct) <= band);
   const winAverage = average(winning.map((trade) => trade.netPct));
   const lossAverage = average(losing.map((trade) => Math.abs(trade.netPct)));
   const winPct = trades.length > 0 ? winning.length / trades.length : null;
+  // Loss rate is taken from the losing bucket rather than 1 - winPct, so the
+  // breakeven trades sitting in the denominator do not inflate AWLR.
+  const lossPct = trades.length > 0 ? losing.length / trades.length : null;
   const simpleRR =
     winAverage !== null && lossAverage !== null && lossAverage !== 0
       ? winAverage / lossAverage
       : null;
   const awlr =
     winPct !== null &&
+    lossPct !== null &&
+    lossPct > 0 &&
     winAverage !== null &&
     lossAverage !== null &&
-    lossAverage !== 0 &&
-    winPct < 1
-      ? (winAverage * winPct) / ((1 - winPct) * lossAverage)
+    lossAverage !== 0
+      ? (winAverage * winPct) / (lossPct * lossAverage)
       : null;
 
   return {
@@ -139,6 +184,7 @@ export function summarize(label: string, trades: ClosedSummaryTrade[]): SummaryM
     defaultStopLossTrades: trades.filter((trade) => trade.usedDefaultStopLoss).length,
     wins: winning.length,
     losses: losing.length,
+    breakeven: breakeven.length,
     winPct,
     winAverage,
     lossAverage,
@@ -150,6 +196,9 @@ export function summarize(label: string, trades: ClosedSummaryTrade[]): SummaryM
     minR: minOrNull(trades.map((trade) => trade.netR)),
     avgWinDays: average(winning.map((trade) => trade.row.ageDays)),
     avgLossDays: average(losing.map((trade) => trade.row.ageDays)),
+    avgStopLossPct: average(trades.map((trade) => trade.stopLossPct)),
+    avgWinStopLossPct: average(winning.map((trade) => trade.stopLossPct)),
+    avgLossStopLossPct: average(losing.map((trade) => trade.stopLossPct)),
   };
 }
 
@@ -203,7 +252,10 @@ export function buildClosedSummaryTrades(
     });
 }
 
-export function buildSetupSummary(trades: ClosedSummaryTrade[]) {
+export function buildSetupSummary(
+  trades: ClosedSummaryTrade[],
+  band: number = BREAKEVEN_BAND_PCT,
+) {
   const setupLabels = Array.from(
     new Set([...setupValues, ...trades.flatMap((trade) => trade.setups)]),
   );
@@ -212,27 +264,32 @@ export function buildSetupSummary(trades: ClosedSummaryTrade[]) {
     summarize(
       setup,
       trades.filter((trade) => trade.setups.includes(setup)),
+      band,
     ),
   ).filter((row) => row.totalTrades > 0);
 
   return {
     rows,
-    total: summarize("Total", trades),
+    total: summarize("Total", trades, band),
   };
 }
 
-export function buildMonthlySummary(trades: ClosedSummaryTrade[]) {
+export function buildMonthlySummary(
+  trades: ClosedSummaryTrade[],
+  band: number = BREAKEVEN_BAND_PCT,
+) {
   const allMonths = MONTHS.map((month, index) =>
     summarize(
       month,
       trades.filter((trade) => trade.row.entryLegs[0]?.dateTime.getMonth() === index),
+      band,
     ),
   );
   const rows = allMonths.filter((row) => row.totalTrades > 0);
 
   return {
     rows,
-    total: summarize("Total", trades),
+    total: summarize("Total", trades, band),
     yearlyAverage: averageMetricRows("Yearly Average", rows),
     quarters: QUARTERS.map((quarter) =>
       averageMetricRows(
