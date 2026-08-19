@@ -3,7 +3,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { subDays, format, differenceInCalendarDays } from "date-fns";
+import {
+  subDays,
+  subMonths,
+  startOfDay,
+  endOfDay,
+  startOfMonth,
+  endOfMonth,
+  format,
+  differenceInCalendarDays,
+} from "date-fns";
 import {
   Eye,
   EyeOff,
@@ -41,18 +50,59 @@ import {
 import { formatCurrency, formatPercent, formatPrice } from "@/lib/format";
 import type { TradeWithTxns } from "@/lib/trade-utils";
 
-type Period = "10" | "1w" | "1m" | "3m" | "6m" | "ytd" | "all" | "custom";
+/** m0/m1/m2 are whole calendar months counting back from the current one. */
+type Period = "10" | "1w" | "1m" | "3m" | "6m" | "ytd" | "m0" | "m1" | "m2" | "custom";
 
-const PERIOD_TABS: { key: Period; label: string }[] = [
-  { key: "10", label: "Last 10" },
-  { key: "1w", label: "1W" },
-  { key: "1m", label: "1M" },
-  { key: "3m", label: "3M" },
-  { key: "6m", label: "6M" },
-  { key: "ytd", label: "YTD" },
-  { key: "all", label: "All" },
-  { key: "custom", label: "Custom" },
+const RECENT_MONTH_OFFSETS = [0, 1, 2] as const;
+
+/**
+ * Rolling look-back windows, in days. These are plain day counts, not calendar
+ * periods - "30D" ending today, not the current month. The Aug/Jul/Jun tabs are
+ * the calendar-month view.
+ */
+const ROLLING_WINDOW_DAYS: Partial<Record<Period, number>> = {
+  "1w": 7,
+  "1m": 30,
+  "3m": 90,
+  "6m": 180,
+};
+
+const DEFAULT_PERIOD: Period = "ytd";
+
+// Static so a stored preference can be validated without rebuilding the labels,
+// which move with the calendar.
+const PERIOD_KEYS: Period[] = [
+  "10",
+  "1w",
+  "1m",
+  "3m",
+  "6m",
+  "ytd",
+  "m0",
+  "m1",
+  "m2",
+  "custom",
 ];
+
+function monthOffsetOf(period: Period) {
+  return period === "m0" ? 0 : period === "m1" ? 1 : period === "m2" ? 2 : null;
+}
+
+function buildPeriodTabs(now: Date): { key: Period; label: string }[] {
+  return [
+    { key: "10", label: "Last 10" },
+    { key: "1w", label: "1W" },
+    { key: "1m", label: `${ROLLING_WINDOW_DAYS["1m"]}D` },
+    { key: "3m", label: `${ROLLING_WINDOW_DAYS["3m"]}D` },
+    { key: "6m", label: `${ROLLING_WINDOW_DAYS["6m"]}D` },
+    { key: "ytd", label: "YTD" },
+    ...RECENT_MONTH_OFFSETS.map((offset) => ({
+      key: `m${offset}` as Period,
+      label: format(subMonths(now, offset), "MMM"),
+    })),
+    { key: "custom", label: "Custom" },
+  ];
+}
 
 type DashboardThresholdSettings = {
   breakEvenR: number;
@@ -165,11 +215,12 @@ export function DashboardPageClient({
   userCapital: number;
 }) {
   const router = useRouter();
-  const [period, setPeriod] = useState<Period>("all");
+  const [period, setPeriod] = useState<Period>(DEFAULT_PERIOD);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [showAmounts, setShowAmounts] = useState(true);
   const [lastUpdated] = useState(() => new Date());
+  const periodTabs = useMemo(() => buildPeriodTabs(lastUpdated), [lastUpdated]);
   const [selectedMonthKey, setSelectedMonthKey] = useState("");
   const [thresholdSettings, setThresholdSettings] = useState(
     DEFAULT_DASHBOARD_THRESHOLDS,
@@ -177,7 +228,7 @@ export function DashboardPageClient({
 
   useEffect(() => {
     const saved = localStorage.getItem("dashboardPeriod") as Period | null;
-    if (saved && PERIOD_TABS.some((t) => t.key === saved)) {
+    if (saved && PERIOD_KEYS.includes(saved)) {
       setPeriod(saved);
     }
     setThresholdSettings(readDashboardThresholds());
@@ -210,38 +261,36 @@ export function DashboardPageClient({
     switch (period) {
       case "10":
         return sorted.slice(-10);
-      case "1w": {
-        const c = subDays(now, 7);
-        return sorted.filter(
-          (t) => new Date(t.firstEntryAt ?? t.createdAt) >= c,
-        );
-      }
-      case "1m": {
-        const c = subDays(now, 30);
-        return sorted.filter(
-          (t) => new Date(t.firstEntryAt ?? t.createdAt) >= c,
-        );
-      }
-      case "3m": {
-        const c = subDays(now, 90);
-        return sorted.filter(
-          (t) => new Date(t.firstEntryAt ?? t.createdAt) >= c,
-        );
-      }
+      case "1w":
+      case "1m":
+      case "3m":
       case "6m": {
-        const c = subDays(now, 180);
+        const cutoff = startOfDay(subDays(now, ROLLING_WINDOW_DAYS[period] ?? 0));
         return sorted.filter(
-          (t) => new Date(t.firstEntryAt ?? t.createdAt) >= c,
+          (t) => new Date(t.firstEntryAt ?? t.createdAt) >= cutoff,
         );
       }
       case "ytd":
         return sorted.filter(
           (t) => new Date(t.firstEntryAt ?? t.createdAt) >= yearStart,
         );
+      case "m0":
+      case "m1":
+      case "m2": {
+        // lastUpdated, not now: the tab labels are built from it, so the range a tab
+        // filters on always matches the month it is labelled with.
+        const month = subMonths(lastUpdated, monthOffsetOf(period) ?? 0);
+        const from = startOfMonth(month);
+        const to = endOfMonth(month);
+        return sorted.filter((t) => {
+          const d = new Date(t.firstEntryAt ?? t.createdAt);
+          return d >= from && d <= to;
+        });
+      }
       case "custom": {
         if (!customFrom) return sorted;
-        const from = new Date(customFrom);
-        const to = customTo ? new Date(customTo) : now;
+        const from = startOfDay(new Date(customFrom));
+        const to = customTo ? endOfDay(new Date(customTo)) : now;
         return sorted.filter((t) => {
           const d = new Date(t.firstEntryAt ?? t.createdAt);
           return d >= from && d <= to;
@@ -250,7 +299,7 @@ export function DashboardPageClient({
       default:
         return sorted;
     }
-  }, [trades, period, customFrom, customTo]);
+  }, [trades, period, customFrom, customTo, lastUpdated]);
 
   const metrics = useMemo(
     () => buildDashboardMetrics(filteredTrades as any),
@@ -590,7 +639,7 @@ export function DashboardPageClient({
       {/* ─── Date Filters ─── */}
       <div className="mb-1.5 flex shrink-0 flex-wrap items-center gap-1.5">
         <div className="flex gap-0.5 overflow-x-auto rounded-lg border border-line bg-white p-0.5">
-          {PERIOD_TABS.map((tab) => (
+          {periodTabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => handlePeriodChange(tab.key)}
@@ -625,7 +674,7 @@ export function DashboardPageClient({
         )}
 
         <span className="inline-flex items-center gap-1 rounded-md bg-accent/8 px-1.5 py-0.5 text-[9px] font-medium text-accent sm:text-[10px]">
-          {PERIOD_TABS.find((t) => t.key === period)?.label ?? "All"}
+          {periodTabs.find((t) => t.key === period)?.label ?? "YTD"}
         </span>
 
         <span className="text-[9px] text-slate-400 sm:text-[10px]">
