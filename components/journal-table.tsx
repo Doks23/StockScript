@@ -5,6 +5,7 @@ import { Edit2, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle } from "lucide-re
 import Link from "next/link";
 import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
+import { getTradeStatusUi } from "@/lib/trade-status";
 import { SymbolChartLink } from "@/components/symbol-chart-link";
 
 const fmtAmtIntl = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
@@ -25,60 +26,9 @@ const dateSortValue = (d: Date | string | null | undefined) => {
 };
 const hasPnlData = (row: GroupedTradeRow) =>
   row.derivedStatus === "CLOSED" || row.exitQty > 0 || !!(row.closingPrice && row.closingPrice > 0);
-const isPartiallyClosed = (row: GroupedTradeRow) =>
-  row.derivedStatus === "OPEN" && row.exitQty > 0;
-const getTradeStatusUi = (row: GroupedTradeRow) => {
-  if (isPartiallyClosed(row)) {
-    return {
-      label: "P",
-      chipClass: "border-amber-200 bg-amber-50 text-amber-700",
-      borderClass: "border-l-amber-400",
-      rowClass: "bg-amber-50/40",
-      title: "Partially closed with remaining open quantity",
-    };
-  }
-  if (row.derivedStatus === "OPEN") {
-    return {
-      label: "O",
-      chipClass: "border-blue-200 bg-blue-50 text-blue-700",
-      borderClass: "border-l-blue-400",
-      rowClass: "bg-blue-50/20",
-      title: "Open position",
-    };
-  }
-
-  return {
-    label: "",
-    chipClass: "",
-    borderClass: "border-l-slate-200",
-    rowClass: "bg-white",
-    title: "Closed trade",
-  };
-};
-
 function dateKeyOf(d: Date | string | null | undefined): string {
   if (!d) return "";
   return format(new Date(d), "yyyy-MM-dd");
-}
-
-/**
- * A leg's quantity, marked when it stands for several fills of one order.
- *
- * The price beside it is then a weighted average rather than a price that was
- * actually printed, so the count is worth showing - quietly, since on most rows
- * there is nothing to say.
- */
-function LegQty({ leg }: { leg: { qty: number; price: number; fills: number } }) {
-  if (leg.fills <= 1) return <>{fmtQty(leg.qty)}</>;
-  return (
-    <span
-      className="cursor-help"
-      title={`${leg.fills} fills in one order, averaged to ${leg.price.toFixed(2)}`}
-    >
-      {fmtQty(leg.qty)}
-      <span className="ml-0.5 text-[10px] text-slate-400">×{leg.fills}</span>
-    </span>
-  );
 }
 
 // Signature of the actual entry transaction (BUY for LONG, SELL for SHORT).
@@ -725,7 +675,6 @@ export function JournalTable({
                   ) : t.unrealizedPnl !== 0 && t.realizedPnl === 0 ? (
                     <span className={`text-base font-semibold tabular-nums ${pnlColor(t.unrealizedPnl)}`}>
                       {fmtPct(t.unrealizedPnlPct)}
-                      <span className="text-[9px] text-slate-400 ml-1">MTM</span>
                     </span>
                   ) : (
                     <span className="tabular-nums leading-tight">
@@ -755,7 +704,6 @@ export function JournalTable({
                   ) : t.unrealizedPnl !== 0 && t.realizedPnl === 0 ? (
                     <span className={`text-base font-semibold tabular-nums ${pnlColor(t.unrealizedPnl)}`}>
                       {`${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
-                      <span className="text-[9px] text-slate-400 ml-1">MTM</span>
                     </span>
                   ) : (
                     <span className="tabular-nums leading-tight text-right">
@@ -969,7 +917,7 @@ export function JournalTable({
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
-                            : eLeg?.qty ? <LegQty leg={eLeg} /> : <span className="text-slate-300">—</span>}
+                            : eLeg?.qty ? fmtQty(eLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium">
                           {eLeg?.price ? fmtPrice(eLeg.price) : <span className="text-slate-300">—</span>}
@@ -981,7 +929,7 @@ export function JournalTable({
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 border-l border-slate-100">
                           {!showAmounts
                             ? <span className="text-slate-300">•••</span>
-                            : xLeg?.qty > 0 ? <LegQty leg={xLeg} /> : <span className="text-slate-300">—</span>}
+                            : xLeg?.qty > 0 ? fmtQty(xLeg.qty) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium">
                           {xLeg?.price > 0 ? fmtPrice(xLeg.price) : <span className="text-slate-300">—</span>}
@@ -1027,7 +975,6 @@ export function JournalTable({
                               ) : t.realizedPnl === 0 ? (
                                 <span className="font-semibold tabular-nums">
                                   {fmtPct(t.unrealizedPnlPct)}
-                                  <span className="text-[11px] text-slate-400 ml-0.5">MTM</span>
                                 </span>
                               ) : (
                                 <span className="tabular-nums leading-tight">
@@ -1050,7 +997,6 @@ export function JournalTable({
                               ) : t.realizedPnl === 0 ? (
                                 <span className="font-semibold">
                                   {`${t.unrealizedPnl >= 0 ? "+" : ""}${fmtAmt(t.unrealizedPnl)}`}
-                                  <span className="text-[11px] text-slate-400 ml-0.5">MTM</span>
                                 </span>
                               ) : (
                                 <span className="tabular-nums leading-tight">

@@ -723,7 +723,10 @@ export function buildGroupedJournalRows(
     let stopLossPct: number | null = null;
     const firstEntryPrice = entryLegs[0]?.price ?? weightedEntry;
     if (trade.stopLoss && trade.stopLoss > 0 && firstEntryPrice > 0) {
-      stopLossPct = ((trade.stopLoss - firstEntryPrice) / firstEntryPrice) * 100;
+      // Distance to the stop, not a signed move. A long stops below entry and a
+      // short above it, so the signed form rendered every long as a negative and
+      // sorted the two directions against each other.
+      stopLossPct = Math.abs(((trade.stopLoss - firstEntryPrice) / firstEntryPrice) * 100);
     }
 
     const qtyMismatch = derivedStatus === "CLOSED" && Math.abs(totalEntryQty - exitQ) > 0.001;

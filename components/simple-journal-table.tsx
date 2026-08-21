@@ -5,6 +5,7 @@ import { ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, Circle } from "lucide-re
 import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 import { SymbolChartLink } from "@/components/symbol-chart-link";
+import { getTradeStatusUi } from "@/lib/trade-status";
 
 const fmtPrice = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
@@ -117,20 +118,35 @@ export function SimpleJournalTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
-          {sortedRows.map((row) => (
-            <tr key={row.id} className="transition-colors hover:bg-slate-50/60">
+          {sortedRows.map((row) => {
+            const statusUi = getTradeStatusUi(row);
+            return (
+            <tr
+              key={row.id}
+              className={`border-l-4 ${statusUi.borderClass} ${statusUi.rowClass} transition-colors hover:bg-slate-50/60`}
+            >
               <td className="whitespace-nowrap px-3 py-3 font-semibold text-ink">
-                <SymbolChartLink
-                  symbol={row.symbol}
-                  className="transition hover:text-blue-600"
-                >
-                  {row.symbol}
-                </SymbolChartLink>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <SymbolChartLink
+                    symbol={row.symbol}
+                    className="transition hover:text-blue-600"
+                  >
+                    {row.symbol}
+                  </SymbolChartLink>
+                  {statusUi.label && (
+                    <span
+                      className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[0.68em] font-semibold tracking-wide ${statusUi.chipClass}`}
+                      title={statusUi.title}
+                    >
+                      {statusUi.label}
+                    </span>
+                  )}
+                </span>
               </td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{fmtDate(row.entryDate)}</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{fmtPrice.format(row.weightedEntryPrice)}</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.exitPrice > 0 ? fmtPrice.format(row.exitPrice) : "—"}</td>
-              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.stopLossPct != null ? `${row.stopLossPct.toFixed(1)}%` : "—"}</td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.stopLossPct != null ? `${Math.abs(row.stopLossPct).toFixed(1)}%` : "—"}</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.ageDays}</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.allocationPct.toFixed(1)}%</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{showAmounts ? row.openQty : hiddenAmt}</td>
@@ -148,7 +164,8 @@ export function SimpleJournalTable({
                 )}
               </td>
             </tr>
-          ))}
+            );
+          })}
           {sortedRows.length === 0 && (
             <tr>
               <td colSpan={11} className="px-3 py-8 text-center text-slate-400">No trades found.</td>
