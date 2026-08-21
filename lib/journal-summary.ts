@@ -7,7 +7,12 @@ export type SummaryMetricRow = {
   grossR: number;
   netR: number;
   totalTrades: number;
+  openTrades: number;
   defaultStopLossTrades: number;
+  /** Group P&L against the capital its own trades deployed. */
+  returnPct: number | null;
+  /** Group P&L against total portfolio capital - months add up to the year. */
+  portfolioReturnPct: number;
   wins: number;
   losses: number;
   breakeven: number;
@@ -27,8 +32,14 @@ export type SummaryMetricRow = {
   avgLossStopLossPct: number | null;
 };
 
-type ClosedSummaryTrade = {
+type SummaryTrade = {
   row: GroupedTradeRow;
+  isOpen: boolean;
+  /** Realized plus unrealized, so an open position contributes its MTM. */
+  pnlAmount: number;
+  capital: number;
+  /** This trade's P&L as a share of portfolio capital. */
+  portfolioReturnPct: number;
   grossPct: number;
   netPct: number;
   riskAmount: number;
@@ -127,6 +138,11 @@ function averageMetricRows(label: string, rows: SummaryMetricRow[]): SummaryMetr
     grossR: average(activeRows.map((row) => row.grossR)) ?? 0,
     netR: average(activeRows.map((row) => row.netR)) ?? 0,
     totalTrades: activeRows.reduce((sum, row) => sum + row.totalTrades, 0),
+    openTrades: activeRows.reduce((sum, row) => sum + row.openTrades, 0),
+    returnPct: average(
+      activeRows.map((row) => row.returnPct).filter((value): value is number => value !== null),
+    ),
+    portfolioReturnPct: average(activeRows.map((row) => row.portfolioReturnPct)) ?? 0,
     defaultStopLossTrades: activeRows.reduce((sum, row) => sum + row.defaultStopLossTrades, 0),
     wins: activeRows.reduce((sum, row) => sum + row.wins, 0),
     losses: activeRows.reduce((sum, row) => sum + row.losses, 0),
@@ -150,7 +166,7 @@ function averageMetricRows(label: string, rows: SummaryMetricRow[]): SummaryMetr
 
 export function summarize(
   label: string,
-  trades: ClosedSummaryTrade[],
+  trades: SummaryTrade[],
   band: number = BREAKEVEN_BAND_PCT,
 ): SummaryMetricRow {
   const winning = trades.filter((trade) => trade.netPct > band);
@@ -176,11 +192,17 @@ export function summarize(
       ? (winAverage * winPct) / (lossPct * lossAverage)
       : null;
 
+  const totalPnl = trades.reduce((sum, trade) => sum + trade.pnlAmount, 0);
+  const deployedCapital = trades.reduce((sum, trade) => sum + trade.capital, 0);
+
   return {
     label,
     grossR: trades.reduce((sum, trade) => sum + trade.grossR, 0),
     netR: trades.reduce((sum, trade) => sum + trade.netR, 0),
     totalTrades: trades.length,
+    openTrades: trades.filter((trade) => trade.isOpen).length,
+    returnPct: deployedCapital > 0 ? (totalPnl / deployedCapital) * 100 : null,
+    portfolioReturnPct: trades.reduce((sum, trade) => sum + trade.portfolioReturnPct, 0),
     defaultStopLossTrades: trades.filter((trade) => trade.usedDefaultStopLoss).length,
     wins: winning.length,
     losses: losing.length,
@@ -220,25 +242,36 @@ function getRiskProfile(row: GroupedTradeRow, charges: number) {
   return { riskAmount, riskPct, stopLossPct, usedDefaultStopLoss };
 }
 
-export function buildClosedSummaryTrades(
+export function buildSummaryTrades(
   rows: GroupedTradeRow[],
   trades: TradeWithTxns[],
-): ClosedSummaryTrade[] {
+  { includeOpen = false }: { includeOpen?: boolean } = {},
+): SummaryTrade[] {
   const chargesById = new Map(trades.map((trade) => [trade.id, trade.charges ?? 0]));
 
   return rows
-    .filter((row) => row.derivedStatus === "CLOSED")
+    .filter((row) => includeOpen || row.derivedStatus === "CLOSED")
     .map((row) => {
+      const isOpen = row.derivedStatus === "OPEN";
       const capital = row.capital || 0;
       const charges = chargesById.get(row.id) ?? 0;
-      const grossPnl = row.realizedPnl + charges;
+      // realized + unrealized. A closed row carries no unrealized component, so
+      // this is identical to realizedPnl whenever open trades are excluded.
+      const pnlAmount = row.pnlAmount;
+      const grossPnl = pnlAmount + charges;
       const grossPct = capital > 0 ? (grossPnl / capital) * 100 : 0;
-      const netPct = capital > 0 ? (row.realizedPnl / capital) * 100 : 0;
+      const netPct = capital > 0 ? (pnlAmount / capital) * 100 : 0;
       const { riskAmount, riskPct, stopLossPct, usedDefaultStopLoss } = getRiskProfile(row, charges);
       const grossR = safeRatio(netPct, stopLossPct);
 
       return {
         row,
+        isOpen,
+        pnlAmount,
+        capital,
+        // Already measured against portfolio capital upstream, so the two return
+        // bases cannot drift apart from the journal's Impact % column.
+        portfolioReturnPct: row.impactPct,
         grossPct,
         netPct,
         riskAmount,
@@ -253,7 +286,7 @@ export function buildClosedSummaryTrades(
 }
 
 export function buildSetupSummary(
-  trades: ClosedSummaryTrade[],
+  trades: SummaryTrade[],
   band: number = BREAKEVEN_BAND_PCT,
 ) {
   const setupLabels = Array.from(
@@ -275,7 +308,7 @@ export function buildSetupSummary(
 }
 
 export function buildMonthlySummary(
-  trades: ClosedSummaryTrade[],
+  trades: SummaryTrade[],
   band: number = BREAKEVEN_BAND_PCT,
 ) {
   const allMonths = MONTHS.map((month, index) =>
@@ -302,11 +335,10 @@ export function buildMonthlySummary(
   };
 }
 
-export function getClosedTradeYears(rows: GroupedTradeRow[]) {
+export function getTradeYears(rows: GroupedTradeRow[]) {
   return Array.from(
     new Set(
       rows
-        .filter((row) => row.derivedStatus === "CLOSED")
         .map((row) => row.entryLegs[0]?.dateTime.getFullYear())
         .filter((year): year is number => typeof year === "number"),
     ),

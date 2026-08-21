@@ -40,7 +40,7 @@ import {
   calculateOpenPnl,
 } from "@/lib/trade-utils";
 import {
-  buildClosedSummaryTrades,
+  buildSummaryTrades,
   buildMonthlySummary,
   buildSetupSummary,
   formatReturnPercent,
@@ -567,7 +567,7 @@ export function DashboardPageClient({
       return entryDate.getFullYear() === yearValue;
     });
     const groupedRows = buildGroupedJournalRows(yearTrades, userCapital);
-    const summaryTrades = buildClosedSummaryTrades(groupedRows, yearTrades);
+    const summaryTrades = buildSummaryTrades(groupedRows, yearTrades);
     const monthlySummary = buildMonthlySummary(summaryTrades);
     const setupSummary = buildSetupSummary(
       summaryTrades.filter((trade) => {
