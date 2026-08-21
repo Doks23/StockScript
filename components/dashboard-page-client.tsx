@@ -42,7 +42,6 @@ import {
 import {
   buildSummaryTrades,
   buildMonthlySummary,
-  buildSetupSummary,
   formatReturnPercent,
   formatSummaryNumber,
   formatSummaryPercent,
@@ -188,6 +187,24 @@ function computeOpenPositions(
       };
     })
     .filter((position) => position.qty > 0);
+}
+
+/** One label/value pair in the monthly summary's stat list. */
+function MonthStat({
+  label,
+  value,
+  tone = "text-ink",
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="truncate text-slate-400">{label}</dt>
+      <dd className={`shrink-0 font-mono font-medium tabular-nums ${tone}`}>{value}</dd>
+    </div>
+  );
 }
 
 function metricToneClass(value: number | null) {
@@ -569,21 +586,10 @@ export function DashboardPageClient({
     const groupedRows = buildGroupedJournalRows(yearTrades, userCapital);
     const summaryTrades = buildSummaryTrades(groupedRows, yearTrades);
     const monthlySummary = buildMonthlySummary(summaryTrades);
-    const setupSummary = buildSetupSummary(
-      summaryTrades.filter((trade) => {
-        const entryDate = trade.row.entryLegs[0]?.dateTime;
-        return entryDate?.getMonth() === monthIndex;
-      }),
-    );
     const monthLabel = format(new Date(yearValue, monthIndex, 1), "MMMM");
     const month = monthlySummary.rows.find((row) => row.label === monthLabel) ?? null;
 
-    return {
-      month,
-      setups: setupSummary.rows
-        .sort((a, b) => Math.abs(b.netR) - Math.abs(a.netR))
-        .slice(0, 6),
-    };
+    return { month };
   }, [filteredTrades, selectedMonthKey, userCapital]);
 
   return (
@@ -914,7 +920,7 @@ export function DashboardPageClient({
                 Monthly Summary
               </p>
               <p className="mt-0.5 text-[9px] text-slate-400">
-                One active month at a time
+                Closed trades entered this month
               </p>
             </div>
             <select
@@ -933,158 +939,70 @@ export function DashboardPageClient({
               )}
             </select>
           </div>
-
           {selectedMonthlySummary?.month ? (
-            <div className="flex min-h-0 flex-1 flex-col gap-1.5">
-              <div className="grid grid-cols-3 gap-1">
-                <div className="rounded-lg bg-slate-50 px-2 py-1">
-                  <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">
-                    Net R
-                  </p>
-                  <p className={`font-mono text-base font-semibold ${metricToneClass(selectedMonthlySummary.month.netR)}`}>
-                    {formatSummaryNumber(selectedMonthlySummary.month.netR)}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-slate-50 px-2 py-1">
-                  <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">
-                    Win %
-                  </p>
-                  <p className="font-mono text-base font-semibold text-ink">
-                    {formatSummaryPercent(selectedMonthlySummary.month.winPct)}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-slate-50 px-2 py-1">
-                  <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">
-                    RR
-                  </p>
-                  <p className={`font-mono text-base font-semibold ${metricToneClass(selectedMonthlySummary.month.simpleRR)}`}>
-                    {formatSummaryNumber(selectedMonthlySummary.month.simpleRR)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1 text-[10px]">
-                <div className="rounded-lg border border-line/70 px-2 py-1">
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-slate-400">Trades</span>
-                    <span className="font-semibold text-ink">
-                      {selectedMonthlySummary.month.totalTrades}
-                    </span>
+            (() => {
+              const m = selectedMonthlySummary.month;
+              const pct = (n: number) => (m.totalTrades > 0 ? (n / m.totalTrades) * 100 : 0);
+              return (
+                <div className="flex min-h-0 flex-1 flex-col">
+                  {/* Headline: what the month returned, how much edge it took, how often it hit. */}
+                  <div className="grid grid-cols-3 divide-x divide-line/60 rounded-lg border border-line/70 bg-slate-50/60">
+                    <div className="px-2 py-1.5">
+                      <p className="text-[8.5px] uppercase tracking-[0.14em] text-slate-400">Return</p>
+                      <p className={`font-mono text-[17px] font-semibold leading-tight ${metricToneClass(m.portfolioReturnPct)}`}>
+                        {formatReturnPercent(m.portfolioReturnPct)}
+                      </p>
+                    </div>
+                    <div className="px-2 py-1.5">
+                      <p className="text-[8.5px] uppercase tracking-[0.14em] text-slate-400">Net R</p>
+                      <p className={`font-mono text-[17px] font-semibold leading-tight ${metricToneClass(m.netR)}`}>
+                        {formatSummaryNumber(m.netR)}
+                      </p>
+                    </div>
+                    <div className="px-2 py-1.5">
+                      <p className="text-[8.5px] uppercase tracking-[0.14em] text-slate-400">Win Rate</p>
+                      <p className="font-mono text-[17px] font-semibold leading-tight text-ink">
+                        {formatSummaryPercent(m.winPct, 0)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="bg-profit"
-                      style={{
-                        width: `${selectedMonthlySummary.month.totalTrades > 0
-                          ? (selectedMonthlySummary.month.wins / selectedMonthlySummary.month.totalTrades) * 100
-                          : 0}%`,
-                      }}
-                    />
-                    <div
-                      className="bg-loss"
-                      style={{
-                        width: `${selectedMonthlySummary.month.totalTrades > 0
-                          ? (selectedMonthlySummary.month.losses / selectedMonthlySummary.month.totalTrades) * 100
-                          : 0}%`,
-                      }}
-                    />
+
+                  {/* Outcome mix - one bar, so the shape of the month reads at a glance. */}
+                  <div className="mt-2">
+                    <div className="mb-1 flex items-baseline justify-between text-[9px]">
+                      <span className="uppercase tracking-[0.12em] text-slate-400">Outcomes</span>
+                      <span className="font-medium text-slate-500">
+                        {m.totalTrades} trade{m.totalTrades === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div className="bg-profit" style={{ width: `${pct(m.wins)}%` }} />
+                      <div className="bg-slate-300" style={{ width: `${pct(m.breakeven)}%` }} />
+                      <div className="bg-loss" style={{ width: `${pct(m.losses)}%` }} />
+                    </div>
+                    <div className="mt-1 flex items-center gap-3 text-[9px] font-medium">
+                      <span className="text-profit">{m.wins} won</span>
+                      {m.breakeven > 0 && <span className="text-slate-500">{m.breakeven} flat</span>}
+                      <span className="text-loss">{m.losses} lost</span>
+                    </div>
                   </div>
-                  <p className="mt-1 text-[9px]">
-                    <span className="text-profit">{selectedMonthlySummary.month.wins}W</span>
-                    <span className="px-1 text-slate-300">/</span>
-                    <span className="text-loss">{selectedMonthlySummary.month.losses}L</span>
-                    {selectedMonthlySummary.month.breakeven > 0 && (
-                      <>
-                        <span className="px-1 text-slate-300">/</span>
-                        <span className="text-slate-500">{selectedMonthlySummary.month.breakeven}BE</span>
-                      </>
-                    )}
-                  </p>
-                </div>
 
-                <div className="rounded-lg border border-line/70 px-2 py-1">
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    <p className="text-slate-400">Avg Win</p>
-                    <p className="text-right font-mono font-medium text-profit">
-                      {formatReturnPercent(selectedMonthlySummary.month.winAverage)}
-                    </p>
-                    <p className="text-slate-400">Avg Loss</p>
-                    <p className="text-right font-mono font-medium text-loss">
-                      {formatReturnPercent(selectedMonthlySummary.month.lossAverage)}
-                    </p>
-                    <p className="text-slate-400">Best</p>
-                    <p className="text-right font-mono font-medium text-profit">
-                      {formatReturnPercent(selectedMonthlySummary.month.maxWin)}
-                    </p>
-                    <p className="text-slate-400">Worst</p>
-                    <p className="text-right font-mono font-medium text-loss">
-                      {formatReturnPercent(selectedMonthlySummary.month.maxLoss)}
-                    </p>
-                  </div>
+                  {/* The rest of the month, paired so each number has its counterpart. */}
+                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-[3px] border-t border-line/50 pt-2 text-[10px]">
+                    <MonthStat label="Avg win" value={formatReturnPercent(m.winAverage)} tone="text-profit" />
+                    <MonthStat label="Avg loss" value={formatReturnPercent(m.lossAverage)} tone="text-loss" />
+                    <MonthStat label="Best" value={formatReturnPercent(m.maxWin)} tone="text-profit" />
+                    <MonthStat label="Worst" value={formatReturnPercent(m.maxLoss)} tone="text-loss" />
+                    <MonthStat label="Reward:risk" value={formatSummaryNumber(m.simpleRR)} tone={metricToneClass(m.simpleRR)} />
+                    <MonthStat label="Avg stop" value={formatReturnPercent(m.avgStopLossPct)} tone="text-amber-600" />
+                    <MonthStat label="Gross R" value={formatSummaryNumber(m.grossR)} tone={metricToneClass(m.grossR)} />
+                    <MonthStat label="Best R" value={formatSummaryNumber(m.maxR)} tone={metricToneClass(m.maxR)} />
+                    <MonthStat label="Hold, wins" value={`${formatSummaryNumber(m.avgWinDays, 1)}d`} />
+                    <MonthStat label="Hold, losses" value={`${formatSummaryNumber(m.avgLossDays, 1)}d`} />
+                  </dl>
                 </div>
-              </div>
-
-              <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-line/70 px-2 py-1.5">
-                <div className="mb-1 flex items-center justify-between text-[9px] uppercase tracking-[0.12em] text-slate-400">
-                  <span>Setup Summary</span>
-                  <span>Net R</span>
-                </div>
-                <div className="space-y-1">
-                  {selectedMonthlySummary.setups.length > 0 ? (
-                    selectedMonthlySummary.setups.map((setup) => (
-                      <div
-                        key={setup.label}
-                        className="grid grid-cols-[1fr_2.3rem_2.8rem_2.8rem] items-center gap-1 text-[10px]"
-                      >
-                        <p className="truncate font-medium text-ink">
-                          {setup.label}
-                        </p>
-                        <p className="text-right text-slate-500">
-                          {setup.totalTrades}T
-                        </p>
-                        <p className="text-right font-mono text-slate-600">
-                          {formatSummaryPercent(setup.winPct, 0)}
-                        </p>
-                        <p className={`text-right font-mono font-semibold ${metricToneClass(setup.netR)}`}>
-                          {formatSummaryNumber(setup.netR)}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-[10px] text-slate-400">
-                      No setup data
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-1.5 border-t border-line/40 pt-1 text-[9px]">
-                <div>
-                  <p className="text-slate-400">Gross R</p>
-                  <p className={`font-mono font-semibold ${metricToneClass(selectedMonthlySummary.month.grossR)}`}>
-                    {formatSummaryNumber(selectedMonthlySummary.month.grossR)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400">Max R</p>
-                  <p className={`font-mono font-semibold ${metricToneClass(selectedMonthlySummary.month.maxR)}`}>
-                    {formatSummaryNumber(selectedMonthlySummary.month.maxR)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400">Avg Win Days</p>
-                  <p className="font-mono font-semibold text-ink">
-                    {formatSummaryNumber(selectedMonthlySummary.month.avgWinDays)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400">Avg Loss Days</p>
-                  <p className="font-mono font-semibold text-ink">
-                    {formatSummaryNumber(selectedMonthlySummary.month.avgLossDays)}
-                  </p>
-                </div>
-              </div>
-            </div>
+              );
+            })()
           ) : (
             <div className="flex flex-1 items-center justify-center text-xs text-slate-400">
               No data
@@ -1094,7 +1012,7 @@ export function DashboardPageClient({
       </div>
 
       {/* ─── Bottom Section: Open Positions (50%) + Monthly P&L (25%) + Distribution (25%) ─── */}
-      <div className="mb-1.5 grid min-h-0 gap-2 sm:gap-3 lg:grid-cols-2 xl:flex-[1.3] xl:grid-cols-[2.5fr_1fr_1fr]">
+      <div className="mb-1.5 grid min-h-0 gap-2 sm:gap-3 lg:grid-cols-2 xl:flex-[1.6] xl:grid-cols-[2.5fr_1fr_1fr]">
         {/* Open Positions */}
         <div className="rounded-xl border border-line bg-white shadow-sm md:hidden">
           <div className="flex items-center justify-between border-b border-line px-3 py-2">
@@ -1106,7 +1024,7 @@ export function DashboardPageClient({
             </span>
           </div>
           {derived.openPositions.length > 0 ? (
-            <div className="max-h-[360px] divide-y divide-line/50 overflow-y-auto">
+            <div className="max-h-[380px] divide-y divide-line/50 overflow-y-auto">
               {derived.openPositions.map((pos) => (
                 <div key={pos.symbol} className="px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
@@ -1172,7 +1090,8 @@ export function DashboardPageClient({
           )}
         </div>
 
-        <div className="hidden min-h-[230px] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-sm md:flex lg:col-span-2 xl:col-span-1 xl:min-h-0">
+        {/* min-h floors the panel at ~7 rows: 26px panel header + 21px thead + 7 x 25px. */}
+        <div className="hidden min-h-[248px] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-sm md:flex lg:col-span-2 xl:col-span-1 xl:min-h-[248px]">
           <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
               Open Positions
