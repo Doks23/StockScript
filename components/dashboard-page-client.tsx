@@ -46,7 +46,12 @@ import {
   formatSummaryNumber,
   formatSummaryPercent,
 } from "@/lib/journal-summary";
-import { formatCurrency, formatPercent, formatPrice } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
+
+/** Dashboard prices run to one decimal; lib/format's is shared and stays at two. */
+const formatPrice = (value: number) =>
+  new Intl.NumberFormat("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
+import { useTickerResolver } from "@/components/symbol-chart-link";
 import type { TradeWithTxns } from "@/lib/trade-utils";
 
 /** m0/m1/m2 are whole calendar months counting back from the current one. */
@@ -218,9 +223,6 @@ function thresholdToneClass(value: number, warn: number, high: number) {
   return "text-profit";
 }
 
-function displaySymbol(symbol: string, max = 12) {
-  return symbol.length > max ? `${symbol.slice(0, max - 1)}…` : symbol;
-}
 
 export function DashboardPageClient({
   trades,
@@ -232,6 +234,9 @@ export function DashboardPageClient({
   userCapital: number;
 }) {
   const router = useRouter();
+  // Open positions are named the way TradingView names them, matching the
+  // journal - the broker's company name is not what the chart is called.
+  const tickerOfSymbol = useTickerResolver();
   const [period, setPeriod] = useState<Period>(DEFAULT_PERIOD);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -715,21 +720,21 @@ export function DashboardPageClient({
           value={showAmounts ? formatCurrency(derived.totalPnl) : "•••"}
           tone={pnlTone(derived.totalPnl)}
           compact
-          detail={`Return: ${derived.totalReturnPct.toFixed(2)}%`}
+          detail={`Return: ${derived.totalReturnPct.toFixed(1)}%`}
         />
         <MetricCard
           label="Realized P&L"
           value={showAmounts ? formatCurrency(derived.realizedPnl) : "•••"}
           tone={pnlTone(derived.realizedPnl)}
           compact
-          detail={`Return: ${derived.realizedReturnPct.toFixed(2)}%`}
+          detail={`Return: ${derived.realizedReturnPct.toFixed(1)}%`}
         />
         <MetricCard
           label="Unrealized P&L"
           value={showAmounts ? formatCurrency(derived.unrealizedPnl) : "•••"}
           tone={pnlTone(derived.unrealizedPnl)}
           compact
-          detail={`Return: ${derived.unrealizedReturnPct.toFixed(2)}%`}
+          detail={`Return: ${derived.unrealizedReturnPct.toFixed(1)}%`}
         />
         <MetricCard
           label="Win Rate"
@@ -740,7 +745,7 @@ export function DashboardPageClient({
         />
         <MetricCard
           label="Profit Factor"
-          value={metrics.profitFactor.toFixed(2)}
+          value={metrics.profitFactor.toFixed(1)}
           tone={metrics.profitFactor >= 1 ? "profit" : "loss"}
           compact
           className="hidden sm:block"
@@ -761,13 +766,13 @@ export function DashboardPageClient({
         />
         <MetricCard
           label="Avg R:R"
-          value={`${derived.avgRR.toFixed(2)}R`}
+          value={`${derived.avgRR.toFixed(1)}R`}
           tone={derived.avgRR >= 1.5 ? "profit" : derived.avgRR >= 1 ? "default" : "loss"}
           compact
           className="hidden sm:block"
           detail={
             <span>
-              Win: {derived.avgWinR.toFixed(2)}R / Loss: {derived.avgLossR.toFixed(2)}R
+              Win: {derived.avgWinR.toFixed(1)}R / Loss: {derived.avgLossR.toFixed(1)}R
             </span>
           }
         />
@@ -783,7 +788,7 @@ export function DashboardPageClient({
           }
           compact
           className="hidden sm:block"
-          detail={`${derived.openRiskPct.toFixed(2)}% of Capital`}
+          detail={`${derived.openRiskPct.toFixed(1)}% of Capital`}
         />
       </div>
 
@@ -801,7 +806,7 @@ export function DashboardPageClient({
         <div className="rounded-lg border border-line bg-white px-2.5 py-1.5 shadow-sm">
           <p className="uppercase tracking-[0.12em] text-slate-400">Max DD</p>
           <p className="font-semibold text-loss">
-            {equityData.maxDrawdownPct.toFixed(2)}%
+            {equityData.maxDrawdownPct.toFixed(1)}%
           </p>
         </div>
         <div className="rounded-lg border border-line bg-white px-2.5 py-1.5 shadow-sm">
@@ -846,14 +851,14 @@ export function DashboardPageClient({
                   : "text-profit"
             }`}
           >
-            {derived.openRiskPct.toFixed(2)}%
+            {derived.openRiskPct.toFixed(1)}%
           </span>
         </div>
         <span className="text-slate-200">|</span>
         <div className="flex items-center gap-1.5 whitespace-nowrap">
           <span className="text-slate-400">Max DD:</span>
           <span className="font-semibold text-loss">
-            {equityData.maxDrawdownPct.toFixed(2)}%{" / "}
+            {equityData.maxDrawdownPct.toFixed(1)}%{" / "}
             {showAmounts ? formatCurrency(equityData.maxDrawdownAmt) : "•••"}
           </span>
         </div>
@@ -956,7 +961,7 @@ export function DashboardPageClient({
                     <div className="px-2 py-1.5">
                       <p className="text-[8.5px] uppercase tracking-[0.14em] text-slate-400">Net R</p>
                       <p className={`font-mono text-[17px] font-semibold leading-tight ${metricToneClass(m.netR)}`}>
-                        {formatSummaryNumber(m.netR)}
+                        {formatSummaryNumber(m.netR, 1)}
                       </p>
                     </div>
                     <div className="px-2 py-1.5">
@@ -993,10 +998,10 @@ export function DashboardPageClient({
                     <MonthStat label="Avg loss" value={formatReturnPercent(m.lossAverage)} tone="text-loss" />
                     <MonthStat label="Best" value={formatReturnPercent(m.maxWin)} tone="text-profit" />
                     <MonthStat label="Worst" value={formatReturnPercent(m.maxLoss)} tone="text-loss" />
-                    <MonthStat label="Reward:risk" value={formatSummaryNumber(m.simpleRR)} tone={metricToneClass(m.simpleRR)} />
+                    <MonthStat label="Reward:risk" value={formatSummaryNumber(m.simpleRR, 1)} tone={metricToneClass(m.simpleRR)} />
                     <MonthStat label="Avg stop" value={formatReturnPercent(m.avgStopLossPct)} tone="text-amber-600" />
-                    <MonthStat label="Gross R" value={formatSummaryNumber(m.grossR)} tone={metricToneClass(m.grossR)} />
-                    <MonthStat label="Best R" value={formatSummaryNumber(m.maxR)} tone={metricToneClass(m.maxR)} />
+                    <MonthStat label="Gross R" value={formatSummaryNumber(m.grossR, 1)} tone={metricToneClass(m.grossR)} />
+                    <MonthStat label="Best R" value={formatSummaryNumber(m.maxR, 1)} tone={metricToneClass(m.maxR)} />
                     <MonthStat label="Hold, wins" value={`${formatSummaryNumber(m.avgWinDays, 1)}d`} />
                     <MonthStat label="Hold, losses" value={`${formatSummaryNumber(m.avgLossDays, 1)}d`} />
                   </dl>
@@ -1030,10 +1035,10 @@ export function DashboardPageClient({
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-ink">
-                        <span title={pos.symbol}>{displaySymbol(pos.symbol)}</span>
+                        <span title={pos.symbol}>{tickerOfSymbol(pos.symbol)}</span>
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        Open Qty {showAmounts ? pos.qty : "••"} · Avg Entry {showAmounts ? formatPrice(pos.entry) : "•••"}
+                        Open Qty {showAmounts ? pos.qty : "••"} · Avg Entry {formatPrice(pos.entry)}
                       </p>
                     </div>
                     <span
@@ -1076,7 +1081,7 @@ export function DashboardPageClient({
                     <div>
                       <p className="text-slate-400">R</p>
                       <p className={`font-mono font-semibold ${pos.rMultiple >= 0 ? "text-profit" : "text-loss"}`}>
-                        {pos.rMultiple.toFixed(2)}
+                        {pos.rMultiple.toFixed(1)}
                       </p>
                     </div>
                   </div>
@@ -1110,7 +1115,7 @@ export function DashboardPageClient({
                       Stock
                     </th>
                     <th className={`sticky top-0 bg-white px-2 py-1 font-medium text-right ${showAmounts ? "" : "text-slate-300"}`}>
-                      {showAmounts ? "Open Qty" : "••"}
+                      Open Qty
                     </th>
                     <th className="sticky top-0 bg-white px-2 py-1 font-medium text-right">
                       Avg Entry
@@ -1145,13 +1150,13 @@ export function DashboardPageClient({
                       className="border-b border-line/50 transition hover:bg-slate-50/50"
                     >
                       <td className="max-w-[92px] truncate px-2 py-1 font-medium text-ink" title={pos.symbol}>
-                        {displaySymbol(pos.symbol)}
+                        {tickerOfSymbol(pos.symbol)}
                       </td>
                       <td className="px-2 py-1 text-right text-slate-600">
                         {showAmounts ? pos.qty : "••"}
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-slate-600">
-                        {showAmounts ? formatPrice(pos.entry) : "•••"}
+                        {formatPrice(pos.entry)}
                       </td>
                       <td className={`px-2 py-1 text-right font-mono ${pos.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}`}>
                         {pos.ageDays}d
@@ -1168,7 +1173,7 @@ export function DashboardPageClient({
                           )
                         }`}
                       >
-                        {pos.riskPct.toFixed(2)}%
+                        {pos.riskPct.toFixed(1)}%
                       </td>
                       <td
                         className={`px-2 py-1 text-right font-mono font-medium ${
@@ -1197,7 +1202,7 @@ export function DashboardPageClient({
                           pos.rMultiple > 0 ? "text-profit" : "text-loss"
                         }`}
                       >
-                        {pos.rMultiple.toFixed(2)}
+                        {pos.rMultiple.toFixed(1)}
                       </td>
                       <td className="px-2 py-1 text-center">
                         <span
