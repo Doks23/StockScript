@@ -9,16 +9,16 @@ import { getTradeStatusUi } from "@/lib/trade-status";
 import { SymbolChartLink } from "@/components/symbol-chart-link";
 
 const fmtAmtIntl = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
-const fmtPriceIntl = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPriceIntl = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 const fmtPctNoSign = (n: number) => `${n.toFixed(1)}%`;
 const fmtAmt = (n: number) => fmtAmtIntl.format(n);
 const fmtPrice = (n: number) => fmtPriceIntl.format(n);
 const fmtQty = (n: number) => Number.isInteger(n) ? n.toLocaleString("en-IN") : fmtAmtIntl.format(n);
+/** Capital in lakhs - 73,287 reads as 0.73L, which is the unit these are sized in. */
+const fmtLakh = (n: number) => `${(n / 100000).toFixed(2)}L`;
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
-const shortSymbol = (symbol: string, max = 12) =>
-  symbol.length > max ? `${symbol.slice(0, max - 1)}…` : symbol;
 const dateSortValue = (d: Date | string | null | undefined) => {
   if (!d) return 0;
   const time = new Date(d).getTime();
@@ -138,6 +138,7 @@ function SortTh({
   sortDir,
   onSort,
   className = "",
+  rowSpan,
 }: {
   children: React.ReactNode;
   sKey: SortKey;
@@ -145,9 +146,11 @@ function SortTh({
   sortDir: "asc" | "desc";
   onSort: (k: SortKey) => void;
   className?: string;
+  rowSpan?: number;
 }) {
   return (
     <th
+      rowSpan={rowSpan}
       className={`cursor-pointer select-none transition-colors hover:bg-slate-200/70 hover:text-slate-800 ${className}`}
       onClick={() => onSort(sKey)}
     >
@@ -295,10 +298,10 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="cursor-pointer rounded-md border border-transparent px-1.5 py-0.5 text-[11px] tabular-nums text-slate-500 italic transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+        className="cursor-pointer rounded-md border border-transparent px-1 py-0.5 text-[10px] tabular-nums text-slate-400 italic transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
         title={title}
       >
-        {value && Number.isFinite(numericValue) ? numericValue.toFixed(2) : value || "set"}
+        {value && Number.isFinite(numericValue) ? numericValue.toFixed(1) : value || "set"}
       </button>
     );
   }
@@ -306,7 +309,7 @@ function ClosingPriceInput({ tradeId, initialValue, onUpdate }: { tradeId: strin
   return (
     <input
       autoFocus
-      className="w-[70px] rounded-md border border-blue-400 bg-blue-50 px-1.5 py-0.5 text-[11px] tabular-nums text-slate-800 outline-none ring-2 ring-blue-100"
+      className="w-[62px] rounded-md border border-blue-400 bg-blue-50 px-1 py-0.5 text-[10px] tabular-nums text-slate-800 outline-none ring-2 ring-blue-100"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
@@ -559,10 +562,9 @@ export function JournalTable({
                   </span>
                   <SymbolChartLink
                     symbol={t.symbol}
+                    asTicker
                     className="truncate text-[13px] font-semibold uppercase tracking-wide text-slate-800 transition hover:text-blue-600"
-                  >
-                    {t.symbol}
-                  </SymbolChartLink>
+                  />
                   {statusUi.label && (
                     <span
                       className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide ${statusUi.chipClass}`}
@@ -746,83 +748,76 @@ export function JournalTable({
         <table className="w-full table-fixed whitespace-nowrap text-right text-[12px] text-slate-700">
           {/* 20 columns, widths summing to 100% - keep in step with both header rows. */}
           <colgroup>
-            <col className="w-[2.4%]" />
-            <col className="w-[2.2%]" />
-            <col className="w-[8.8%]" />
-            <col className="w-[4.6%]" />
-            <col className="w-[5.6%]" />
+            <col className="w-[1.8%]" />
+            <col className="w-[1.8%]" />
+            <col className="w-[11.0%]" />
+            <col className="w-[4.2%]" />
+            <col className="w-[6.0%]" />
             <col className="w-[5.8%]" />
-            <col className="w-[4.6%]" />
-            <col className="w-[5.6%]" />
+            <col className="w-[4.2%]" />
+            <col className="w-[6.0%]" />
             <col className="w-[5.8%]" />
             <col className="w-[4.8%]" />
-            <col className="w-[3.8%]" />
-            <col className="w-[6%]" />
-            <col className="w-[5%]" />
-            <col className="w-[5%]" />
+            <col className="w-[3.4%]" />
+            <col className="w-[4.8%]" />
+            <col className="w-[4.6%]" />
+            <col className="w-[5.0%]" />
             <col className="w-[5.8%]" />
-            <col className="w-[5.2%]" />
-            <col className="w-[5.8%]" />
-            <col className="w-[5.2%]" />
-            <col className="w-[5.8%]" />
-            <col className="w-[2.2%]" />
+            <col className="w-[6.4%]" />
+            <col className="w-[7.4%]" />
+            <col className="w-[4.8%]" />
+            <col className="w-[4.6%]" />
+            <col className="w-[1.8%]" />
           </colgroup>
           <thead>
-            <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wide border-b border-line">
-              <th rowSpan={2} className="px-1 py-2.5 text-center font-semibold text-slate-400">#</th>
-              <th className="w-[2.2%] px-1.5 py-2.5 text-center">
+            <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wide">
+              <th rowSpan={2} className="px-1 py-2 text-center align-middle font-semibold text-slate-400">#</th>
+              <th rowSpan={2} className="px-1.5 py-2 text-center align-middle">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
                   className="h-3.5 w-3.5 rounded border-slate-400 accent-slate-500 cursor-pointer" />
               </th>
               <SortTh sKey="symbol" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[8.8%] px-2 py-2.5 text-left">Symbol</SortTh>
-              <th className="px-1.5 py-2.5 text-center" colSpan={3}>Entry</th>
-              <th className="px-1.5 py-2.5 text-center border-l border-slate-300" colSpan={3}>Exit</th>
-              <SortTh sKey="stopLossPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[4.8%] px-1.5 py-2.5 text-center border-l border-slate-300">SL%</SortTh>
-              <SortTh sKey="ageDays" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[3.8%] px-1.5 py-2.5 text-center">Age</SortTh>
-              <SortTh sKey="openCapital" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[6%] px-1.5 py-2.5 text-center border-l border-slate-300">Open Cap</SortTh>
-              <SortTh sKey="allocationPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[4.8%] px-1.5 py-2.5 text-center">Alloc%</SortTh>
-              <th className="w-[4.8%] px-1.5 py-2.5 text-center">Open Qty</th>
-              <SortTh sKey="avgEntryPrice" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5.5%] px-1.5 py-2.5 text-center">Avg Entry</SortTh>
-              <SortTh sKey="pnlPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5%] px-1.5 py-2.5 text-center border-l border-slate-300">P&amp;L%</SortTh>
-              <SortTh sKey="pnlAmount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5.8%] px-1.5 py-2.5 text-center">P&amp;L</SortTh>
-              <SortTh sKey="impactPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5%] px-1.5 py-2.5 text-center">Impact%</SortTh>
-              <th className="w-[8.4%] px-1.5 py-2.5 text-center text-[11px] text-slate-400" colSpan={2}>EOD</th>
+                className="px-2 pt-2 pb-1 text-left align-bottom">Symbol</SortTh>
+              <th className="px-1.5 pt-2 pb-1 text-center align-bottom" colSpan={3}>Entry</th>
+              <th className="px-1.5 pt-2 pb-1 text-center align-bottom border-l border-slate-300" colSpan={3}>Exit</th>
+              <SortTh rowSpan={2} sKey="stopLossPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle border-l border-slate-300">SL%</SortTh>
+              {/* Age, capital and position size are reference figures, not outcomes,
+                  so the whole block is set smaller and grey to let P&L carry the row. */}
+              <SortTh rowSpan={2} sKey="ageDays" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle text-[10px] font-medium text-slate-400 border-l border-slate-300">Age</SortTh>
+              <SortTh rowSpan={2} sKey="openCapital" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle text-[10px] font-medium text-slate-400">Cap</SortTh>
+              <SortTh rowSpan={2} sKey="allocationPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle text-[10px] font-medium text-slate-400">Alloc</SortTh>
+              <th rowSpan={2} className="px-1.5 py-2 text-right align-middle text-[10px] font-medium text-slate-400">Open Qty</th>
+              <SortTh rowSpan={2} sKey="avgEntryPrice" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle text-[10px] font-medium text-slate-400">Avg Entry</SortTh>
+              <SortTh rowSpan={2} sKey="pnlPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle border-l border-slate-300">P&amp;L%</SortTh>
+              <SortTh rowSpan={2} sKey="pnlAmount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle">P&amp;L</SortTh>
+              <SortTh rowSpan={2} sKey="impactPct" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
+                className="px-1.5 py-2 text-right align-middle">Impact</SortTh>
+              <th rowSpan={2} className="px-1.5 py-2 text-right align-middle text-[10px] font-medium text-slate-400">EOD</th>
+              <th rowSpan={2} className="px-1 py-2" />
             </tr>
-            <tr className="bg-white text-slate-400 text-[12px] border-b border-line">
-              <th />
-              <th className="px-1.5 py-1 text-left">L/S</th>
-              <th className="w-[4.5%] px-1 py-1">Qty</th>
-              <th className="w-[5.2%] px-1 py-1">Price</th>
+            {/* Only Entry and Exit split into sub-columns; every other heading
+                spans both rows, so this row carries seven cells, not twenty. */}
+            <tr className="bg-slate-100 text-slate-400 text-[11px] border-b border-line">
+              <th className="px-2 pb-2 pt-0 text-left font-normal normal-case">L/S</th>
+              <th className="px-1 pb-2 pt-0 font-normal normal-case">Qty</th>
+              <th className="px-1 pb-2 pt-0 font-normal normal-case">Price</th>
               <SortTh sKey="entryDate" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5.8%] px-1 py-1">Date</SortTh>
-              <th className="w-[4.5%] px-1 py-1 border-l border-slate-300">Qty</th>
-              <th className="w-[5.2%] px-1 py-1">Price</th>
+                className="px-1 pb-2 pt-0 font-normal normal-case">Date</SortTh>
+              <th className="px-1 pb-2 pt-0 font-normal normal-case border-l border-slate-300">Qty</th>
+              <th className="px-1 pb-2 pt-0 font-normal normal-case">Price</th>
               <SortTh sKey="exitDate" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
-                className="w-[5.8%] px-1 py-1">Date</SortTh>
-              <th className="px-1 py-1 border-l border-slate-300" />
-              <th className="px-1 py-1" />
-              <th className="px-1 py-1 border-l border-slate-300" />
-              <th className="px-1 py-1" />
-              <th className="px-1 py-1" />
-              <th className="px-1 py-1" />
-              <th className="px-1 py-1 border-l border-slate-300" />
-              <th className="px-1 py-1" />
-              <th className="px-1 py-1" />
-              <th className="px-1 py-1 border-l border-slate-300" />
-              <th className="px-1 py-1" />
+                className="px-1 pb-2 pt-0 font-normal normal-case">Date</SortTh>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-line">
+          <tbody>
             {sortedRows.map((t, rowIndex) => {
               const serial = startIndex + rowIndex + 1;
               const isClosed = t.derivedStatus === "CLOSED";
@@ -853,10 +848,11 @@ export function JournalTable({
                     const eLeg = t.entryLegs[idx];
                     const xLeg = t.exitLegs?.[idx];
                     const isFirst = idx === 0;
+                    const isLastLeg = idx === maxLegs - 1;
 
                     return (
                       <tr key={`${t.id}-${idx}`}
-                        className={`${rowBg} hover:bg-slate-50 transition-colors ${isDeleting ? "opacity-40" : ""} ${isFirst ? borderColor : "border-l-4 border-l-transparent"} ${isDuplicate ? "outline outline-1 -outline-offset-1 outline-rose-300" : ""}`}>
+                        className={`${rowBg} hover:bg-slate-50 transition-colors ${isDeleting ? "opacity-40" : ""} ${isFirst ? borderColor : "border-l-4 border-l-transparent"} ${isLastLeg ? "border-b border-line" : "border-b border-slate-100/70"} ${isDuplicate ? "outline outline-1 -outline-offset-1 outline-rose-300" : ""}`}>
 
                         {isFirst && (
                           <td className="px-1 py-2.5 text-center align-middle tabular-nums text-[11px] text-slate-400" rowSpan={maxLegs}>
@@ -881,9 +877,9 @@ export function JournalTable({
                               </span>
                               <SymbolChartLink
                                 symbol={t.symbol}
-                                className="min-w-0 max-w-[74px] truncate font-semibold text-slate-800 hover:text-blue-600 transition text-[12px] uppercase tracking-wide">
-                                {shortSymbol(t.symbol, 11)}
-                              </SymbolChartLink>
+                                asTicker
+                                className="min-w-0 truncate font-semibold text-slate-800 hover:text-blue-600 transition text-[12px] uppercase tracking-wide"
+                              />
                               {statusUi.label && (
                                 <span
                                   className={`rounded-full border px-1 py-0.5 text-[10px] font-semibold tracking-wide ${statusUi.chipClass}`}
@@ -948,23 +944,23 @@ export function JournalTable({
                                 onUpdate={() => onRefresh?.()}
                               />
                             </td>
-                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle" rowSpan={maxLegs}>
-                              <span className={t.ageDays > 30 ? "text-amber-600 font-medium" : "text-slate-500"}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle text-[11px] text-slate-500 border-l border-slate-100" rowSpan={maxLegs}>
+                              <span className={t.ageDays > 30 ? "text-amber-600 font-medium" : undefined}>
                                 {t.ageDays}
                               </span>
                             </td>
-                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 align-middle border-l border-slate-100" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle text-[11px] text-slate-500" rowSpan={maxLegs}>
                               {!showAmounts
                                 ? <span className="text-slate-300">•••</span>
-                                : t.openCapital > 0 ? fmtAmt(t.openCapital) : <span className="text-slate-300">—</span>}
+                                : t.openCapital > 0 ? fmtLakh(t.openCapital) : <span className="text-slate-300">—</span>}
                             </td>
-                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle text-[11px] text-slate-500" rowSpan={maxLegs}>
                               {fmtPctNoSign(t.allocationPct)}
                             </td>
-                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-600 align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle text-[11px] text-slate-500" rowSpan={maxLegs}>
                               {showAmounts ? fmtQty(t.openQty) : <span className="text-slate-300">•••</span>}
                             </td>
-                            <td className="px-1.5 py-2.5 text-right tabular-nums text-slate-700 font-medium align-middle" rowSpan={maxLegs}>
+                            <td className="px-1.5 py-2.5 text-right tabular-nums align-middle text-[11px] text-slate-500" rowSpan={maxLegs}>
                               {t.weightedEntryPrice > 0 ? fmtPrice(t.weightedEntryPrice) : <span className="text-slate-300">—</span>}
                             </td>
                             <td className={`px-1.5 py-2.5 text-right align-middle border-l border-slate-100 ${pnlColor(t.displayPnlAmount)}`} rowSpan={maxLegs}>

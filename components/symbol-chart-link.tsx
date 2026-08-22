@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { chartSymbol, chartUrl, guessTicker, toQuoteSymbol } from "@/lib/tradingview";
+import { chartSymbol, chartUrl, guessTicker, tickerOf, toQuoteSymbol } from "@/lib/tradingview";
 
 type SymbolMap = Record<string, string>;
 
@@ -69,18 +69,37 @@ function useSymbolMap(): SymbolMap {
   return map;
 }
 
+/**
+ * Resolve many symbols to their TradingView tickers from one shared map load.
+ *
+ * A hook cannot be called per row, so callers take the resolver once and apply
+ * it inside their own loop.
+ */
+export function useTickerResolver(): (symbol: string) => string {
+  const map = useSymbolMap();
+  return (symbol: string) => tickerOf(symbol, map[keyOf(symbol)] ?? null);
+}
+
 export function SymbolChartLink({
   symbol,
   className = "",
   children,
+  asTicker = false,
 }: {
   symbol: string;
   className?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  /**
+   * Render the TradingView ticker rather than the passed label. The journal
+   * carries the broker's company name, which is not what the chart is called;
+   * the mapping already on file is the name the user reads on TradingView.
+   */
+  asTicker?: boolean;
 }) {
   const map = useSymbolMap();
   const quoteSymbol = map[keyOf(symbol)] ?? null;
   const target = chartSymbol(symbol, quoteSymbol);
+  const label = asTicker ? tickerOf(symbol, quoteSymbol) : children;
 
   function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
     // Mapped symbols are a plain link, so middle-click and copy-link still work.
@@ -121,12 +140,12 @@ export function SymbolChartLink({
       onClick={handleClick}
       title={
         quoteSymbol
-          ? `Open ${target} on TradingView`
+          ? `${symbol} - open ${target} on TradingView`
           : `Set the TradingView ticker for ${symbol}`
       }
       className={className}
     >
-      {children}
+      {label}
     </a>
   );
 }

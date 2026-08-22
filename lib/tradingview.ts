@@ -87,6 +87,23 @@ export function chartSymbol(
   return guess ? `NSE:${guess}` : "";
 }
 
+/**
+ * The bare TradingView ticker for display - "KALYANKJIL", not "NSE:KALYANKJIL.NS".
+ *
+ * The journal carries the broker's company name ("KWALITY WALLS"), which is not
+ * what the chart is called. Where a mapping exists this is the name the user
+ * actually reads on TradingView; where it does not, the collapsed guess is
+ * still closer to a ticker than the full name is.
+ */
+export function tickerOf(
+  journalSymbol: string,
+  quoteSymbol?: string | null,
+): string {
+  const full = chartSymbol(journalSymbol, quoteSymbol);
+  const withoutExchange = full.includes(":") ? full.slice(full.indexOf(":") + 1) : full;
+  return withoutExchange || journalSymbol;
+}
+
 export function chartUrl(symbol: string): string {
   return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
 }
