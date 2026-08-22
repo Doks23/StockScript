@@ -83,7 +83,7 @@ export const getDashboardData = cache(async function getDashboardData(userId: st
   const trades = await prisma.trade.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 2000,
     include: TRANSACTION_INCLUDE,
   });
 
@@ -91,7 +91,10 @@ export const getDashboardData = cache(async function getDashboardData(userId: st
   const openTrades = trades.filter((t) => t.status === "OPEN");
 
   return {
-    trades: trades.slice(0, 50),
+    // The whole set, not a recent slice. The dashboard does its own period
+    // filtering - YTD, 180D, a custom range - so handing it a truncated list
+    // silently drops trades from inside the range the user picked.
+    trades,
     openTrades,
     closedTrades,
     groupedTrades: groupTradesBySymbol(closedTrades),
