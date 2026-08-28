@@ -6,6 +6,7 @@ import {
   Flag,
   LayoutDashboard,
   LineChart,
+  Target,
   Medal,
   PencilLine,
   Shield,
@@ -31,6 +32,7 @@ const tradingNavigation: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", iconKey: "dashboard", icon: LayoutDashboard },
   { href: "/trades", label: "Journal", iconKey: "journal", icon: BarChart3 },
   { href: "/summary", label: "Summary", iconKey: "summary", icon: LineChart },
+  { href: "/r-multiple", label: "R-Multiples", iconKey: "rMultiple", icon: Target },
   { href: "/trades/new", label: "New Trade", iconKey: "newTrade", icon: PencilLine },
   { href: "/position-size", label: "Position Sizer", iconKey: "positionSizer", icon: Calculator },
 ];

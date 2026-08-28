@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   BarChart3,
   Calculator,
+  Target,
   Flag,
   LayoutDashboard,
   LineChart,
@@ -30,6 +31,7 @@ type IconKey =
   | "summary"
   | "newTrade"
   | "positionSizer"
+  | "rMultiple"
   | "leaderboard"
   | "account"
   | "competitions"
@@ -41,6 +43,7 @@ const ICONS: Record<IconKey, React.ComponentType<{ className?: string }>> = {
   summary: LineChart,
   newTrade: PencilLine,
   positionSizer: Calculator,
+  rMultiple: Target,
   leaderboard: Medal,
   account: UserIcon,
   competitions: Flag,
