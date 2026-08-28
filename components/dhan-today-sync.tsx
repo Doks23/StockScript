@@ -4,14 +4,13 @@ import { useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
-  ExternalLink,
   Loader2,
   PlusCircle,
   ReceiptText,
   RefreshCw,
-  ShieldCheck,
   Zap,
 } from "lucide-react";
+import { DhanTokenField, useDhanToken } from "@/components/dhan-token-field";
 
 type PreviewRow = {
   kind: "attach" | "create";
@@ -84,7 +83,7 @@ export function DhanTodaySync({
    */
   onApplied?: (applied: number, needsAttention: boolean) => void;
 }) {
-  const [accessToken, setAccessToken] = useState("");
+  const { accessToken, setAccessToken, expiresAt, remember, forget } = useDhanToken();
   const [competitionId, setCompetitionId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [phase, setPhase] = useState<"idle" | "previewed" | "applied">("idle");
@@ -117,11 +116,12 @@ export function DhanTodaySync({
       }
 
       setResult(data as TodayResult);
+      // Proved good by the round trip - keep it for the rest of its 24 hours.
+      remember(accessToken);
 
       if (commit) {
         const applied = data as TodayResult;
         setPhase("applied");
-        setAccessToken("");
         onApplied?.(
           applied.applied ?? 0,
           applied.warnings.length > 0 ||
@@ -160,6 +160,7 @@ export function DhanTodaySync({
       }
 
       setCharges(data as ChargesResult);
+      remember(accessToken);
       // Charges report their own match counts, so this half stays on screen.
       if (commit) onApplied?.(0, true);
     } catch (err) {
@@ -186,34 +187,13 @@ export function DhanTodaySync({
         </p>
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-ink" htmlFor="dhan-today-token">
-          Dhan access token
-        </label>
-        <input
-          id="dhan-today-token"
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={accessToken}
-          onChange={(event) => setAccessToken(event.target.value)}
-          placeholder="Paste your 24-hour access token"
-          className="w-full rounded-lg border border-line px-3 py-2 font-mono text-sm outline-none focus:border-accent"
-        />
-        <p className="flex items-center gap-1.5 text-xs text-muted">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Used for this request only. Never saved, never logged.
-        </p>
-        <a
-          href="https://web.dhan.co"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
-        >
-          Get a token: web.dhan.co &rarr; My Profile &rarr; Access DhanHQ APIs
-          <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
+      <DhanTokenField
+        id="dhan-today-token"
+        accessToken={accessToken}
+        onChange={setAccessToken}
+        expiresAt={expiresAt}
+        onForget={forget}
+      />
 
       {competitions.length > 0 && (
         <div>

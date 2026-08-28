@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, Suspense } from "react";
-import { CheckCircle2, Download, RefreshCw, X, Table2, CloudDownload, Zap } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
+import { CheckCircle2, Download, RefreshCw, X, Table2, CloudDownload, Zap, Tag } from "lucide-react";
 import { DhanSync } from "@/components/dhan-sync";
 import { DhanTodaySync } from "@/components/dhan-today-sync";
+import { getSymbolMap, refreshSymbolMap } from "@/components/symbol-chart-link";
 import { JournalTable } from "@/components/journal-table";
 import { JournalFilters, useJournalFilters } from "@/components/journal-filters";
 import type { Filters } from "@/components/journal-filters";
@@ -62,6 +63,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   const [toast, setToast] = useState("");
   const [dhanOpen, setDhanOpen] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
+  const [mappingTickers, setMappingTickers] = useState(false);
 
   useEffect(() => {
     const saved = searchParams.get("saved");
@@ -131,6 +133,81 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   useEffect(() => {
     setPage(1);
   }, [filters]);
+
+  /**
+   * Name every row the way TradingView does, from Dhan's security list.
+   *
+   * The journal falls back to the company name with its spaces stripped when a
+   * symbol has no mapping - VATECHWABAG for VA TECH WABAG - which looks like a
+   * ticker but charts nothing. This fills the mappings in one pass rather than
+   * one prompt at a time.
+   */
+  const mapTickers = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    setMappingTickers(true);
+    try {
+      const response = await fetch("/api/symbol-map/backfill", { method: "POST" });
+      const data = (await response.json()) as {
+        added?: number;
+        unmapped?: string[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        // A silent pass is something the user did not ask for, so a failure
+        // stays quiet - the rows keep their fallback name, as before.
+        if (!silent) setToast(data.error || "Could not map symbols to TradingView tickers.");
+      } else {
+        // Written on the server, so the open page is holding a stale map.
+        await refreshSymbolMap();
+        const unmapped = data.unmapped ?? [];
+        // The quiet pass stays quiet when it worked - the rows just rename.
+        // It speaks up only when it could map nothing at all, because that is
+        // the one outcome the user cannot see and cannot act on otherwise.
+        if (silent && !(data.added === 0 && unmapped.length > 0)) return;
+        setToast(
+          data.added
+            ? `Named ${data.added} symbol${data.added === 1 ? "" : "s"} the way TradingView does.` +
+                (unmapped.length
+                  ? ` ${unmapped.length} still unmapped: ${unmapped.slice(0, 3).join(", ")}${unmapped.length > 3 ? "…" : ""} - click one to set it.`
+                  : "")
+            : unmapped.length
+              ? `Nothing to map automatically. ${unmapped.length} symbol(s) are not in Dhan's list: ${unmapped.slice(0, 3).join(", ")}${unmapped.length > 3 ? "…" : ""}`
+              : "Every symbol is already named the way TradingView does.",
+        );
+      }
+    } catch (err) {
+      if (!silent) {
+        setToast((err as Error).message || "Could not map symbols to TradingView tickers.");
+      }
+    } finally {
+      setMappingTickers(false);
+      if (!silent) setTimeout(() => setToast(""), 6000);
+    }
+  }, []);
+
+  /**
+   * Map on sight, once per page.
+   *
+   * Every symbol Dhan lists can be named from its security list without asking
+   * anyone anything, so a row showing VATECHWABAG - the company name with its
+   * spaces stripped, which charts nothing - is a mapping nobody has run yet
+   * rather than a decision. This runs it the first time such a row is rendered.
+   * It is quiet on the way through: only rows whose names change, change.
+   */
+  const autoMapped = useRef(false);
+  useEffect(() => {
+    const rows = data?.trades;
+    if (autoMapped.current || !rows || rows.length === 0) return;
+    autoMapped.current = true;
+
+    void (async () => {
+      const map = await getSymbolMap();
+      const missing = rows.some((row) => !map[row.symbol.trim().toUpperCase()]);
+      if (!missing) return;
+      await mapTickers({ silent: true });
+    })();
+  }, [data, mapTickers]);
 
   // Refresh doubles as the way out of a filter set that is remembered from an
   // earlier visit: back to page one of the default "Open" journal.
@@ -242,6 +319,9 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
                 setDhanOpen(false);
                 setToast(`Imported ${count} trade${count === 1 ? "" : "s"} from Dhan.`);
                 setTimeout(() => setToast(""), 3500);
+                // The import backfilled tickers server-side; the page is still
+                // holding the map it loaded before them.
+                void refreshSymbolMap();
                 fetchData(filters, page, sortKey, sortDir);
               }}
             />
@@ -285,6 +365,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
                   );
                   setTimeout(() => setToast(""), 3500);
                 }
+                void refreshSymbolMap();
                 fetchData(filters, page, sortKey, sortDir);
               }}
             />
@@ -329,6 +410,16 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               <span className="hidden xl:inline">Refresh</span>
             </button>
             <EodPriceSyncTrigger sync={eodSync} />
+            <button
+              onClick={() => mapTickers()}
+              disabled={mappingTickers}
+              data-tip="Name every symbol the way TradingView does"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
+              aria-label="Map symbols to TradingView tickers"
+            >
+              <Tag size={14} className={mappingTickers ? "animate-pulse" : ""} />
+              <span className="hidden xl:inline">Tickers</span>
+            </button>
             <button
               onClick={() => setTodayOpen(true)}
               data-tip="Sync today's fills from Dhan"

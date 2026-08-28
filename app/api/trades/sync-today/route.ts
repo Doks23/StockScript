@@ -35,7 +35,7 @@ import type { RawTransaction } from "@/lib/trade-matcher";
 import { calculateTradeMetrics, deriveTradeTypeAndStatus } from "@/lib/trade-utils";
 import type { SegmentValue } from "@/lib/trade-utils";
 import { ScripMasterError } from "@/lib/brokers/dhan-scrip-master";
-import type { ScripMaster } from "@/lib/brokers/dhan-scrip-master";
+import { backfillTradingViewTickers } from "@/lib/symbol-map-backfill";
 import {
   DhanTodayAuthError,
   DhanTodayError,
@@ -507,7 +507,7 @@ export async function POST(request: Request) {
     // 8. The master is already in memory and knows every ticker, so symbols
     //    with no chart mapping get one for free. Existing mappings are never
     //    touched - a hand-set ticker outranks anything inferred here.
-    const tickersAdded = await backfillTradingViewTickers(user.id, master);
+    const { added: tickersAdded } = await backfillTradingViewTickers(user.id, master);
 
     invalidateUserTrades(user.id);
 
@@ -536,45 +536,4 @@ export async function POST(request: Request) {
     }
     return handleApiError(error, "Unable to sync today's trades from Dhan.");
   }
-}
-
-/**
- * Fill in TradingView tickers for journal symbols that have none.
- *
- * SymbolQuoteMap is also what the EOD price refresh reads, so this fixes
- * tomorrow's closing price for those symbols as well as the chart link. Only
- * exact company-name matches are written; a fuzzy guess here would point a
- * price at the wrong company, which is worse than no mapping at all.
- */
-async function backfillTradingViewTickers(userId: string, master: ScripMaster) {
-  const symbols = await prisma.trade.findMany({
-    where: { userId },
-    select: { symbol: true },
-    distinct: ["symbol"],
-  });
-
-  const mapped = await prisma.symbolQuoteMap.findMany({
-    where: { userId },
-    select: { symbol: true },
-  });
-  const known = new Set(mapped.map((row) => row.symbol.toUpperCase()));
-
-  const rows = symbols
-    .map((row) => row.symbol.toUpperCase())
-    .filter((symbol) => !known.has(symbol))
-    .map((symbol) => ({ symbol, scrip: master.byJournalSymbol.get(symbol) }))
-    .filter((entry): entry is { symbol: string; scrip: NonNullable<typeof entry.scrip> } =>
-      Boolean(entry.scrip),
-    )
-    .map((entry) => ({
-      userId,
-      symbol: entry.symbol,
-      quoteSymbol: `${entry.scrip.ticker}${entry.scrip.exchange === "BSE" ? ".BO" : ".NS"}`,
-      displayName: entry.scrip.companyName || null,
-    }));
-
-  if (rows.length === 0) return 0;
-
-  const result = await prisma.symbolQuoteMap.createMany({ data: rows, skipDuplicates: true });
-  return result.count;
 }

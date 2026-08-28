@@ -13,7 +13,10 @@
  *  - Every row written is tagged source = "DHAN_API" so the entire sync can
  *    be undone with a single delete.
  *  - The access token is used in-memory for this request only. It is never
- *    stored, logged, or returned.
+ *    stored, logged, or returned. (The browser may keep it in localStorage for
+ *    its 24-hour life; the server does not.)
+ *  - The commit call may carry `selectedKeys`, the subset of previewed trades
+ *    the user ticked. Absent means all of them.
  * ─────────────────────────────────────────────────────────────────────
  */
 
@@ -36,6 +39,11 @@ import {
   mapDhanFills,
 } from "@/lib/brokers/dhan";
 import type { MappedFill } from "@/lib/brokers/dhan";
+import { getScripMaster } from "@/lib/brokers/dhan-scrip-master";
+import {
+  backfillTradingViewTickers,
+  lookupScrip,
+} from "@/lib/symbol-map-backfill";
 
 /**
  * Fetching self-throttles to stay inside Dhan's rate limit, so a wide manual
@@ -49,6 +57,8 @@ const FIRST_RUN_DAYS = 90;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type PlannedTrade = {
+  /** Stable across preview and commit, so the client can select rows by it. */
+  key: string;
   symbol: string;
   segment: SegmentValue;
   tradeType: "LONG" | "SHORT";
@@ -119,6 +129,7 @@ export async function POST(request: Request) {
       toDate?: string;
       commit?: boolean;
       competitionId?: string;
+      selectedKeys?: unknown;
     };
 
     const accessToken = (body.accessToken ?? "").trim();
@@ -132,6 +143,22 @@ export async function POST(request: Request) {
     // Dry run unless explicitly told otherwise.
     const commit = body.commit === true;
     const competitionId = body.competitionId?.trim() || undefined;
+
+    // Absent means "import everything in the preview", which is what the older
+    // one-button flow sent. An explicit list means the user unticked rows.
+    let selectedKeys: Set<string> | null = null;
+    if (body.selectedKeys !== undefined) {
+      if (
+        !Array.isArray(body.selectedKeys) ||
+        body.selectedKeys.some((key) => typeof key !== "string")
+      ) {
+        return NextResponse.json(
+          { error: "selectedKeys must be an array of trade keys." },
+          { status: 400 },
+        );
+      }
+      selectedKeys = new Set(body.selectedKeys as string[]);
+    }
 
     for (const [label, value] of [
       ["fromDate", body.fromDate],
@@ -158,7 +185,17 @@ export async function POST(request: Request) {
     }
 
     // 1. Fail fast on a dead token instead of 401-ing mid-pagination.
-    const profile = await fetchDhanProfile(accessToken);
+    //
+    //    Dhan's published security list comes down alongside it - it is the
+    //    only place the statement's company name ("DECCAN GOLD MINES") and the
+    //    ticker TradingView charts ("DECNGOLD") appear together, so the preview
+    //    can name rows the way the user reads them. It is cached for 12 hours,
+    //    and a failed download only costs the ticker column, so it must never
+    //    take the import down with it.
+    const [profile, master] = await Promise.all([
+      fetchDhanProfile(accessToken),
+      getScripMaster().catch(() => null),
+    ]);
 
     // 2. Work out the window.
     const watermark = await resolveWatermark(user.id);
@@ -274,6 +311,11 @@ export async function POST(request: Request) {
       });
 
       return {
+        // exchangeTradeId is unique per fill, so the first leg names the trade
+        // uniquely and identically on the preview call and the commit call.
+        key:
+          txPayload[0]?.externalTradeId ??
+          `${segment}:${trade.ticker}:${firstEntryAt.toISOString()}`,
         symbol: trade.ticker,
         segment,
         tradeType,
@@ -286,9 +328,32 @@ export async function POST(request: Request) {
       };
     });
 
+    // Selection. The preview hands back a key per trade; a commit may send back
+    // only the ones the user ticked, so everything below works on that subset.
+    // A stale key - the fill got imported by another sync since the preview -
+    // simply finds nothing rather than failing the whole import.
+    const chosen = selectedKeys
+      ? planned.filter((trade) => selectedKeys!.has(trade.key))
+      : planned;
+
+    if (selectedKeys) {
+      const missing = selectedKeys.size - chosen.length;
+      if (missing > 0) {
+        warnings.push(
+          `${missing} selected trade(s) are no longer in this sync - they were most likely imported since the preview - and were skipped.`,
+        );
+      }
+      if (commit && chosen.length === 0) {
+        return NextResponse.json(
+          { error: "None of the selected trades are still available to import. Run the preview again." },
+          { status: 400 },
+        );
+      }
+    }
+
     // Flag exits whose entry sits outside this window - these are the ones
     // that need manual merging in the journal.
-    const unmatchedExits = planned
+    const unmatchedExits = chosen
       .filter((trade) => trade.tradeType === "SHORT" && trade.status === "OPEN")
       .map((trade) => trade.symbol);
 
@@ -312,11 +377,18 @@ export async function POST(request: Request) {
       skippedNonEquity,
       skippedAlreadyStored: storedIds.size,
       newFills: fresh.length,
-      plannedTrades: planned.length,
-      plannedOpen: planned.filter((trade) => trade.status === "OPEN").length,
-      plannedClosed: planned.filter((trade) => trade.status === "CLOSED").length,
-      preview: planned.slice(0, 50).map((trade) => ({
+      plannedTrades: chosen.length,
+      plannedOpen: chosen.filter((trade) => trade.status === "OPEN").length,
+      plannedClosed: chosen.filter((trade) => trade.status === "CLOSED").length,
+      // Every row, not a page of them: the client ticks rows to choose what to
+      // import, and a truncated list would import trades nobody could see.
+      preview: chosen.map((trade) => ({
+        key: trade.key,
         symbol: trade.symbol,
+        // Null when the master could not be read or the name is not in it -
+        // the client falls back to the journal symbol rather than inventing a
+        // ticker that would chart the wrong company.
+        ticker: master ? (lookupScrip(master, trade.symbol)?.ticker ?? null) : null,
         segment: trade.segment,
         tradeType: trade.tradeType,
         status: trade.status,
@@ -334,7 +406,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ...summary, imported: 0 }, { status: 200 });
     }
 
-    if (planned.length === 0) {
+    if (chosen.length === 0) {
       return NextResponse.json(
         { ...summary, imported: 0, open: 0, closed: 0 },
         { status: 200 },
@@ -352,9 +424,9 @@ export async function POST(request: Request) {
         const currentCount = await tx.trade.count({ where: { userId: user.id } });
 
         // createManyAndReturn preserves input order on PostgreSQL (one INSERT
-        // ... RETURNING), so rows[i] is the trade built from planned[i].
+        // ... RETURNING), so rows[i] is the trade built from chosen[i].
         const rows = await tx.trade.createManyAndReturn({
-          data: planned.map((trade, index) => ({
+          data: chosen.map((trade, index) => ({
             userId: user.id,
             competitionId: competitionId || null,
             symbol: trade.symbol,
@@ -374,7 +446,7 @@ export async function POST(request: Request) {
         });
 
         await tx.transaction.createMany({
-          data: planned.flatMap((trade, index) =>
+          data: chosen.flatMap((trade, index) =>
             trade.transactions.map((leg) => ({
               tradeId: rows[index].id,
               type: leg.type,
@@ -396,15 +468,23 @@ export async function POST(request: Request) {
       { timeout: 60_000, maxWait: 15_000 },
     );
 
+    // The master is already in memory, so symbols with no chart mapping get
+    // one for free - which fixes the EOD price refresh for them too, since it
+    // reads the same rows. Hand-set mappings are never overwritten.
+    const tickersAdded = master
+      ? (await backfillTradingViewTickers(user.id, master)).added
+      : 0;
+
     invalidateUserTrades(user.id);
 
     return NextResponse.json(
       {
         ...summary,
         dryRun: false,
+        tickersAdded,
         imported: created.length,
-        open: planned.filter((trade) => trade.status === "OPEN").length,
-        closed: planned.filter((trade) => trade.status === "CLOSED").length,
+        open: chosen.filter((trade) => trade.status === "OPEN").length,
+        closed: chosen.filter((trade) => trade.status === "CLOSED").length,
         createdTradeIds: created,
       },
       { status: 201 },

@@ -26,6 +26,11 @@ let cachedMap: SymbolMap | null = null;
 let inflight: Promise<SymbolMap> | null = null;
 const subscribers = new Set<(map: SymbolMap) => void>();
 
+/** The current map, loading it once if this is the first caller. */
+export function getSymbolMap(): Promise<SymbolMap> {
+  return loadSymbolMap();
+}
+
 function loadSymbolMap(): Promise<SymbolMap> {
   if (cachedMap) return Promise.resolve(cachedMap);
   if (inflight) return inflight;
@@ -48,6 +53,22 @@ function loadSymbolMap(): Promise<SymbolMap> {
     });
 
   return inflight;
+}
+
+/**
+ * Drop the cached map and re-read it, telling every link on the page.
+ *
+ * The cache is module state, so it outlives a client-side navigation and a
+ * router.refresh(). Mappings written on the server - by a Dhan sync, or by the
+ * backfill - are invisible to an open journal until this runs, which looked
+ * exactly like the backfill having done nothing at all.
+ */
+export async function refreshSymbolMap(): Promise<SymbolMap> {
+  cachedMap = null;
+  inflight = null;
+  const map = await loadSymbolMap();
+  subscribers.forEach((notify) => notify(map));
+  return map;
 }
 
 function rememberMapping(symbol: string, quoteSymbol: string) {

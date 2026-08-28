@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CheckCircle2,
   Download,
-  ExternalLink,
   Loader2,
   RefreshCw,
-  ShieldCheck,
 } from "lucide-react";
+import { DhanTokenField, useDhanToken } from "@/components/dhan-token-field";
 
 type PreviewTrade = {
+  /** Server-side identity of the trade, sent back to say what to import. */
+  key: string;
   symbol: string;
+  /** TradingView ticker from Dhan's security list; null when unmapped. */
+  ticker: string | null;
   segment: string;
   tradeType: string;
   status: string;
@@ -42,6 +45,8 @@ type SyncResult = {
   parseErrors: string[];
   warnings: string[];
   imported?: number;
+  /** Chart tickers filled in from Dhan's security list by this import. */
+  tickersAdded?: number;
 };
 
 export function DhanSync({
@@ -56,7 +61,7 @@ export function DhanSync({
   onImported?: (imported: number) => void;
 }) {
   const router = useRouter();
-  const [accessToken, setAccessToken] = useState("");
+  const { accessToken, setAccessToken, expiresAt, remember, forget } = useDhanToken();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [competitionId, setCompetitionId] = useState("");
@@ -64,6 +69,11 @@ export function DhanSync({
   const [phase, setPhase] = useState<"idle" | "previewed" | "committed">("idle");
   const [error, setError] = useState("");
   const [result, setResult] = useState<SyncResult | null>(null);
+  /**
+   * Rows the user has ticked, by preview key. Everything arrives ticked, so
+   * this only ever records deliberate opt-outs; a fresh preview replaces it.
+   */
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function callSync(commit: boolean) {
     setIsLoading(true);
@@ -79,6 +89,9 @@ export function DhanSync({
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
           competitionId: competitionId || undefined,
+          // Only the commit needs to say what to import; the preview asks for
+          // everything in the range.
+          selectedKeys: commit ? [...selected] : undefined,
         }),
       });
 
@@ -90,10 +103,13 @@ export function DhanSync({
       }
 
       setResult(data as SyncResult);
+      // The call went through, so this token is known good - keep it for the
+      // rest of its 24 hours instead of asking for it again on the next sync.
+      remember(accessToken);
 
       if (commit) {
         setPhase("committed");
-        setAccessToken("");
+        setSelected(new Set());
         const imported = (data as SyncResult).imported ?? 0;
         // The point of an import is the journal it lands in, so end up there
         // either way - in place when the caller is already on it, otherwise by
@@ -102,6 +118,10 @@ export function DhanSync({
         else router.push(`/trades?imported=${imported}`);
       } else {
         setPhase("previewed");
+        // Everything is fair game by default - unticking is the exception.
+        setSelected(
+          new Set((data as SyncResult).preview.map((trade) => trade.key)),
+        );
         // Keep the resolved range visible and editable for the commit call.
         setFromDate(data.fromDate);
         setToDate(data.toDate);
@@ -116,12 +136,32 @@ export function DhanSync({
   function reset() {
     setPhase("idle");
     setResult(null);
+    setSelected(new Set());
     setError("");
     setFromDate("");
     setToDate("");
   }
 
+  function toggle(key: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   const canPreview = accessToken.trim().length > 0 && !isLoading;
+  const isPreviewing = phase === "previewed" && result !== null && result.dryRun;
+
+  /** What the Import button will actually write, after any unticking. */
+  const selectedTrades = useMemo(
+    () => (result?.preview ?? []).filter((trade) => selected.has(trade.key)),
+    [result, selected],
+  );
+  const allSelected =
+    isPreviewing && result.preview.length > 0 &&
+    selectedTrades.length === result.preview.length;
 
   return (
     <div className="space-y-4 rounded-2xl border border-line bg-white p-6 shadow-sm">
@@ -147,34 +187,13 @@ export function DhanSync({
       </div>
 
       {/* Token */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-ink" htmlFor="dhan-token">
-          Dhan access token
-        </label>
-        <input
-          id="dhan-token"
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={accessToken}
-          onChange={(event) => setAccessToken(event.target.value)}
-          placeholder="Paste your 24-hour access token"
-          className="w-full rounded-lg border border-line px-3 py-2 font-mono text-sm outline-none focus:border-accent"
-        />
-        <p className="flex items-center gap-1.5 text-xs text-muted">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Used for this request only. Never saved, never logged.
-        </p>
-        <a
-          href="https://web.dhan.co"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
-        >
-          Get a token: web.dhan.co &rarr; My Profile &rarr; Access DhanHQ APIs
-          <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
+      <DhanTokenField
+        id="dhan-token"
+        accessToken={accessToken}
+        onChange={setAccessToken}
+        expiresAt={expiresAt}
+        onForget={forget}
+      />
 
       {/* Optional overrides */}
       <details className="rounded-lg border border-line/70 px-3 py-2">
@@ -244,15 +263,21 @@ export function DhanSync({
           Preview sync
         </button>
 
-        {phase === "previewed" && result && result.plannedTrades > 0 && (
+        {isPreviewing && result.plannedTrades > 0 && (
           <button
             type="button"
-            disabled={isLoading || accessToken.trim().length === 0}
+            disabled={
+              isLoading ||
+              accessToken.trim().length === 0 ||
+              selectedTrades.length === 0
+            }
             onClick={() => callSync(true)}
             className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            Import {result.plannedTrades} trade{result.plannedTrades === 1 ? "" : "s"}
+            {selectedTrades.length === 0
+              ? "Nothing selected"
+              : `Import ${selectedTrades.length} trade${selectedTrades.length === 1 ? "" : "s"}`}
           </button>
         )}
       </div>
@@ -296,6 +321,14 @@ export function DhanSync({
             </div>
           </div>
 
+          {!result.dryRun && (result.tickersAdded ?? 0) > 0 && (
+            <p className="text-xs text-muted">
+              {result.tickersAdded} chart ticker
+              {result.tickersAdded === 1 ? "" : "s"} filled in from Dhan&rsquo;s security
+              list.
+            </p>
+          )}
+
           {result.tokenValidity && (
             <p className="text-xs text-muted">Token valid until {result.tokenValidity}</p>
           )}
@@ -307,10 +340,37 @@ export function DhanSync({
           )}
 
           {result.preview.length > 0 && (
+            <div className="space-y-2">
+              {isPreviewing && (
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+                  <span>
+                    {selectedTrades.length} of {result.preview.length} selected for
+                    import
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelected(
+                        allSelected
+                          ? new Set()
+                          : new Set(result.preview.map((trade) => trade.key)),
+                      )
+                    }
+                    className="underline hover:text-ink"
+                  >
+                    {allSelected ? "Clear all" : "Select all"}
+                  </button>
+                </div>
+              )}
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line text-left text-muted">
+                    {isPreviewing && (
+                      <th className="w-8 py-1.5 pr-2 font-medium">
+                        <span className="sr-only">Import</span>
+                      </th>
+                    )}
                     <th className="py-1.5 pr-3 font-medium">Symbol</th>
                     <th className="py-1.5 pr-3 font-medium">Segment</th>
                     <th className="py-1.5 pr-3 font-medium">Type</th>
@@ -321,9 +381,39 @@ export function DhanSync({
                   </tr>
                 </thead>
                 <tbody>
-                  {result.preview.map((trade, index) => (
-                    <tr key={`${trade.symbol}-${index}`} className="border-b border-line/50">
-                      <td className="py-1.5 pr-3 text-ink">{trade.symbol}</td>
+                  {result.preview.map((trade, index) => {
+                    const isChosen = selected.has(trade.key);
+                    return (
+                    <tr
+                      key={trade.key || `${trade.symbol}-${index}`}
+                      className={`border-b border-line/50 ${
+                        isPreviewing && !isChosen ? "opacity-40" : ""
+                      }`}
+                    >
+                      {isPreviewing && (
+                        <td className="py-1.5 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={isChosen}
+                            onChange={() => toggle(trade.key)}
+                            aria-label={`Import ${trade.symbol}`}
+                            className="h-3.5 w-3.5 cursor-pointer accent-accent"
+                          />
+                        </td>
+                      )}
+                      <td className="py-1.5 pr-3">
+                        {/* The ticker is the name on the chart, so it leads;
+                            the statement's company name stays underneath so a
+                            wrong mapping is visible before it is imported. */}
+                        <span className="font-medium text-ink">
+                          {trade.ticker ?? trade.symbol}
+                        </span>
+                        {trade.ticker && trade.ticker !== trade.symbol && (
+                          <span className="block text-[11px] text-muted">
+                            {trade.symbol}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-1.5 pr-3">{trade.segment}</td>
                       <td className="py-1.5 pr-3">{trade.tradeType}</td>
                       <td className="py-1.5 pr-3">{trade.status}</td>
@@ -341,9 +431,11 @@ export function DhanSync({
                         {trade.netPnl.toFixed(2)}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
+            </div>
             </div>
           )}
 
