@@ -18,7 +18,7 @@
  * ─────────────────────────────────────────────────────────────────────
  */
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -35,7 +35,15 @@ import {
   usePlotArea,
 } from "recharts";
 import Link from "next/link";
-import { Table2, BarChart3, Eye, EyeOff } from "lucide-react";
+import {
+  Table2,
+  BarChart3,
+  Eye,
+  EyeOff,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+} from "lucide-react";
 import { SymbolChartLink } from "@/components/symbol-chart-link";
 
 const PROFIT = "#157f5b";
@@ -64,7 +72,7 @@ const AXIS_LABEL = {
  * Initial allocation, banded.
  * ─────────────────────────────────────────────────────────────────────
  * R says how good a trade was; allocation says how much it was allowed to
- * matter. A +3R trade on 6% of capital and the same trade on 30% are the same
+ * matter. A +3R trade on 6% of capital and the same trade on 25% are the same
  * bar on the chart and very different lines in the P&L, so the size the
  * position was given at entry is worth reading next to its result.
  *
@@ -75,18 +83,27 @@ const AXIS_LABEL = {
  * needs no legend to guess at, and the ramp is monotonic in luminance so the
  * ordering survives greyscale, a projector, and colour-blind viewers.
  *
- * The hue is slate-blue for one reason above taste: green and red are spoken
- * for. They mean profit and loss everywhere else in this app, and an
- * amber-to-green allocation ramp put a red bar above the zero line - a winning
- * trade painted in the loss colour. Blue is the one axis with nothing else
- * claiming it, so it can carry a second variable without lying about the first.
+ * The hue is blue for one reason above taste: green and red are spoken for.
+ * They mean profit and loss everywhere else in this app, and an amber-to-green
+ * allocation ramp put a red bar above the zero line - a winning trade painted
+ * in the loss colour. Blue is the one axis with nothing else claiming it, so it
+ * can carry a second variable without lying about the first.
+ *
+ * The first version of this ramp was slate: the same five lightnesses at low
+ * chroma. It was near-impossible to tell two neighbouring bands apart, and the
+ * reason was the grey, not the spacing - desaturated steps all read as "a grey"
+ * and the eye compares them on lightness alone. Adding chroma gives it a second
+ * dimension to separate them on, and the lightness range is wider besides.
  */
 const ALLOCATION_BANDS = [
-  { id: "vgood", min: 30, label: "Very good", swatch: "#1b3a5c" },
-  { id: "good", min: 20, label: "Good", swatch: "#3a5d87" },
-  { id: "ok", min: 15, label: "OK", swatch: "#6183a8" },
-  { id: "low", min: 10, label: "Low", swatch: "#8fa8c2" },
-  { id: "vlow", min: 0, label: "Very low", swatch: "#a9bcd0" },
+  // Four steps spread over the same light-to-dark range five used to cover, so
+  // dropping a band widened every remaining gap rather than just removing the
+  // darkest colour. `ink` is what stays readable printed ON that swatch - the
+  // ramp crosses the point where white beats dark about halfway up it.
+  { id: "good", min: 20, label: "Good", swatch: "#0e2f5a", ink: "#ffffff" },
+  { id: "ok", min: 15, label: "OK", swatch: "#2a6cb5", ink: "#ffffff" },
+  { id: "low", min: 10, label: "Low", swatch: "#74a9df", ink: "#0e2f5a" },
+  { id: "vlow", min: 0, label: "Very low", swatch: "#c3d9f0", ink: "#0e2f5a" },
 ] as const;
 
 /** Sized, but we cannot say how much of the portfolio it was. */
@@ -94,6 +111,7 @@ const UNBANDED = {
   id: "none",
   label: "Not sized",
   swatch: "#cbd5e1",
+  ink: "#12283f",
 } as const;
 
 type AllocationBand = (typeof ALLOCATION_BANDS)[number];
@@ -107,23 +125,17 @@ function allocationBand(pct: number): AllocationBand | null {
 /**
  * Bar paint: allocation in the colour, open-ness in the weight of the fill.
  *
- * Open trades are hatched in their own band's colour, with a hairline of that
- * colour around the edge. Hatching is what a chart uses for a figure that is
- * not final yet, so it reads without being taught, and it leaves the size
- * reading intact - the band is still the only colour in the bar.
- *
- * The pitch matters more than it looks. Fine stripes on a 14px bar average out
- * to a flat grey wash at a glance, which marks nothing; the outline is what
- * keeps the band legible when the stripes are too small to read individually.
+ * Every bar is a solid block of its band. Open trades are not drawn
+ * differently - they are labelled, with OPEN set up the bar, or a single O
+ * where the bar is too short to take the word. A texture has to be decoded
+ * against a legend; a word does not, which is the whole argument for it.
  *
  * Sign is unaffected. It was never the fill: it is which side of the zero line
  * the bar sits on, and the ground below zero is tinted to say so.
  */
-function barPaint(trade: { allocPct: number; isOpen: boolean }) {
+function barPaint(trade: { allocPct: number }) {
   const band = allocationBand(trade.allocPct) ?? UNBANDED;
-  return trade.isOpen
-    ? { fill: `url(#r-hatch-${band.id})`, stroke: band.swatch, strokeWidth: 1 }
-    : { fill: band.swatch, stroke: "none", strokeWidth: 0 };
+  return { fill: band.swatch, ink: band.ink };
 }
 
 /**
@@ -173,18 +185,61 @@ function AllocationBar(props: {
 
   const up = payload.r >= 0;
   const paint = barPaint(payload);
-  // A stroke straddles the path, so a hatched bar has to be inset by half of
-  // it or it sits a pixel wider than its solid neighbours.
-  const inset = paint.strokeWidth / 2;
-  const bodyH = Math.max(h - inset * 2, 0.5);
+  const cx = x + width / 2;
+  // The tip end, a few pixels in, is where the label starts from.
+  const tipY = up ? top + 7 : top + h - 7;
 
   return (
-    <path
-      d={barPath(x + inset, top + inset, width - inset * 2, bodyH, 3, up)}
-      fill={paint.fill}
-      stroke={paint.stroke}
-      strokeWidth={paint.strokeWidth}
-    />
+    <g>
+      <path
+        d={barPath(x, top, width, Math.max(h, 0.5), 3, up)}
+        fill={paint.fill}
+      />
+      {payload.isOpen && (
+        <OpenMark cx={cx} tipY={tipY} barHeight={h} up={up} ink={paint.ink} band={paint.fill} />
+      )}
+    </g>
+  );
+}
+
+/**
+ * O, at the tip of an open bar.
+ *
+ * One letter, so it fits every bar at every trade count - no measuring, no two
+ * bars carrying different marks for the same fact. On a bar too short to print
+ * on at all it moves just beyond the tip and takes the band's own colour, since
+ * there is no bar underneath it to sit on.
+ */
+function OpenMark({
+  cx,
+  tipY,
+  barHeight,
+  up,
+  ink,
+  band,
+}: {
+  cx: number;
+  tipY: number;
+  barHeight: number;
+  up: boolean;
+  ink: string;
+  band: string;
+}) {
+  const outside = barHeight < 13;
+  const y = outside ? (up ? tipY - 8 : tipY + 8) : tipY;
+
+  return (
+    <text
+      x={cx}
+      y={y}
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={9}
+      fontWeight={700}
+      fill={outside ? band : ink}
+    >
+      O
+    </text>
   );
 }
 
@@ -207,6 +262,37 @@ export type RTrade = {
 };
 
 const fmtR = (value: number) => `${value > 0 ? "+" : ""}${value.toFixed(2)}R`;
+
+/** Out to this many R either side of zero the distribution is cut in halves. */
+const FINE_R = 1.5;
+
+/**
+ * The bucket a result falls in: half-R inside the fine range, whole-R outside.
+ *
+ * A bucket is named by the edge furthest from zero, so "-1R" holds everything
+ * from -0.5 down to -1.0 - a stop taken in full - and "-1.5R" holds the ones
+ * that got away from it.
+ */
+function bucketFor(r: number) {
+  const magnitude = Math.abs(r);
+  const size =
+    magnitude <= FINE_R
+      ? Math.max(Math.ceil(magnitude * 2) / 2, 0.5)
+      : Math.ceil(magnitude);
+  // An exact 0.00R is counted as the smallest win rather than dropped: there is
+  // no zero bucket for it to live in, and silently losing it would stop the
+  // bars adding up to the trade count.
+  return r < 0 ? -size : size;
+}
+
+/** Every bucket from `low` to `high`, empties included, in reading order. */
+function bucketScale(low: number, high: number) {
+  const values: number[] = [];
+  for (let whole = Math.floor(low); whole <= -2; whole++) values.push(whole);
+  values.push(-FINE_R, -1, -0.5, 0.5, 1, FINE_R);
+  for (let whole = 2; whole <= Math.ceil(high); whole++) values.push(whole);
+  return values.filter((value) => value >= low && value <= high);
+}
 
 /** "2026-08#4" -> "4". The axis shows the number; the key carries the month. */
 const tickNumber = (value: string) => value.split("#")[1] ?? value;
@@ -241,33 +327,6 @@ function Stat({
 }
 
 type MonthSpan = { key: string; label: string; start: number; end: number };
-
-/**
- * One diagonal hatch per band, for the open trades.
- *
- * Rendered before the bars so the pattern ids exist when the bars ask for
- * them. The pitch is deliberately coarse - fine stripes on a 14px bar turn to
- * a flat grey wash at a glance, which defeats the point of marking them.
- */
-function HatchDefs() {
-  return (
-    <defs>
-      {[...ALLOCATION_BANDS, UNBANDED].map((band) => (
-        <pattern
-          key={band.id}
-          id={`r-hatch-${band.id}`}
-          width={7}
-          height={7}
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <rect width={7} height={7} fill="#ffffff" />
-          <rect width={2.6} height={7} fill={band.swatch} />
-        </pattern>
-      ))}
-    </defs>
-  );
-}
 
 /**
  * WIN and LOSS, anchored to the ends of the value axis.
@@ -390,22 +449,6 @@ function MonthDividers({
   );
 }
 
-/**
- * The swatch that stands in for a bar, at 8-10px.
- *
- * An SVG pattern cannot be used in the DOM, so the hatch is rebuilt as a CSS
- * gradient at a pitch that survives the size. Same reading as the chart: solid
- * is settled, striped is still open.
- */
-function bandSwatchStyle(swatch: string, isOpen: boolean) {
-  return isOpen
-    ? {
-        backgroundImage: `repeating-linear-gradient(45deg, ${swatch} 0 1.5px, #ffffff 1.5px 3.2px)`,
-        boxShadow: `inset 0 0 0 1px ${swatch}`,
-      }
-    : { background: swatch };
-}
-
 /** The five bands, low to high, the way the column and the chart both read. */
 const BANDS_ASCENDING = [...ALLOCATION_BANDS].reverse();
 
@@ -422,6 +465,49 @@ function bandRange(index: number) {
  * right", which is what allocation is. The breakpoints sit under the joins, so
  * the legend doubles as the axis for a variable that has no axis of its own.
  */
+type RSortKey = "seq" | "symbol" | "entry" | "stop" | "alloc" | "pnl" | "r";
+
+/** Ascending reads better for names and for time; biggest-first for amounts. */
+const ASCENDING_FIRST: RSortKey[] = ["seq", "symbol", "entry"];
+
+function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
+  if (!active) return <ArrowUpDown className="ml-0.5 inline h-2.5 w-2.5 opacity-30" />;
+  return dir === "asc" ? (
+    <ArrowUp className="ml-0.5 inline h-2.5 w-2.5 opacity-80" />
+  ) : (
+    <ArrowDown className="ml-0.5 inline h-2.5 w-2.5 opacity-80" />
+  );
+}
+
+function SortTh({
+  children,
+  sKey,
+  sortKey,
+  sortDir,
+  onSort,
+  className = "",
+}: {
+  children: React.ReactNode;
+  sKey: RSortKey;
+  sortKey: RSortKey;
+  sortDir: "asc" | "desc";
+  onSort: (key: RSortKey) => void;
+  className?: string;
+}) {
+  return (
+    <th
+      className={`cursor-pointer select-none px-3 py-2 font-medium transition-colors hover:bg-slate-200/60 hover:text-slate-800 ${className}`}
+      onClick={() => onSort(sKey)}
+      aria-sort={
+        sortKey === sKey ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+      }
+    >
+      {children}
+      <SortIcon active={sortKey === sKey} dir={sortDir} />
+    </th>
+  );
+}
+
 /**
  * What the window actually contains.
  *
@@ -489,11 +575,10 @@ function AllocationLegend({
 
       {openCount > 0 && (
         <div className="flex items-center gap-1.5 pb-[15px] text-[10px] text-muted">
-          <span
-            className="h-2.5 w-2.5 rounded-[2px]"
-            style={bandSwatchStyle("#64748b", true)}
-          />
-          Hatched: open, marked to market ({openCount})
+          <span className="flex h-3.5 w-3.5 items-center justify-center rounded-[2px] bg-slate-500 text-[8px] font-bold text-white">
+            O
+          </span>
+          on the bar: open, marked to market ({openCount})
         </div>
       )}
     </div>
@@ -523,6 +608,17 @@ export function RMultipleChart({
   month?: string;
 }) {
   const [view, setView] = useState<"chart" | "table">("chart");
+  const [sortKey, setSortKey] = useState<RSortKey>("seq");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function handleSort(key: RSortKey) {
+    if (key === sortKey) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(ASCENDING_FIRST.includes(key) ? "asc" : "desc");
+  }
 
   /** Keeps the date range while flipping the open-trades switch. */
   const rangeHref = (nextIncludeOpen: boolean) => {
@@ -607,6 +703,44 @@ export function RMultipleChart({
     });
   }, [trades]);
 
+  /**
+   * The table's own order.
+   *
+   * "seq" and "entry" are the same sort: the rows arrive in entry order, so
+   * asking for chronological is asking for the order they are already in. Both
+   * headers exist because both questions get asked.
+   *
+   * Ties fall back to the original position, so the sort is stable and two
+   * renders of the same data never disagree about the order.
+   */
+  const sortedRows = useMemo(() => {
+    const rows = bars.map((trade, index) => ({ trade, index }));
+    const direction = sortDir === "asc" ? 1 : -1;
+
+    return rows
+      .sort((a, b) => {
+        if (sortKey === "symbol") {
+          return a.trade.symbol.localeCompare(b.trade.symbol) * direction || a.index - b.index;
+        }
+        const value = (row: (typeof rows)[number]) => {
+          switch (sortKey) {
+            case "stop":
+              return row.trade.stopLossPct;
+            case "alloc":
+              return row.trade.allocPct;
+            case "pnl":
+              return row.trade.pnl;
+            case "r":
+              return row.trade.r;
+            default:
+              return row.index;
+          }
+        };
+        return (value(a) - value(b)) * direction || a.index - b.index;
+      })
+      .map((row) => row.trade);
+  }, [bars, sortKey, sortDir]);
+
   /** Where each month starts and ends in that sequence. */
   const monthSpans = useMemo(() => {
     const spans: MonthSpan[] = [];
@@ -632,14 +766,21 @@ export function RMultipleChart({
     });
   }, [bars]);
 
-  /** Counts per whole-R bucket, so the shape of the edge is visible at a glance. */
+  /**
+   * Counts per bucket, half an R near the line and a whole R out in the tail.
+   * ─────────────────────────────────────────────────────────────────────
+   * The interesting part of this distribution is all within about 1.5R of
+   * zero: whether a stop was honoured (-1R) or overrun (-1.5R) or cut early
+   * (-0.5R), and whether a win got past the first target. Out past that the
+   * question is only "how far", and half-R buckets there just halve every
+   * count and double the number of labels.
+   *
+   * So the scale is fine where the reading is and coarse where it is not.
+   */
   const distribution = useMemo(() => {
     const buckets = new Map<number, number>();
     for (const trade of trades) {
-      // Losses floor, wins ceil, so nothing lands in a "0R" bucket that would
-      // mix the two sides of the line.
-      const bucket = trade.r < 0 ? Math.floor(trade.r) : Math.ceil(trade.r);
-      buckets.set(bucket, (buckets.get(bucket) ?? 0) + 1);
+      buckets.set(bucketFor(trade.r), (buckets.get(bucketFor(trade.r)) ?? 0) + 1);
     }
     // Every bucket between the extremes, including the empty ones. Dropping
     // them closes the gaps and turns a barbell into a tidy little staircase -
@@ -647,15 +788,10 @@ export function RMultipleChart({
     const keys = [...buckets.keys()];
     const low = Math.min(...keys);
     const high = Math.max(...keys);
-    const span: number[] = [];
-    for (let bucket = low; bucket <= high; bucket++) {
-      // No 0R bucket exists: losses floor and wins ceil, so nothing rounds to it.
-      if (bucket !== 0) span.push(bucket);
-    }
 
-    return span.map((bucket) => ({
+    return bucketScale(low, high).map((bucket) => ({
       bucket,
-      label: bucket < 0 ? `${bucket}R` : `+${bucket}R`,
+      label: `${bucket < 0 ? "-" : "+"}${Math.abs(bucket)}R`,
       count: buckets.get(bucket) ?? 0,
     }));
   }, [trades]);
@@ -772,32 +908,35 @@ export function RMultipleChart({
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-line text-left text-muted">
-                <th className="px-3 py-2 font-medium">#</th>
-                <th className="px-3 py-2 font-medium">Symbol</th>
-                <th className="px-3 py-2 font-medium">Entry</th>
-                <th className="px-3 py-2 text-right font-medium">Stop</th>
-                <th className="px-3 py-2 text-right font-medium">Alloc</th>
-                <th className="px-3 py-2 text-right font-medium">P&amp;L</th>
-                <th className="px-3 py-2 text-right font-medium">R</th>
+                {(
+                  [
+                    ["seq", "#", ""],
+                    ["symbol", "Symbol", ""],
+                    ["entry", "Entry", ""],
+                    ["stop", "Stop", "text-right"],
+                    ["alloc", "Alloc", "text-right"],
+                    ["pnl", "P&L", "text-right"],
+                    ["r", "R", "text-right"],
+                  ] as [RSortKey, string, string][]
+                ).map(([key, label, align]) => (
+                  <SortTh
+                    key={key}
+                    sKey={key}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                    className={align}
+                  >
+                    {label}
+                  </SortTh>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {bars.map((trade, index) => {
+              {sortedRows.map((trade) => {
                 const band = allocationBand(trade.allocPct);
-                const startsMonth = index === 0 || bars[index - 1].month !== trade.month;
                 return (
-                <Fragment key={trade.id}>
-                {startsMonth && (
-                  <tr className="bg-canvas/70">
-                    <td
-                      colSpan={7}
-                      className="border-y border-line/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted"
-                    >
-                      {trade.monthLabel}
-                    </td>
-                  </tr>
-                )}
-                <tr className="border-b border-line/50">
+                <tr key={trade.id} className="border-b border-line/50">
                   <td className="px-3 py-1.5 text-muted">{trade.n}</td>
                   <td className="px-3 py-1.5">
                     <SymbolChartLink symbol={trade.symbol} asTicker className="font-medium text-ink" />
@@ -822,7 +961,7 @@ export function RMultipleChart({
                       >
                         <span
                           className="h-2 w-2 shrink-0 rounded-[2px]"
-                          style={bandSwatchStyle(band.swatch, trade.isOpen)}
+                          style={{ background: band.swatch }}
                         />
                         <span className="tabular-nums text-slate-600">
                           {trade.allocPct.toFixed(1)}%
@@ -841,7 +980,6 @@ export function RMultipleChart({
                     {fmtR(trade.r)}
                   </td>
                 </tr>
-                </Fragment>
                 );
               })}
             </tbody>
@@ -874,7 +1012,6 @@ export function RMultipleChart({
             <div className="h-[300px] w-full sm:h-[340px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={bars} margin={{ top: 22, right: 64, left: 0, bottom: 4 }}>
-                  <HatchDefs />
                   {/* First, so everything else draws on top of it. */}
                   <ReferenceArea
                     y1={domain[0]}
@@ -934,7 +1071,7 @@ export function RMultipleChart({
                               <p className="flex items-center gap-1.5 text-[11px] text-muted">
                                 <span
                                   className="h-2 w-2 shrink-0 rounded-[2px]"
-                                  style={bandSwatchStyle(band.swatch, trade.isOpen)}
+                                  style={{ background: band.swatch }}
                                 />
                                 {trade.allocPct.toFixed(1)}% allocation &middot; {band.label}
                               </p>
@@ -1069,8 +1206,9 @@ export function RMultipleChart({
               <figcaption className="mb-1 px-1">
                 <h3 className="text-sm font-semibold text-ink">Where the trades land</h3>
                 <p className="text-[11px] text-muted">
-                  Count per whole R. A healthy shape is a wall at &minus;1R and a long tail
-                  to the right.
+                  Half-R buckets out to &plusmn;1.5R, whole R beyond. A healthy shape is a
+                  wall at &minus;1R &mdash; stops taken in full, not drifting past them &mdash;
+                  and a long tail to the right.
                 </p>
               </figcaption>
               <div className="h-[220px] w-full">

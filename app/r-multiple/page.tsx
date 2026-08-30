@@ -196,12 +196,6 @@ export default async function RMultiplePage({ searchParams }: Props) {
             <Target className="h-5 w-5 text-accent" />
             R-Multiples
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Every trade as a multiple of what it risked. Height is how good the trade was,
-            with position size taken out; colour puts it back, as the share of the portfolio
-            the trade was given at entry. Open positions count at their marked-to-market
-            value and are drawn hatched.
-          </p>
         </div>
 
         <RMultipleRange
