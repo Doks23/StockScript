@@ -31,6 +31,12 @@ type Props = {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Sortable, comparable month key - the identity the chart groups the run by. */
+function monthKey(date: Date | null) {
+  if (!date) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 /** Midnight local, so a day picked in the UI includes everything traded that day. */
 function startOfDay(value: string) {
   const [year, month, day] = value.split("-").map(Number);
@@ -151,10 +157,22 @@ export default async function RMultiplePage({ searchParams }: Props) {
           month: "short",
           year: "2-digit",
         }) ?? "—",
+      // The month the trade was entered in, so the chart can rule the sequence
+      // off into months and start counting again at each one.
+      month: monthKey(trade.row.entryLegs[0]?.dateTime ?? null),
+      monthLabel:
+        trade.row.entryLegs[0]?.dateTime.toLocaleDateString("en-IN", {
+          month: "short",
+          year: "2-digit",
+        }) ?? "—",
       r: Number(trade.grossR.toFixed(2)),
       pnl: trade.pnlAmount,
       stopLossPct: trade.stopLossPct,
       assumedStop: trade.usedDefaultStopLoss,
+      // Capital committed at entry, not what is still open: a trade that has
+      // been half sold was still sized at its full weight when it was taken,
+      // and closed trades have no open capital at all.
+      allocPct: capital > 0 ? (trade.row.capital / capital) * 100 : 0,
       setups: trade.setups,
     }))
     // Oldest first: the sequence is the point, and the query returns newest first.
@@ -179,9 +197,10 @@ export default async function RMultiplePage({ searchParams }: Props) {
             R-Multiples
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Every trade as a multiple of what it risked. Position size drops out, so what
-            is left is how good the trades were. Open positions count at their marked-to-market
-            value and are drawn in light green.
+            Every trade as a multiple of what it risked. Height is how good the trade was,
+            with position size taken out; colour puts it back, as the share of the portfolio
+            the trade was given at entry. Open positions count at their marked-to-market
+            value and are drawn hatched.
           </p>
         </div>
 
