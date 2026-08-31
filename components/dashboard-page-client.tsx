@@ -494,18 +494,15 @@ export function DashboardPageClient({
       return { type: first, count };
     })();
 
-    const totalReturnPct =
-      metrics.maxCapitalDeployed > 0
-        ? (totalPnl / metrics.maxCapitalDeployed) * 100
-        : 0;
-    const realizedReturnPct =
-      metrics.maxCapitalDeployed > 0
-        ? (realizedPnl / metrics.maxCapitalDeployed) * 100
-        : 0;
-    const unrealizedReturnPct =
-      metrics.maxCapitalDeployed > 0
-        ? (unrealizedPnl / metrics.maxCapitalDeployed) * 100
-        : 0;
+    // Against portfolio capital, not against the capital these trades happened
+    // to deploy. Deployed capital is a different base for every window - it
+    // moves with how much you were in the market - so returns measured on it
+    // cannot be compared across periods and flatter a month where little was
+    // committed. Portfolio capital is the same denominator Open Risk and the
+    // journal's Impact % already use, so the whole row now agrees.
+    const totalReturnPct = userCapital > 0 ? (totalPnl / userCapital) * 100 : 0;
+    const realizedReturnPct = userCapital > 0 ? (realizedPnl / userCapital) * 100 : 0;
+    const unrealizedReturnPct = userCapital > 0 ? (unrealizedPnl / userCapital) * 100 : 0;
 
     return {
       totalPnl,

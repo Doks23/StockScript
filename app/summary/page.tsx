@@ -38,21 +38,22 @@ const MONTH_COLUMNS = [
   { key: "losses", label: "Losses", align: "right" as const },
   { key: "breakeven", label: "Breakeven", align: "right" as const },
   { key: "winPct", label: "Win %", align: "right" as const },
-  { key: "returnPct", label: "Return %", align: "right" as const },
   { key: "portfolioReturnPct", label: "Portfolio %", align: "right" as const },
   { key: "winAverage", label: "Avg Win", align: "right" as const },
   { key: "lossAverage", label: "Avg Loss", align: "right" as const },
   { key: "avgStopLossPct", label: "Avg SL", align: "right" as const },
-  { key: "avgWinStopLossPct", label: "Avg SL Win", align: "right" as const },
-  { key: "avgLossStopLossPct", label: "Avg SL Loss", align: "right" as const },
   { key: "simpleRR", label: "RR", align: "right" as const },
   { key: "grossR", label: "Gross R", align: "right" as const },
   { key: "netR", label: "Net R", align: "right" as const },
   { key: "maxWin", label: "Best", align: "right" as const },
   { key: "maxLoss", label: "Worst", align: "right" as const },
   { key: "maxR", label: "Max R", align: "right" as const },
-  { key: "avgWinDays", label: "Avg Win days", align: "right" as const },
-  { key: "avgLossDays", label: "Avg Loss days", align: "right" as const },
+  { key: "avgWinDays", label: "Avg Win D", align: "right" as const },
+  { key: "avgLossDays", label: "Avg Loss D", align: "right" as const },
+  // The stop-loss split is reference material, not a result, so it sits after
+  // the columns the month is actually judged on.
+  { key: "avgWinStopLossPct", label: "Avg SL Win", align: "right" as const },
+  { key: "avgLossStopLossPct", label: "Avg SL Loss", align: "right" as const },
 ] as const;
 
 const YEAR_COLUMNS = [
@@ -298,20 +299,20 @@ function SetupSummaryTable({
     { key: "losses", label: "Losses", align: "right" as const },
     { key: "breakeven", label: "Breakeven", align: "right" as const },
     { key: "winPct", label: "Win %", align: "right" as const },
-    { key: "returnPct", label: "Return %", align: "right" as const },
     { key: "portfolioReturnPct", label: "Portfolio %", align: "right" as const },
     { key: "winAverage", label: "Avg Win", align: "right" as const },
     { key: "lossAverage", label: "Avg Loss", align: "right" as const },
     { key: "avgStopLossPct", label: "Avg SL", align: "right" as const },
-    { key: "avgWinStopLossPct", label: "Avg SL Win", align: "right" as const },
-    { key: "avgLossStopLossPct", label: "Avg SL Loss", align: "right" as const },
     { key: "simpleRR", label: "RR", align: "right" as const },
     { key: "awlr", label: "AWLR", align: "right" as const },
     { key: "grossR", label: "Gross R", align: "right" as const },
     { key: "netR", label: "Net R", align: "right" as const },
     { key: "maxR", label: "Max R", align: "right" as const },
-    { key: "avgWinDays", label: "Avg Win days", align: "right" as const },
-    { key: "avgLossDays", label: "Avg Loss days", align: "right" as const },
+    { key: "avgWinDays", label: "Avg Win D", align: "right" as const },
+    { key: "avgLossDays", label: "Avg Loss D", align: "right" as const },
+    // Same as the monthly table: the stop-loss split trails the results.
+    { key: "avgWinStopLossPct", label: "Avg SL Win", align: "right" as const },
+    { key: "avgLossStopLossPct", label: "Avg SL Loss", align: "right" as const },
   ] as const;
 
   return (
@@ -582,7 +583,7 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
             Gross R = Net P/L % ÷ Stop Loss % · Net R = Gross R × Risk %
           </span>
           <span>
-            Return % = P&amp;L ÷ capital deployed · Portfolio % = P&amp;L ÷ portfolio capital
+            Portfolio % = P&amp;L ÷ portfolio capital, so the months add up to the year
           </span>
           <span>
             Breakeven = net return within ±{formatBreakevenBand(breakevenBand)}% of capital · Avg SL
