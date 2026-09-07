@@ -38,6 +38,7 @@ import {
   getTotalExitQty,
   getLastExitTime,
   calculateOpenPnl,
+  calculateTradePnl,
 } from "@/lib/trade-utils";
 import {
   buildSummaryTrades,
@@ -164,10 +165,16 @@ function computeOpenPositions(
       const mtmPnl = calculateOpenPnl(t);
       const capital = entry * qty;
       const allocationPct = userCapital > 0 ? (capital / userCapital) * 100 : 0;
+      // Risk still live on the table: what the remaining quantity loses at the stop.
       const riskAmount = sl ? Math.abs(entry - sl) * qty : 0;
       const riskPct = userCapital > 0 ? (riskAmount / userCapital) * 100 : 0;
       const slPct = sl && firstEntry > 0 ? Math.abs(((sl - firstEntry) / firstEntry) * 100) : null;
-      const rMultiple = riskAmount > 0 ? mtmPnl / riskAmount : 0;
+      // R is the whole trade's P&L over the risk the whole trade started with, so
+      // the numerator and the denominator span the same quantity. Measuring MTM on
+      // the full position against the remainder's risk doubled R once you scaled
+      // out. This is the same base lib/journal-summary.ts risk profile uses.
+      const initialRisk = sl ? Math.abs(entry - sl) * entryQty : 0;
+      const rMultiple = initialRisk > 0 ? mtmPnl / initialRisk : 0;
       const ageDays = differenceInCalendarDays(new Date(), t.firstEntryAt ?? t.createdAt);
 
       let status: "OpenRisk" | "BreakEven" | "Profitable";
@@ -333,9 +340,18 @@ export function DashboardPageClient({
     const opened = filteredTrades.filter((t) => t.status === "OPEN");
 
     const totalPnl = metrics.totalMtmPnl;
-    const realizedPnl = closed.reduce((s, t) => s + (t.netPnl ?? 0), 0);
-    const unrealizedPnl = opened.reduce(
-      (s, t) => s + calculateOpenPnl(t),
+    // Split on what the money is doing, not on trade status. A partially exited
+    // trade is still OPEN, but the P&L on the quantity it has already sold is
+    // booked cash and belongs in Realized. The two cards still add up to Total
+    // P&L; the split now agrees with the journal's R and U totals.
+    const openPnls = opened.map((t) => calculateTradePnl(t));
+    const closedRealizedPnl = closed.reduce((s, t) => s + (t.netPnl ?? 0), 0);
+    const realizedPnl =
+      closedRealizedPnl + openPnls.reduce((s, p) => s + p.realizedPnl, 0);
+    const unrealizedPnl = openPnls.reduce((s, p) => s + p.unrealizedPnl, 0);
+    /** Open trades marked to market - realized plus unrealized. */
+    const openMtmPnl = openPnls.reduce(
+      (s, p) => s + p.realizedPnl + p.unrealizedPnl,
       0,
     );
 
@@ -349,7 +365,7 @@ export function DashboardPageClient({
     );
 
     const expectancy =
-      closed.length > 0 ? realizedPnl / closed.length : 0;
+      closed.length > 0 ? closedRealizedPnl / closed.length : 0;
 
     const closedRRs = closed.map((t) => {
       const entry = getWeightedEntryPrice(t);
@@ -508,6 +524,7 @@ export function DashboardPageClient({
       totalPnl,
       realizedPnl,
       unrealizedPnl,
+      openMtmPnl,
       totalReturnPct,
       realizedReturnPct,
       unrealizedReturnPct,
@@ -1293,7 +1310,7 @@ export function DashboardPageClient({
           <span className="text-slate-400">Avg P&L/Day:</span>
           <span
             className={`font-semibold ${
-              derived.totalDays > 0 && derived.unrealizedPnl / derived.totalDays >= 0
+              derived.totalDays > 0 && derived.openMtmPnl / derived.totalDays >= 0
                 ? "text-profit"
                 : "text-loss"
             }`}
@@ -1301,7 +1318,7 @@ export function DashboardPageClient({
             {showAmounts
               ? formatCurrency(
                   derived.totalDays > 0
-                    ? derived.unrealizedPnl / derived.totalDays
+                    ? derived.openMtmPnl / derived.totalDays
                     : 0,
                 )
               : "•••"}
@@ -1312,7 +1329,7 @@ export function DashboardPageClient({
           <span className="text-slate-400">Avg P&L/Trade:</span>
           <span
             className={`font-semibold ${
-              metrics.openTrades > 0 && derived.unrealizedPnl >= 0
+              metrics.openTrades > 0 && derived.openMtmPnl >= 0
                 ? "text-profit"
                 : "text-loss"
             }`}
@@ -1320,7 +1337,7 @@ export function DashboardPageClient({
             {showAmounts
               ? formatCurrency(
                   metrics.openTrades > 0
-                    ? derived.unrealizedPnl / metrics.openTrades
+                    ? derived.openMtmPnl / metrics.openTrades
                     : 0,
                 )
               : "•••"}
