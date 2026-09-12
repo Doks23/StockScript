@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { DhanTokenField, useDhanToken } from "@/components/dhan-token-field";
+import { runExcursionRefresh } from "@/lib/excursion-refresh";
 
 type PreviewRow = {
   kind: "attach" | "create";
@@ -120,6 +121,11 @@ export function DhanTodaySync({
       remember(accessToken);
 
       if (commit) {
+        // Today's fills open, add to or close positions - measure their MAE /
+        // MFE now, in the background, while the token is at hand.
+        void runExcursionRefresh(accessToken, "pending").catch((err) =>
+          console.warn("MAE / MFE refresh after today's sync failed:", err),
+        );
         const applied = data as TodayResult;
         setPhase("applied");
         onApplied?.(

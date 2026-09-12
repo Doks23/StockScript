@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { DhanTokenField, useDhanToken } from "@/components/dhan-token-field";
+import { runExcursionRefresh } from "@/lib/excursion-refresh";
 
 type PreviewTrade = {
   /** Server-side identity of the trade, sent back to say what to import. */
@@ -108,6 +109,12 @@ export function DhanSync({
       remember(accessToken);
 
       if (commit) {
+        // Measure the new trades' MAE / MFE while the token is at hand, and
+        // refresh open positions. It carries on in the background, past the
+        // navigation below; the MAE / MFE tab reads whatever it stored.
+        void runExcursionRefresh(accessToken, "pending").catch((err) =>
+          console.warn("MAE / MFE refresh after the Dhan import failed:", err),
+        );
         setPhase("committed");
         setSelected(new Set());
         const imported = (data as SyncResult).imported ?? 0;

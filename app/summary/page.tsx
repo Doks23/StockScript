@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BarChart3, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { requireActiveUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { MaeMfePanel } from "@/components/mae-mfe-panel";
 import { buildGroupedJournalRows } from "@/lib/trade-utils";
 import {
   BREAKEVEN_BAND_PRESETS,
@@ -417,7 +418,11 @@ function YearComparisonRow({
 
 export default async function TradeSummaryPage({ searchParams }: Props) {
   const user = await requireActiveUser();
-  const activeTab = searchParams.tab === "setup" ? "setup" : "monthly";
+  const activeTab = searchParams.tab === "setup"
+    ? "setup"
+    : searchParams.tab === "excursion"
+      ? "excursion"
+      : "monthly";
   const breakevenBand = resolveBreakevenBand(searchParams.be);
   const bandOptions = Array.from(new Set([...BREAKEVEN_BAND_PRESETS, breakevenBand])).sort(
     (a, b) => a - b,
@@ -524,6 +529,16 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
             >
               Monthly Summary
             </Link>
+            <Link
+              href={summaryHref({ tab: "excursion", year: selectedYear, band: breakevenBand })}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                activeTab === "excursion"
+                  ? "bg-white text-ink shadow-sm"
+                  : "text-slate-500 hover:text-ink"
+              }`}
+            >
+              MAE / MFE
+            </Link>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -599,7 +614,11 @@ export default async function TradeSummaryPage({ searchParams }: Props) {
       </section>
 
       <section className="rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
-        {closedTrades.length > 0 ? (
+        {activeTab === "excursion" ? (
+          <div className="p-2 sm:p-3">
+            <MaeMfePanel initialYear={selectedYear} />
+          </div>
+        ) : closedTrades.length > 0 ? (
           activeTab === "monthly" ? (
             <MonthlySummaryTable
               rows={monthlySummary.rows}

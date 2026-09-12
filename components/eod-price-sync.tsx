@@ -12,6 +12,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, IndianRupee, Loader2, X } from "lucide-react";
+import { useDhanToken } from "@/components/dhan-token-field";
+import { runExcursionRefresh } from "@/lib/excursion-refresh";
 
 type PricedRow = {
   symbol: string;
@@ -65,6 +67,8 @@ export function useEodPriceSync(onUpdated?: () => void) {
   const [accepted, setAccepted] = useState<Record<string, string>>({});
   /** Tickers typed in by hand for symbols nothing could resolve. */
   const [manual, setManual] = useState<Record<string, string>>({});
+  /** The Dhan token a sync left in this browser, if any - EOD prices themselves need none. */
+  const { accessToken } = useDhanToken();
 
   async function call(commit: boolean) {
     setIsLoading(true);
@@ -97,6 +101,13 @@ export function useEodPriceSync(onUpdated?: () => void) {
         setAccepted({});
         setManual({});
         onUpdated?.();
+        // Open positions have moved since they were last measured. Only when a
+        // Dhan token is already remembered - this button never asks for one.
+        if (accessToken.trim()) {
+          void runExcursionRefresh(accessToken.trim(), "open").catch((err) =>
+            console.warn("MAE / MFE refresh after the EOD update failed:", err),
+          );
+        }
       } else {
         // Pre-tick every proposal so the common case is one extra click, while
         // still forcing the user past a screen that names the matched company.

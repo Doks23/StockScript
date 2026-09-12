@@ -65,6 +65,14 @@ model Trade {
   proficiency   String?
   setup         String?
   reviewed      Boolean       @default(false)
+  /// MAE / MFE measured on Dhan minute bars (lib/trade-excursions.ts). A closed
+  /// trade's price path never changes, so it is measured once and reused until
+  /// excursionKey stops matching - its fills, stop or P&L changed, or the
+  /// calculation's version moved on. Open trades are re-measured on each Dhan
+  /// sync and EOD refresh; excursionAt says how current they are.
+  excursion     Json?
+  excursionKey  String?
+  excursionAt   DateTime?
   competition   Competition?  @relation(fields: [competitionId], references: [id])
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   images        TradeImage[]
