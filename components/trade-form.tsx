@@ -478,7 +478,12 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
     if (rawSl.endsWith("%")) {
       const pct = parseFloat(rawSl);
       if (!isNaN(pct) && avgEntryPrice > 0) {
-        stopLoss = avgEntryPrice + (avgEntryPrice * pct) / 100;
+        // A percentage is the distance to the stop, and the stop sits on the
+        // losing side: below a long, above a short. "2.5%" and "-2.5%" both mean
+        // 2.5% of risk - adding it unconditionally put every long's stop above
+        // its entry.
+        const distance = (avgEntryPrice * Math.abs(pct)) / 100;
+        stopLoss = tradeType === "SHORT" ? avgEntryPrice + distance : avgEntryPrice - distance;
       }
     } else if (rawSl !== "") {
       const num = parseFloat(rawSl);
