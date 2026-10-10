@@ -75,6 +75,8 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   const [todayOpen, setTodayOpen] = useState(false);
   const [mappingTickers, setMappingTickers] = useState(false);
   const [slFetching, setSlFetching] = useState(false);
+  const slFileInput = useRef<HTMLInputElement>(null);
+  const slCsvText = useRef("");
   type SlFetchMatched = {
     tradeId: string;
     symbol: string;
@@ -232,7 +234,8 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
    * Entry / Qty / SL / SL% per candidate. We show them in a confirm panel
    * with checkboxes; nothing is written until the user clicks Apply.
    */
-  const fetchSlFromAlgo = useCallback(async () => {
+  const fetchSlFromAlgo = useCallback(async (csvText: string) => {
+    slCsvText.current = csvText;
     setSlFetching(true);
     setSlResult(null);
     setSlSelected(new Set());
@@ -243,6 +246,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          csvText,
           filters: {
             symbol: filters.symbol,
             status: filters.status,
@@ -283,6 +287,26 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
    * The server recomputes the matches so the client can't inject arbitrary
    * SL numbers; only the ids the user chose actually get written.
    */
+  const onSlFilePicked = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+      try {
+        await fetchSlFromAlgo(await file.text());
+      } catch (err) {
+        setSlResult({
+          csvRows: 0,
+          candidateTrades: 0,
+          matched: [],
+          unmatched: [],
+          error: (err as Error).message || "Could not read the CSV file.",
+        });
+      }
+    },
+    [fetchSlFromAlgo],
+  );
+
   const applySlFromAlgo = useCallback(async () => {
     if (!slResult || slSelected.size === 0) return;
     setSlApplying(true);
@@ -292,6 +316,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apply: true,
+          csvText: slCsvText.current,
           tradeIds: Array.from(slSelected),
           filters: {
             symbol: filters.symbol,
@@ -575,10 +600,17 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               <Tag size={14} className={mappingTickers ? "animate-pulse" : ""} />
               <span className="hidden xl:inline">Tickers</span>
             </button>
+            <input
+              ref={slFileInput}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={onSlFilePicked}
+            />
             <button
-              onClick={fetchSlFromAlgo}
+              onClick={() => slFileInput.current?.click()}
               disabled={slFetching}
-              data-tip="Backfill initial Stop Loss on empty-SL trades from algo ledger"
+              data-tip="Pick trades_events_latest.csv to backfill initial Stop Loss on empty-SL trades"
               className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
               aria-label="Fetch SL from algo"
             >

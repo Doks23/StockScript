@@ -1,7 +1,7 @@
 /**
  * POST /api/trades/fetch-sl
  * ─────────────────────────────────────────────────────────────────────
- * Reads the algo's trades-only CSV (synced to Google Drive) and backfills the initial Stop Loss on
+ * Reads the algo's trades-only CSV (picked by the user in the browser) and backfills the initial Stop Loss on
  * every journal trade that still has no SL. The journal is the source of
  * truth; the algo is the source of the number. Nothing else is copied over.
  *
@@ -14,9 +14,6 @@
  * ─────────────────────────────────────────────────────────────────────
  */
 
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
@@ -25,15 +22,9 @@ import { invalidateUserTrades } from "@/lib/cache";
 
 export const maxDuration = 60;
 
-/**
- * Fixed path - Google Drive for Desktop syncs the algo's daily backup here,
- * overwriting the same file each trading day. Not configurable; if
- * the file isn't present we return a clear error rather than guessing.
- */
-const CSV_PATH = path.join(
-  os.homedir(),
-  "Library/CloudStorage/GoogleDrive-doks23@gmail.com/My Drive/DhanHQ_Backkup/trades_events_latest.csv",
-);
+// The deployed server can't see the user's Drive folder, so the browser reads
+// trades_events_latest.csv and sends its text in the request body.
+const MAX_CSV_CHARS = 5_000_000;
 
 type StopPlaced = {
   /** ISO timestamp from the ledger. Already carries +05:30 offset. */
@@ -197,6 +188,7 @@ export async function POST(request: Request) {
     //   2. apply=true + tradeIds[]: recompute the matches server-side so the
     //      client can't inject an arbitrary SL, then write only the chosen ids.
     let apply = false;
+    let csvText = "";
     let chosenIds: Set<string> | null = null;
     // Journal filters piped through from the UI so Fetch SL only touches
     // the trades the user is currently looking at. All optional.
@@ -207,6 +199,7 @@ export async function POST(request: Request) {
     try {
       const body = await request.json();
       apply = body?.apply === true;
+      if (typeof body?.csvText === "string") csvText = body.csvText;
       if (apply && Array.isArray(body?.tradeIds)) {
         chosenIds = new Set<string>(
           body.tradeIds.filter((id: unknown) => typeof id === "string"),
@@ -225,19 +218,14 @@ export async function POST(request: Request) {
       // Empty body / not JSON - treat as preview with no filters.
     }
 
-    // 1. Read CSV. Fail loudly if the file isn't present or readable - the
-    //    user is the one who maintains this path, so a clear error is the
-    //    right outcome (not a silent "0 matched").
-    let csvText: string;
-    try {
-      csvText = await fs.readFile(CSV_PATH, "utf-8");
-    } catch (e: any) {
+    if (!csvText.trim()) {
       return NextResponse.json(
-        {
-          error: `Algo ledger not readable at ${CSV_PATH}. ${e?.message || ""}`,
-        },
+        { error: "No CSV provided. Pick trades_events_latest.csv from your Drive folder." },
         { status: 400 },
       );
+    }
+    if (csvText.length > MAX_CSV_CHARS) {
+      return NextResponse.json({ error: "CSV file is too large." }, { status: 413 });
     }
 
     const stopIndex = indexStopsFromCsv(csvText);
