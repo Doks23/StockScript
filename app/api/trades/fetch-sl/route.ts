@@ -22,8 +22,8 @@ import { invalidateUserTrades } from "@/lib/cache";
 
 export const maxDuration = 60;
 
-// The deployed server can't see the user's Drive folder, so the browser reads
-// trades_events_latest.csv and sends its text in the request body.
+// The user picks the algo's trades CSV in the browser; its text arrives in the
+// request body.
 const MAX_CSV_CHARS = 5_000_000;
 
 type StopPlaced = {
@@ -220,7 +220,7 @@ export async function POST(request: Request) {
 
     if (!csvText.trim()) {
       return NextResponse.json(
-        { error: "No CSV provided. Pick trades_events_latest.csv from your Drive folder." },
+        { error: "No CSV provided. Choose the algo trades CSV file." },
         { status: 400 },
       );
     }

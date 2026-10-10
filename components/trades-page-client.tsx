@@ -229,7 +229,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   }, []);
 
   /**
-   * Step 1: preview the SL matches from the algo ledger. The server does the
+   * Step 1: preview the SL matches from the uploaded algo CSV. The server does the
    * matching (symbol + first-entry IST date + total entry qty) and returns
    * Entry / Qty / SL / SL% per candidate. We show them in a confirm panel
    * with checkboxes; nothing is written until the user clicks Apply.
