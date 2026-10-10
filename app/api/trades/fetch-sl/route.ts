@@ -1,7 +1,7 @@
 /**
  * POST /api/trades/fetch-sl
  * ─────────────────────────────────────────────────────────────────────
- * Reads the algo's event ledger CSV and backfills the initial Stop Loss on
+ * Reads the algo's trades-only CSV (synced to Google Drive) and backfills the initial Stop Loss on
  * every journal trade that still has no SL. The journal is the source of
  * truth; the algo is the source of the number. Nothing else is copied over.
  *
@@ -15,6 +15,8 @@
  */
 
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-error";
@@ -24,10 +26,14 @@ import { invalidateUserTrades } from "@/lib/cache";
 export const maxDuration = 60;
 
 /**
- * Fixed path - the user keeps the algo backup here. Not configurable; if
+ * Fixed path - Google Drive for Desktop syncs the algo's daily backup here,
+ * overwriting the same file each trading day. Not configurable; if
  * the file isn't present we return a clear error rather than guessing.
  */
-const CSV_PATH = "/Users/SaurabhD/Documents/DhanHq_backups/events_ledger_latest.csv";
+const CSV_PATH = path.join(
+  os.homedir(),
+  "Library/CloudStorage/GoogleDrive-doks23@gmail.com/My Drive/DhanHQ_Backkup/trades_events_latest.csv",
+);
 
 type StopPlaced = {
   /** ISO timestamp from the ledger. Already carries +05:30 offset. */
@@ -56,9 +62,8 @@ function toIstDate(iso: string | Date): string {
 }
 
 /**
- * Minimal RFC 4180 CSV parser. The ledger's `details` field is a JSON blob
- * wrapped in quotes with internal `"` escaped as `""`, so we need the real
- * quoting rules - a naive split breaks on the first comma inside the JSON.
+ * Minimal RFC 4180 CSV parser. Free-text notes can carry quoted commas, so
+ * a naive split on `,` isn't safe.
  */
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -123,28 +128,26 @@ function parseCsv(text: string): string[][] {
 }
 
 /**
- * Walk the parsed ledger and index each `stop_placed` event by
- * symbol|IST-date|quantity. The FIRST row for a key is the initial SL - the
- * algo emits new `stop_placed` events as it trails, and those later rows
- * belong to a different number.
+ * Index each `stop_placed` row of the trades CSV by symbol|date|quantity. The
+ * FIRST row for a key is the initial SL - the algo emits new `stop_placed`
+ * rows as it trails, and those later rows belong to a different number.
  *
- * The ledger has had two shapes over time:
- *   - Older (Sep 15, nested): details = { kind: "stop_placed",
- *       data: { symbol, quantity, trigger_price } }
- *   - Newer (Sep 18+, flat):   event column = "stop_placed",
- *       details = { qty, trigger, limit, order_id }
- * We accept both so a long ledger still parses end to end.
+ * Columns are flat: date, time (both IST), event, symbol, qty, price, limit...
+ * On a `stop_placed` row `price` is the stop's trigger and `limit` its limit.
  */
 function indexStopsFromCsv(csvText: string): Map<MatchKey, StopPlaced> {
   const rows = parseCsv(csvText);
   if (rows.length === 0) return new Map();
 
-  const header = rows[0];
-  const detailsIdx = header.indexOf("details");
-  const timeIdx = header.indexOf("time");
-  const symbolIdx = header.indexOf("symbol");
-  const eventIdx = header.indexOf("event");
-  if (detailsIdx < 0 || timeIdx < 0 || symbolIdx < 0 || eventIdx < 0) {
+  const header = rows[0].map((h) => h.trim());
+  const col = (name: string) => header.indexOf(name);
+  const dateIdx = col("date");
+  const timeIdx = col("time");
+  const eventIdx = col("event");
+  const symbolIdx = col("symbol");
+  const qtyIdx = col("qty");
+  const priceIdx = col("price");
+  if ([dateIdx, timeIdx, eventIdx, symbolIdx, qtyIdx, priceIdx].some((i) => i < 0)) {
     throw new Error(
       `CSV header missing expected columns. Found: ${header.join(", ")}`,
     );
@@ -154,64 +157,30 @@ function indexStopsFromCsv(csvText: string): Map<MatchKey, StopPlaced> {
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    const detailsRaw = row[detailsIdx];
-    if (!detailsRaw) continue;
+    if (row[eventIdx] !== "stop_placed") continue;
 
-    let details: any;
-    try {
-      details = JSON.parse(detailsRaw);
-    } catch {
-      // Not valid JSON - skip quietly. The ledger has a few log-only rows.
-      continue;
-    }
-
-    // Normalise both shapes into (symbol, quantity, triggerPrice).
-    let symbol: string | undefined;
-    let quantity: number | undefined;
-    let triggerPrice: number | undefined;
-
-    const isNewShape =
-      row[eventIdx] === "stop_placed" && typeof details?.trigger !== "undefined";
-    const isOldShape = details?.kind === "stop_placed" && details?.data;
-
-    if (isNewShape) {
-      symbol = row[symbolIdx] || undefined;
-      quantity = Number(details.qty);
-      triggerPrice = Number(details.trigger);
-    } else if (isOldShape) {
-      const d = details.data;
-      symbol = typeof d.symbol === "string" ? d.symbol : row[symbolIdx];
-      quantity = Number(d.quantity);
-      triggerPrice = Number(d.trigger_price);
-    } else {
-      continue;
-    }
-
+    const symbol = row[symbolIdx]?.trim();
+    const quantity = Number(row[qtyIdx]);
+    const triggerPrice = Number(row[priceIdx]);
+    const dateIst = row[dateIdx]?.trim();
     if (
       !symbol ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(dateIst ?? "") ||
       !Number.isFinite(quantity) ||
       !Number.isFinite(triggerPrice)
     ) {
       continue;
     }
 
-    const time = row[timeIdx];
-    const dateIst = toIstDate(time);
-    const key = keyFor(symbol, dateIst, quantity!);
+    const time = `${dateIst}T${row[timeIdx]?.trim() || "00:00:00"}+05:30`;
+    const key = keyFor(symbol, dateIst, quantity);
 
     const existing = index.get(key);
     if (
       !existing ||
       new Date(time).getTime() < new Date(existing.time).getTime()
     ) {
-      // Keep the oldest - the first stop_placed is the initial SL. The algo
-      // trails it later, which emits more rows with a tighter trigger.
-      index.set(key, {
-        time,
-        symbol,
-        quantity: quantity!,
-        triggerPrice: triggerPrice!,
-      });
+      index.set(key, { time, symbol, quantity, triggerPrice });
     }
   }
 
