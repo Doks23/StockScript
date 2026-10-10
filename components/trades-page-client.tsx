@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { CheckCircle2, Download, RefreshCw, X, Table2, CloudDownload, Zap, Tag } from "lucide-react";
+import {
+  CheckCircle2,
+  CloudDownload,
+  Download,
+  RefreshCw,
+  ShieldCheck,
+  Table2,
+  Tag,
+  X,
+  Zap,
+} from "lucide-react";
 import { DhanSync } from "@/components/dhan-sync";
 import { DhanTodaySync } from "@/components/dhan-today-sync";
 import { getSymbolMap, refreshSymbolMap } from "@/components/symbol-chart-link";
@@ -64,6 +74,36 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   const [dhanOpen, setDhanOpen] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [mappingTickers, setMappingTickers] = useState(false);
+  const [slFetching, setSlFetching] = useState(false);
+  type SlFetchMatched = {
+    tradeId: string;
+    symbol: string;
+    algoTicker: string;
+    date: string;
+    qty: number;
+    entry: number;
+    stopLoss: number;
+    stopLossPct: number;
+  };
+  type SlFetchUnmatched = {
+    tradeId: string;
+    symbol: string;
+    algoTicker: string;
+    date: string | null;
+    qty: number;
+  };
+  type SlFetchResult = {
+    mode?: "preview" | "apply";
+    csvRows: number;
+    candidateTrades: number;
+    matched: SlFetchMatched[];
+    unmatched: SlFetchUnmatched[];
+    applied?: number;
+    error?: string;
+  };
+  const [slResult, setSlResult] = useState<SlFetchResult | null>(null);
+  const [slSelected, setSlSelected] = useState<Set<string>>(new Set());
+  const [slApplying, setSlApplying] = useState(false);
 
   useEffect(() => {
     const saved = searchParams.get("saved");
@@ -185,6 +225,121 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       if (!silent) setTimeout(() => setToast(""), 6000);
     }
   }, []);
+
+  /**
+   * Step 1: preview the SL matches from the algo ledger. The server does the
+   * matching (symbol + first-entry IST date + total entry qty) and returns
+   * Entry / Qty / SL / SL% per candidate. We show them in a confirm panel
+   * with checkboxes; nothing is written until the user clicks Apply.
+   */
+  const fetchSlFromAlgo = useCallback(async () => {
+    setSlFetching(true);
+    setSlResult(null);
+    setSlSelected(new Set());
+    try {
+      // Pass the current journal filters so Fetch SL only scans the trades
+      // the user is actually looking at. The server validates these.
+      const res = await fetch("/api/trades/fetch-sl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filters: {
+            symbol: filters.symbol,
+            status: filters.status,
+            from: filters.from,
+            to: filters.to,
+          },
+        }),
+      });
+      const data = (await res.json()) as SlFetchResult;
+      if (!res.ok) {
+        setSlResult({
+          csvRows: 0,
+          candidateTrades: 0,
+          matched: [],
+          unmatched: [],
+          error: data.error || "Could not fetch SL from algo.",
+        });
+      } else {
+        setSlResult(data);
+        // Preselect every matched row - most of the time the user wants them all.
+        setSlSelected(new Set(data.matched.map((m) => m.tradeId)));
+      }
+    } catch (err) {
+      setSlResult({
+        csvRows: 0,
+        candidateTrades: 0,
+        matched: [],
+        unmatched: [],
+        error: (err as Error).message || "Could not fetch SL from algo.",
+      });
+    } finally {
+      setSlFetching(false);
+    }
+  }, [filters]);
+
+  /**
+   * Step 2: send the checked tradeIds to the same endpoint with apply=true.
+   * The server recomputes the matches so the client can't inject arbitrary
+   * SL numbers; only the ids the user chose actually get written.
+   */
+  const applySlFromAlgo = useCallback(async () => {
+    if (!slResult || slSelected.size === 0) return;
+    setSlApplying(true);
+    try {
+      const res = await fetch("/api/trades/fetch-sl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apply: true,
+          tradeIds: Array.from(slSelected),
+          filters: {
+            symbol: filters.symbol,
+            status: filters.status,
+            from: filters.from,
+            to: filters.to,
+          },
+        }),
+      });
+      const data = (await res.json()) as SlFetchResult;
+      if (!res.ok) {
+        setSlResult((prev) =>
+          prev ? { ...prev, error: data.error || "Could not apply SL." } : prev,
+        );
+      } else {
+        setSlResult(data);
+        setSlSelected(new Set());
+        if ((data.applied ?? 0) > 0) {
+          await fetchData(filters, page, sortKey, sortDir);
+        }
+      }
+    } catch (err) {
+      setSlResult((prev) =>
+        prev
+          ? { ...prev, error: (err as Error).message || "Could not apply SL." }
+          : prev,
+      );
+    } finally {
+      setSlApplying(false);
+    }
+  }, [slResult, slSelected, filters, page, sortKey, sortDir, fetchData]);
+
+  const toggleSlRow = useCallback((tradeId: string) => {
+    setSlSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(tradeId)) next.delete(tradeId);
+      else next.add(tradeId);
+      return next;
+    });
+  }, []);
+
+  const toggleAllSlRows = useCallback(() => {
+    setSlSelected((prev) => {
+      if (!slResult) return prev;
+      if (prev.size === slResult.matched.length) return new Set();
+      return new Set(slResult.matched.map((m) => m.tradeId));
+    });
+  }, [slResult]);
 
   /**
    * Map on sight, once per page.
@@ -421,6 +576,16 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               <span className="hidden xl:inline">Tickers</span>
             </button>
             <button
+              onClick={fetchSlFromAlgo}
+              disabled={slFetching}
+              data-tip="Backfill initial Stop Loss on empty-SL trades from algo ledger"
+              className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas disabled:opacity-50 sm:rounded-lg sm:px-2.5"
+              aria-label="Fetch SL from algo"
+            >
+              <ShieldCheck size={14} className={slFetching ? "animate-pulse" : ""} />
+              <span className="hidden xl:inline">Fetch SL</span>
+            </button>
+            <button
               onClick={() => setTodayOpen(true)}
               data-tip="Sync today's fills from Dhan"
               className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-accent bg-white px-2.5 text-[11px] font-medium text-accent transition hover:bg-canvas"
@@ -452,6 +617,182 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       )}
 
       <EodPriceSyncPanel sync={eodSync} />
+
+      {slResult && (
+        <section
+          className={`rounded-2xl border p-4 text-sm shadow-sm ${
+            slResult.error ? "border-red-200 bg-red-50" : "border-line bg-white"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-accent" />
+              <span className="font-medium text-ink">
+                {slResult.mode === "apply"
+                  ? `Applied SL to ${slResult.applied ?? 0} trade${
+                      (slResult.applied ?? 0) === 1 ? "" : "s"
+                    }`
+                  : "Fetch SL from algo - review and apply"}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setSlResult(null);
+                setSlSelected(new Set());
+              }}
+              className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Dismiss"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {slResult.error ? (
+            <p className="mt-2 text-red-600">{slResult.error}</p>
+          ) : (
+            <>
+              <p className="mt-2 text-slate-600">
+                Read <span className="font-semibold text-ink">{slResult.csvRows}</span>{" "}
+                stop_placed events. Found{" "}
+                <span className="font-semibold text-profit">
+                  {slResult.matched.length}
+                </span>{" "}
+                match{slResult.matched.length === 1 ? "" : "es"} across{" "}
+                <span className="font-semibold text-ink">
+                  {slResult.candidateTrades}
+                </span>{" "}
+                empty-SL trade
+                {slResult.candidateTrades === 1 ? "" : "s"}. Unmatched{" "}
+                <span className="font-semibold text-amber-600">
+                  {slResult.unmatched.length}
+                </span>
+                .
+              </p>
+
+              {slResult.matched.length > 0 && (
+                <div className="mt-3 overflow-x-auto rounded-xl border border-line">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-canvas text-[11px] uppercase tracking-wider text-slate-500">
+                      <tr>
+                        <th className="w-8 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={
+                              slSelected.size === slResult.matched.length &&
+                              slResult.matched.length > 0
+                            }
+                            onChange={toggleAllSlRows}
+                            className="accent-accent"
+                            aria-label="Toggle all"
+                          />
+                        </th>
+                        <th className="px-3 py-2">Symbol</th>
+                        <th className="px-3 py-2 text-right">Entry</th>
+                        <th className="px-3 py-2 text-right">Qty</th>
+                        <th className="px-3 py-2 text-right">SL</th>
+                        <th className="px-3 py-2 text-right">SL %</th>
+                        <th className="px-3 py-2">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {slResult.matched.map((m) => {
+                        const checked = slSelected.has(m.tradeId);
+                        return (
+                          <tr
+                            key={m.tradeId}
+                            className="border-t border-line hover:bg-canvas/60"
+                          >
+                            <td className="px-3 py-2">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleSlRow(m.tradeId)}
+                                className="accent-accent"
+                                aria-label={`Toggle ${m.symbol}`}
+                              />
+                            </td>
+                            <td className="px-3 py-2 font-mono text-slate-700">
+                              {m.symbol}
+                              {m.algoTicker !== m.symbol.toUpperCase() && (
+                                <span className="ml-1 text-slate-400">
+                                  ({m.algoTicker})
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums text-slate-700">
+                              {m.entry.toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums text-slate-700">
+                              {m.qty}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums font-semibold text-ink">
+                              {m.stopLoss.toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums text-red-500">
+                              {m.stopLossPct.toFixed(1)}%
+                            </td>
+                            <td className="px-3 py-2 text-slate-400">{m.date}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {slResult.matched.length > 0 && slResult.mode !== "apply" && (
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setSlResult(null);
+                      setSlSelected(new Set());
+                    }}
+                    className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-canvas"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={applySlFromAlgo}
+                    disabled={slApplying || slSelected.size === 0}
+                    className="rounded-lg bg-accent px-4 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    {slApplying
+                      ? "Applying..."
+                      : `Apply SL to ${slSelected.size} selected`}
+                  </button>
+                </div>
+              )}
+
+              {slResult.unmatched.length > 0 && (
+                <details className="mt-3" open={slResult.matched.length === 0}>
+                  <summary className="cursor-pointer text-xs font-medium text-amber-700">
+                    Unmatched ({slResult.unmatched.length}) - no stop_placed in ledger
+                    for this symbol / date / qty
+                  </summary>
+                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                    {slResult.unmatched.map((u) => (
+                      <li key={u.tradeId} className="flex justify-between gap-3">
+                        <span className="font-mono">
+                          {u.symbol}
+                          {u.algoTicker !== u.symbol.toUpperCase() && (
+                            <span className="ml-1 text-slate-400">
+                              (tried: {u.algoTicker})
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-slate-400">
+                          {u.date ?? "no entry"}
+                        </span>
+                        <span className="text-slate-400">qty {u.qty}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </>
+          )}
+        </section>
+      )}
 
       {data && (
         <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
