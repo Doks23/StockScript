@@ -141,6 +141,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       if (f.to) sp.set("to", f.to);
       sp.set("status", f.status);
       if (f.reviewed !== "ALL") sp.set("reviewed", f.reviewed);
+      if (f.avoidable !== "ALL") sp.set("avoidable", f.avoidable);
       sp.set("page", String(p));
       sp.set("pageSize", "50");
       if (sk) {

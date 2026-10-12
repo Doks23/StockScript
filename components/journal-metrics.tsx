@@ -15,6 +15,8 @@ export type JournalMetrics = {
   totalUnrealizedPnl: number;
   totalPnl: number;
   totalImpact: number;
+  avoidableCount?: number;
+  avoidablePnl?: number;
 };
 
 const fmtAmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
@@ -86,6 +88,18 @@ export function JournalMetricsBar({
         className={pnlColor(metrics.totalImpact)}
         tip="What these trades did to the portfolio, in percent"
       />
+      {(metrics.avoidableCount ?? 0) > 0 && (
+        <Stat
+          label="Avoidable"
+          value={
+            showAmounts
+              ? `${metrics.avoidableCount} (${signedAmt(metrics.avoidablePnl ?? 0)})`
+              : String(metrics.avoidableCount)
+          }
+          className={pnlColor(metrics.avoidablePnl ?? 0)}
+          tip="Trades marked avoidable in review, and the P&L they booked"
+        />
+      )}
     </div>
   );
 }

@@ -28,7 +28,8 @@ type SortKey =
   | "openQty"
   | "pnlPct"
   | "impactPct"
-  | "reviewed";
+  | "reviewed"
+  | "avoidable";
 
 function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
   if (!active) return <ArrowUpDown className="inline ml-0.5 h-2.5 w-2.5 opacity-30" />;
@@ -80,6 +81,7 @@ export function SimpleJournalTable({
         case "pnlPct": av = a.pnlPct; bv = b.pnlPct; break;
         case "impactPct": av = a.impactPct; bv = b.impactPct; break;
         case "reviewed": av = a.reviewed ? 1 : 0; bv = b.reviewed ? 1 : 0; break;
+        case "avoidable": av = a.avoidable ? 2 : a.avoidable === false ? 1 : 0; bv = b.avoidable ? 2 : b.avoidable === false ? 1 : 0; break;
       }
       return sortDir === "asc" ? av - bv : bv - av;
     });
@@ -114,6 +116,7 @@ export function SimpleJournalTable({
             {th("openQty", "Open Qty")}
             {th("pnlPct", "PNL %")}
             {th("impactPct", "Impact %")}
+            {th("avoidable", "Avoidable")}
             {th("reviewed", "Reviewed")}
           </tr>
         </thead>
@@ -153,6 +156,20 @@ export function SimpleJournalTable({
               <td className={`whitespace-nowrap px-3 py-3 font-medium ${pnlColor(row.pnlPct)}`}>{fmtPct(row.pnlPct)}</td>
               <td className={`whitespace-nowrap px-3 py-3 font-medium ${pnlColor(row.impactPct)}`}>{fmtPct(row.impactPct)}</td>
               <td className="whitespace-nowrap px-3 py-3">
+                {row.avoidable ? (
+                  <span
+                    className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[0.75em] font-semibold text-amber-700"
+                    title="Marked avoidable in review"
+                  >
+                    {row.avoidableReason ?? "Yes"}
+                  </span>
+                ) : row.avoidable === false ? (
+                  <span className="text-slate-400">No</span>
+                ) : (
+                  <span className="text-slate-300">—</span>
+                )}
+              </td>
+              <td className="whitespace-nowrap px-3 py-3">
                 {row.reviewed ? (
                   <span className="inline-flex items-center gap-1 text-emerald-600" title="Reviewed">
                     <CheckCircle2 className="h-4 w-4" />
@@ -168,7 +185,7 @@ export function SimpleJournalTable({
           })}
           {sortedRows.length === 0 && (
             <tr>
-              <td colSpan={11} className="px-3 py-8 text-center text-slate-400">No trades found.</td>
+              <td colSpan={12} className="px-3 py-8 text-center text-slate-400">No trades found.</td>
             </tr>
           )}
         </tbody>

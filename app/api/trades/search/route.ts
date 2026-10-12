@@ -15,13 +15,14 @@ export async function GET(req: NextRequest) {
     const to = sp.get("to") || "";
     const status = sp.get("status") || "OPEN";
     const reviewed = sp.get("reviewed") || "";
+    const avoidable = sp.get("avoidable") || "";
     const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
     const pageSize = Math.min(50, Math.max(5, parseInt(sp.get("pageSize") || "20", 10)));
     const tag = sp.get("tag") || "";
     const sortKey = sp.get("sortKey") || "";
     const sortDir = sp.get("sortDir") === "asc" ? "asc" : "desc";
 
-    const cacheKey = `trades:search:${user.id}:${symbol}:${from}:${to}:${status}:${reviewed}:${tag}:${sortKey}:${sortDir}:${page}:${pageSize}`;
+    const cacheKey = `trades:search:${user.id}:${symbol}:${from}:${to}:${status}:${reviewed}:${avoidable}:${tag}:${sortKey}:${sortDir}:${page}:${pageSize}`;
     const cached = getCached<typeof result>(cacheKey);
     if (cached) return NextResponse.json(cached);
 
@@ -29,6 +30,12 @@ export async function GET(req: NextRequest) {
     if (status !== "ALL") where.status = status;
     if (reviewed === "REVIEWED") where.reviewed = true;
     if (reviewed === "UNREVIEWED") where.reviewed = false;
+    if (avoidable === "YES") where.avoidable = true;
+    if (avoidable === "NO") where.avoidable = false;
+    if (avoidable === "SETUP" || avoidable === "MARKET" || avoidable === "OTHER") {
+      where.avoidable = true;
+      where.avoidableReason = avoidable[0] + avoidable.slice(1).toLowerCase();
+    }
     if (symbol) where.symbol = { contains: symbol.trim().toUpperCase() };
     if (from || to) {
       const dateFilter: Record<string, Date> = {};
@@ -103,6 +110,9 @@ export async function GET(req: NextRequest) {
     const totalUnrealizedPnl = openRows.reduce((s, r) => s + r.unrealizedPnl, 0);
     const totalPnl = totalRealizedPnl + totalUnrealizedPnl;
 
+    const avoidableRows = filtered.filter((r) => r.avoidable === true);
+    const avoidablePnl = avoidableRows.reduce((s, r) => s + r.realizedPnl, 0);
+
     const result = {
       trades: pagedRows,
       totalCount,
@@ -117,6 +127,8 @@ export async function GET(req: NextRequest) {
         totalUnrealizedPnl,
         totalPnl,
         totalImpact,
+        avoidableCount: avoidableRows.length,
+        avoidablePnl,
       },
     };
 

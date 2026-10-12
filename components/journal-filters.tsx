@@ -9,6 +9,7 @@ export type Filters = {
   to: string;
   status: string;
   reviewed: string;
+  avoidable: string;
   hideAmounts: boolean;
 };
 
@@ -18,12 +19,22 @@ export const DEFAULT_JOURNAL_FILTERS: Filters = {
   to: "",
   status: "OPEN",
   reviewed: "ALL",
+  avoidable: "ALL",
   hideAmounts: false,
 };
 
 const STORAGE_KEY = "journalFilters";
 const STATUS_VALUES = ["OPEN", "CLOSED", "ALL"];
 const REVIEWED_VALUES = ["ALL", "REVIEWED", "UNREVIEWED"];
+const AVOIDABLE_OPTIONS = [
+  { value: "ALL", label: "All" },
+  { value: "YES", label: "Avoidable" },
+  { value: "SETUP", label: "Avoidable - Setup" },
+  { value: "MARKET", label: "Avoidable - Market" },
+  { value: "OTHER", label: "Avoidable - Other" },
+  { value: "NO", label: "Not avoidable" },
+];
+const AVOIDABLE_VALUES = AVOIDABLE_OPTIONS.map((o) => o.value);
 
 // Anything could be sitting in storage - an older shape, a hand-edited value -
 // so every field is checked rather than trusted.
@@ -40,6 +51,9 @@ function parseSavedFilters(raw: string): Filters {
     reviewed: REVIEWED_VALUES.includes(str(saved.reviewed))
       ? str(saved.reviewed)
       : DEFAULT_JOURNAL_FILTERS.reviewed,
+    avoidable: AVOIDABLE_VALUES.includes(str(saved.avoidable))
+      ? str(saved.avoidable)
+      : DEFAULT_JOURNAL_FILTERS.avoidable,
     hideAmounts: saved.hideAmounts === true,
   };
 }
@@ -143,6 +157,7 @@ export function JournalFilters({
     (values.to ? 1 : 0) +
     (values.status !== "OPEN" ? 1 : 0) +
     (values.reviewed !== "ALL" ? 1 : 0) +
+    (values.avoidable !== "ALL" ? 1 : 0) +
     (values.hideAmounts ? 1 : 0);
 
   return (
@@ -241,6 +256,19 @@ export function JournalFilters({
           <option value="UNREVIEWED">Unreviewed</option>
         </select>
 
+        <select
+          value={values.avoidable}
+          onChange={(e) => onChange({ avoidable: e.target.value })}
+          title="Avoidable filter"
+          className="journal-input journal-input-sm shrink-0 text-slate-600"
+        >
+          {AVOIDABLE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.value === "ALL" ? "Avoidable: All" : o.label}
+            </option>
+          ))}
+        </select>
+
         <label className="inline-flex shrink-0 cursor-pointer select-none items-center gap-1 text-[11px] font-medium text-slate-600">
           <input
             type="checkbox"
@@ -316,6 +344,23 @@ export function JournalFilters({
                   <option value="ALL">All</option>
                   <option value="REVIEWED">Reviewed only</option>
                   <option value="UNREVIEWED">Unreviewed only</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">
+                  Avoidable
+                </span>
+                <select
+                  value={values.avoidable}
+                  onChange={(e) => onChange({ avoidable: e.target.value })}
+                  className="journal-input w-full"
+                >
+                  {AVOIDABLE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
