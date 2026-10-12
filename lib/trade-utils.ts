@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   exitTriggerValues,
   growthAreaValues,
+  avoidableReasonValues,
   proficiencyValues,
   setupValues,
 } from "@/lib/constants";
@@ -89,6 +90,8 @@ export const tradePayloadSchema = z
     notes: z.string().max(2000).optional(),
     setup: optionalJournalAttribute,
     planFollowed: z.boolean().optional().nullable(),
+    avoidable: z.boolean().optional().nullable(),
+    avoidableReason: z.enum(avoidableReasonValues).optional().nullable(),
     reviewed: z.boolean().optional(),
     exitTrigger: optionalJournalAttribute,
     proficiency: optionalJournalAttribute,
@@ -537,6 +540,8 @@ export function normalizeTradePayload(
     notes: payload.notes?.trim() ?? "",
     setup: parseJournalAttributeList(payload.setup).join(", ") || null,
     planFollowed: payload.planFollowed ?? null,
+    avoidable: payload.avoidable ?? null,
+    avoidableReason: payload.avoidable ? payload.avoidableReason ?? null : null,
     reviewed: payload.reviewed ?? false,
     exitTrigger: parseJournalAttributeList(payload.exitTrigger).join(", ") || null,
     proficiency: parseJournalAttributeList(payload.proficiency).join(", ") || null,
@@ -646,6 +651,8 @@ export type GroupedTradeRow = {
   closingPrice: number | null;
   setup: string | null;
   planFollowed: boolean | null;
+  avoidable: boolean | null;
+  avoidableReason: string | null;
   reviewed: boolean;
   exitTrigger: string | null;
   proficiency: string | null;
@@ -764,6 +771,8 @@ export function buildGroupedJournalRows(
       closingPrice: trade.closingPrice,
       setup: trade.setup,
       planFollowed: trade.planFollowed,
+      avoidable: trade.avoidable,
+      avoidableReason: trade.avoidableReason,
       reviewed: trade.reviewed,
       exitTrigger: trade.exitTrigger,
       proficiency: trade.proficiency,

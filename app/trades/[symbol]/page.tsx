@@ -224,7 +224,7 @@ export default async function TradeDetailPage({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
                   <div className="rounded-lg border border-line bg-white px-3 py-2">
                     <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Setup</p>
                     <p className="mt-1 truncate text-xs font-semibold text-slate-700" title={trade.setup || ""}>
@@ -238,6 +238,16 @@ export default async function TradeDetailPage({
                         ? "--"
                         : trade.planFollowed
                           ? "Yes"
+                          : "No"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-line bg-white px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Avoidable?</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-700">
+                      {trade.avoidable == null
+                        ? "--"
+                        : trade.avoidable
+                          ? `Yes${trade.avoidableReason ? ` - ${trade.avoidableReason}` : ""}`
                           : "No"}
                     </p>
                   </div>

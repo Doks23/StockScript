@@ -157,6 +157,10 @@ export async function POST(request: Request) {
       ? firstPresent([...sorted].reverse(), (trade) => trade.closingPrice)
       : null;
     const planFollowed = firstPresent(sorted, (trade) => trade.planFollowed);
+    const avoidable = firstPresent(sorted, (trade) => trade.avoidable);
+    const avoidableReason = avoidable
+      ? firstPresent(sorted, (trade) => trade.avoidableReason)
+      : null;
 
     const conflictNotes: string[] = [];
     addConflictNote(conflictNotes, "Stop loss", uniquePresent(trades.map((trade) => trade.stopLoss)), stopLoss);
@@ -180,6 +184,8 @@ export async function POST(request: Request) {
           notes: combineNotes(sorted, conflictNotes),
           setup: combineList(trades.map((t) => t.setup)),
           planFollowed,
+          avoidable,
+          avoidableReason,
           exitTrigger: combineList(trades.map((t) => t.exitTrigger)),
           proficiency: combineList(trades.map((t) => t.proficiency)),
           growthAreas: combineList(trades.map((t) => t.growthAreas)),

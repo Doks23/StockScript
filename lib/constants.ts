@@ -88,6 +88,9 @@ export const exitTriggerValues = [
 
 export const setupOptions = setupValues.map((value) => ({ value, label: value }));
 export const proficiencyOptions = proficiencyValues.map((value) => ({ value, label: value }));
+export const avoidableReasonValues = ["Setup", "Market", "Other"] as const;
+export const avoidableReasonOptions = avoidableReasonValues.map((value) => ({ value, label: value }));
+
 export const growthAreaOptions = growthAreaValues.map((value) => ({ value, label: value }));
 export const exitTriggerOptions = exitTriggerValues.map((value) => ({ value, label: value }));
 

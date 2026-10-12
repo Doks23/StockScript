@@ -10,6 +10,7 @@ import {
   proficiencyOptions,
   segmentOptions,
   setupOptions,
+  avoidableReasonOptions,
   tradeTypeOptions,
 } from "@/lib/constants";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
@@ -44,6 +45,8 @@ export type InitialTradeData = {
   competitionId: string | null;
   setup: string | null;
   planFollowed: boolean | null;
+  avoidable: boolean | null;
+  avoidableReason: string | null;
   reviewed: boolean;
   exitTrigger: string | null;
   proficiency: string | null;
@@ -381,6 +384,9 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [avoidable, setAvoidable] = useState<string>(
+    initialData?.avoidable == null ? "" : String(initialData.avoidable),
+  );
   const [status, setStatus] = useState<"OPEN" | "CLOSED">(
     (initialData?.status as "OPEN" | "CLOSED") || "OPEN",
   );
@@ -503,6 +509,11 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
         planFollowedValue === ""
           ? null
           : planFollowedValue === "true",
+      avoidable: avoidable === "" ? null : avoidable === "true",
+      avoidableReason:
+        avoidable === "true" && formData.get("avoidableReason")
+          ? String(formData.get("avoidableReason"))
+          : null,
       reviewed: formData.get("reviewed") === "on",
       exitTrigger: getMultiSelectValues(formData, "exitTrigger"),
       proficiency: getMultiSelectValues(formData, "proficiency"),
@@ -766,6 +777,39 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
             ))}
           </select>
         </label>
+      </div>
+
+      {/* Hindsight: could this trade have been avoided, and why */}
+      <div className="grid gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="flex flex-col gap-1.5 text-xs text-slate-500">
+          Avoidable?
+          <select
+            value={avoidable}
+            onChange={(e) => setAvoidable(e.target.value)}
+            className="form-input h-9 bg-slate-50 text-sm"
+          >
+            <option value="">Not set</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+        {avoidable === "true" && (
+          <label className="flex flex-col gap-1.5 text-xs text-slate-500">
+            Reason
+            <select
+              name="avoidableReason"
+              defaultValue={initialData?.avoidableReason ?? ""}
+              className="form-input h-9 bg-slate-50 text-sm"
+            >
+              <option value="">Select reason</option>
+              {avoidableReasonOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="mt-2 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">

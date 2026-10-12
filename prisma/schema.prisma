@@ -62,6 +62,10 @@ model Trade {
   exitTrigger   String?
   growthAreas   String?
   planFollowed  Boolean?
+  /// Hindsight review: could this trade have been avoided, and if so why
+  /// (one of avoidableReasonValues in lib/constants.ts).
+  avoidable       Boolean?
+  avoidableReason String?
   proficiency   String?
   setup         String?
   reviewed      Boolean       @default(false)
