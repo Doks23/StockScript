@@ -703,7 +703,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               </p>
 
               {slResult.matched.length > 0 && (
-                <div className="mt-3 overflow-x-auto sticky-head rounded-xl border border-line">
+                <div className="mt-3 overflow-x-auto sticky-head-box rounded-xl border border-line">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-canvas text-[11px] uppercase tracking-wider text-slate-500">
                       <tr>
@@ -828,7 +828,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       )}
 
       {data && (
-        <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
+        <section className="overflow-clip rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
           <JournalTable rows={data.trades} showAmounts={!filters.hideAmounts} onRefresh={() => fetchData(filters, page, sortKey, sortDir)} showSummary={false} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} startIndex={(data.page - 1) * data.pageSize} />
         </section>
       )}

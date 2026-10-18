@@ -27,23 +27,33 @@ a {
 }
 
 @layer components {
-  /* Table that scrolls inside its own box so the header row stays in view. A
-     sticky header cannot follow the page when an ancestor scrolls sideways, so
-     the box scrolls both ways itself. The thead is sticky as a whole, which
-     keeps two-row headers aligned. */
-  .sticky-head {
-    overflow: auto;
-    max-height: calc(100vh - 14rem);
-  }
-  .sticky-head thead {
+  /* Header row that stays in view. `sticky-head` sticks to the top of the
+     window, so no ancestor may scroll (hence overflow-clip upstream); below lg
+     the table scrolls sideways in its own box, which then holds the header.
+     `sticky-head-box` is for tables too wide for the page: they scroll both
+     ways in a box of their own and the header sticks inside it. */
+  .sticky-head thead,
+  .sticky-head-box thead {
     position: sticky;
     top: 0;
     z-index: 20;
     background-color: #f1f5f9;
   }
-  .sticky-head thead th {
+  .sticky-head thead th,
+  .sticky-head-box thead th {
     background-clip: padding-box;
   }
+  .sticky-head-box {
+    overflow: auto;
+    max-height: calc(100vh - 14rem);
+  }
+  @media (max-width: 1023px) {
+    .sticky-head {
+      overflow: auto;
+      max-height: calc(100vh - 14rem);
+    }
+  }
+
   .form-field {
     display: flex;
     flex-direction: column;

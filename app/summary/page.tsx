@@ -198,7 +198,7 @@ function MonthlySummaryTable({
 }) {
   return (
     <div className="space-y-6">
-      <div className="overflow-x-auto sticky-head rounded-xl border border-line bg-white">
+      <div className="overflow-x-auto sticky-head-box rounded-xl border border-line bg-white">
         <table className="min-w-[1800px] w-full text-xs">
           <thead>
             <tr className="border-b border-line bg-slate-100 text-slate-600">
@@ -317,7 +317,7 @@ function SetupSummaryTable({
   ] as const;
 
   return (
-    <div className="overflow-x-auto sticky-head rounded-xl border border-line bg-white">
+    <div className="overflow-x-auto sticky-head-box rounded-xl border border-line bg-white">
       <table className="min-w-[1800px] w-full text-xs">
         <thead>
           <tr className="border-b border-line bg-slate-100 text-slate-600">

@@ -103,7 +103,7 @@ function NotesCell({ tradeId, initial }: { tradeId: string; initial: string }) {
           e.currentTarget.blur();
         }
       }}
-      className={`block w-full min-w-[260px] resize-none overflow-hidden rounded border bg-transparent px-1.5 py-1 text-[0.82em] leading-snug text-slate-600 outline-none transition placeholder:text-slate-300 hover:border-line focus:border-accent focus:bg-white ${
+      className={`block w-full min-w-[200px] resize-none overflow-hidden rounded border bg-transparent px-1.5 py-1 text-[0.82em] leading-snug text-slate-600 outline-none transition placeholder:text-slate-300 hover:border-line focus:border-accent focus:bg-white ${
         state === "error"
           ? "border-red-300"
           : state === "saving"
@@ -175,7 +175,7 @@ export function SimpleJournalTable({
   return (
     // Sizing the wrapper rather than each cell: the rows carry no font size of
     // their own, so one number here scales the whole table.
-    <div className="overflow-x-auto sticky-head" style={{ fontSize: `${fontPx}px` }}>
+    <div className="overflow-x-auto lg:overflow-visible sticky-head" style={{ fontSize: `${fontPx}px` }}>
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-line bg-slate-50">

@@ -897,7 +897,7 @@ export function RMultipleChart({
       </div>
 
       {view === "table" ? (
-        <div className="overflow-x-auto sticky-head rounded-2xl border border-line bg-panel">
+        <div className="overflow-x-auto sticky-head-box rounded-2xl border border-line bg-panel">
           <div className="border-b border-line px-3 py-2">
             <PeriodCount
               total={trades.length}

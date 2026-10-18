@@ -67,7 +67,7 @@ export function TraderMaintenanceTable({ traders }: { traders: Trader[] }) {
   }
 
   return (
-    <div className="overflow-x-auto sticky-head">
+    <div className="overflow-x-auto lg:overflow-visible sticky-head">
       <table className="min-w-full text-[13px]">
         <thead>
           <tr className="bg-accent text-white text-[11px] uppercase tracking-wider">

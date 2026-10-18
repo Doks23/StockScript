@@ -26,7 +26,7 @@ export default async function AdminPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+      <section className="overflow-clip rounded-2xl border border-line bg-white shadow-sm">
         <AdminTraderTable traders={traders} />
       </section>
     </div>

@@ -369,7 +369,7 @@ export function DhanSync({
                   </button>
                 </div>
               )}
-            <div className="overflow-x-auto sticky-head">
+            <div className="overflow-x-auto sticky-head-box">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line text-left text-muted">

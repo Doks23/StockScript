@@ -176,7 +176,7 @@ function SimpleJournalContent() {
       )}
 
       {data && (
-        <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
+        <section className="overflow-clip rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
           <SimpleJournalTable
             rows={data.trades}
             fontPx={fontPx}
