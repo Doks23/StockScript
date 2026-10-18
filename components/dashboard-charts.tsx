@@ -115,31 +115,32 @@ export function useMonthlyPnlData(trades: TradeWithTxns[]) {
         new Date(b.firstEntryAt ?? b.createdAt).getTime(),
     );
 
-    const monthlyMap = new Map<string, number>();
+    // Keyed by year and month number, and labelled from a fixed list: the
+    // locale's own abbreviations differ ("Sept" in en-GB/en-IN), so sorting or
+    // matching on them put September ahead of every other month.
+    const MONTH_NAMES = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    const monthlyMap = new Map<number, number>();
     sorted.forEach((t) => {
-      const month = new Date(t.firstEntryAt ?? t.createdAt).toLocaleDateString(
-        undefined,
-        { month: "short", year: "2-digit" },
-      );
+      const d = new Date(t.firstEntryAt ?? t.createdAt);
+      const monthKey = d.getFullYear() * 12 + d.getMonth();
       const pnl =
         t.status === "CLOSED"
           ? (t.netPnl ?? 0)
           : t.closingPrice
             ? calculateOpenPnl(t)
             : 0;
-      monthlyMap.set(month, (monthlyMap.get(month) ?? 0) + pnl);
+      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) ?? 0) + pnl);
     });
 
     const data = Array.from(monthlyMap.entries())
-      .map(([month, pnl]) => ({ month, pnl }))
-      .sort((a, b) => {
-        const parse = (m: string) => {
-          const [mon, yr] = m.split(" ");
-          const months = "JanFebMarAprMayJunJulAugSepOctNovDec";
-          return parseInt(yr) * 12 + months.indexOf(mon) / 3;
-        };
-        return parse(a.month) - parse(b.month);
-      })
+      .sort((a, b) => a[0] - b[0])
+      .map(([monthKey, pnl]) => ({
+        month: `${MONTH_NAMES[monthKey % 12]} ${String(Math.floor(monthKey / 12) % 100).padStart(2, "0")}`,
+        pnl,
+      }))
       .slice(-6);
 
     const totalPnl = data.reduce((s, d) => s + d.pnl, 0);
