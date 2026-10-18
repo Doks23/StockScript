@@ -201,9 +201,9 @@ export function JournalFilters({
         </button>
       </div>
 
-      {/* Desktop bar - deliberately nowrap and compact so the whole ribbon,
-          actions included, stays on a single line. */}
-      <div className="hidden shrink-0 flex-nowrap items-center gap-1.5 sm:flex">
+      {/* Desktop bar - compact, and free to wrap onto a second line rather than
+          run off the edge of the card when the window is narrow. */}
+      <div className="hidden min-w-0 flex-wrap items-center gap-1.5 sm:flex">
         <input
           value={symbolDraft}
           placeholder="Search…"

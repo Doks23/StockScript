@@ -117,14 +117,14 @@ function SimpleJournalContent() {
       </div>
 
       <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-5 sm:py-3">
-        <div className="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto lg:overflow-visible">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <JournalFilters
             values={filters}
             onChange={onFilterChange}
             onDebouncedChange={onFilterDebounced}
             resetToken={resetToken}
           />
-          <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
+          <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
             <div className="flex h-8 shrink-0 items-center rounded-lg border border-line bg-white">
               <button
                 type="button"
@@ -179,7 +179,6 @@ function SimpleJournalContent() {
         <section className="overflow-hidden rounded-2xl border border-line bg-panel p-2 shadow-sm sm:p-3">
           <SimpleJournalTable
             rows={data.trades}
-            showAmounts={!filters.hideAmounts}
             fontPx={fontPx}
           />
         </section>

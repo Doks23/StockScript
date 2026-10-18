@@ -653,6 +653,7 @@ export type GroupedTradeRow = {
   planFollowed: boolean | null;
   avoidable: boolean | null;
   avoidableReason: string | null;
+  notes: string;
   reviewed: boolean;
   exitTrigger: string | null;
   proficiency: string | null;
@@ -773,6 +774,7 @@ export function buildGroupedJournalRows(
       planFollowed: trade.planFollowed,
       avoidable: trade.avoidable,
       avoidableReason: trade.avoidableReason,
+      notes: trade.notes,
       reviewed: trade.reviewed,
       exitTrigger: trade.exitTrigger,
       proficiency: trade.proficiency,

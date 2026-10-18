@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, Circle } from "lucide-react";
 import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
@@ -13,7 +13,6 @@ const pnlColor = (n: number) => n > 0 ? "text-emerald-600" : n < 0 ? "text-red-5
 // Same as the detailed journal - the two views are read side by side.
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? format(new Date(d), "dd MMM yy") : "—";
-const hiddenAmt = <span className="text-slate-300">•••</span>;
 
 export const SIMPLE_JOURNAL_FONT_DEFAULT = 13;
 
@@ -25,7 +24,6 @@ type SortKey =
   | "stopLossPct"
   | "ageDays"
   | "allocationPct"
-  | "openQty"
   | "pnlPct"
   | "impactPct"
   | "reviewed"
@@ -38,13 +36,89 @@ function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
     : <ArrowDown className="inline ml-0.5 h-2.5 w-2.5 opacity-80" />;
 }
 
+/**
+ * A spreadsheet-style cell: plain text until you click it, saved when you click
+ * away or press Enter (Shift+Enter for a new line, Escape to undo).
+ */
+function NotesCell({ tradeId, initial }: { tradeId: string; initial: string }) {
+  const [value, setValue] = useState(initial);
+  const [saved, setSaved] = useState(initial);
+  const [state, setState] = useState<"idle" | "saving" | "error">("idle");
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Follow the server when the row reloads (filters, refresh) with new text.
+  useEffect(() => {
+    setValue(initial);
+    setSaved(initial);
+  }, [initial]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  async function commit() {
+    const next = value.trim();
+    if (next === saved) {
+      setValue(saved);
+      return;
+    }
+    setState("saving");
+    try {
+      const res = await fetch(`/api/trades/${tradeId}/notes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: next }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setSaved(next);
+      setValue(next);
+      setState("idle");
+    } catch {
+      setState("error");
+    }
+  }
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      maxLength={2000}
+      placeholder="Add a note…"
+      title={state === "error" ? "Could not save - click away to retry" : "Click to edit; Enter saves"}
+      onChange={(e) => {
+        setValue(e.target.value);
+        if (state === "error") setState("idle");
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          e.currentTarget.blur();
+        } else if (e.key === "Escape") {
+          setValue(saved);
+          e.currentTarget.blur();
+        }
+      }}
+      className={`block w-full min-w-[260px] resize-none overflow-hidden rounded border bg-transparent px-1.5 py-1 text-[0.82em] leading-snug text-slate-600 outline-none transition placeholder:text-slate-300 hover:border-line focus:border-accent focus:bg-white ${
+        state === "error"
+          ? "border-red-300"
+          : state === "saving"
+            ? "border-amber-200 opacity-70"
+            : "border-transparent"
+      }`}
+    />
+  );
+}
+
 export function SimpleJournalTable({
   rows,
-  showAmounts = true,
   fontPx = SIMPLE_JOURNAL_FONT_DEFAULT,
 }: {
   rows: GroupedTradeRow[];
-  showAmounts?: boolean;
   fontPx?: number;
 }) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -77,7 +151,6 @@ export function SimpleJournalTable({
         case "stopLossPct": av = a.stopLossPct ?? 0; bv = b.stopLossPct ?? 0; break;
         case "ageDays": av = a.ageDays; bv = b.ageDays; break;
         case "allocationPct": av = a.allocationPct; bv = b.allocationPct; break;
-        case "openQty": av = a.openQty; bv = b.openQty; break;
         case "pnlPct": av = a.pnlPct; bv = b.pnlPct; break;
         case "impactPct": av = a.impactPct; bv = b.impactPct; break;
         case "reviewed": av = a.reviewed ? 1 : 0; bv = b.reviewed ? 1 : 0; break;
@@ -113,11 +186,13 @@ export function SimpleJournalTable({
             {th("stopLossPct", "SL %")}
             {th("ageDays", "Age (d)")}
             {th("allocationPct", "Alloc %")}
-            {th("openQty", "Open Qty")}
             {th("pnlPct", "PNL %")}
             {th("impactPct", "Impact %")}
             {th("avoidable", "Avoidable")}
             {th("reviewed", "Reviewed")}
+            <th className="whitespace-nowrap px-3 py-2.5 text-left text-[0.82em] font-semibold uppercase tracking-wider text-slate-500">
+              Notes
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -132,10 +207,9 @@ export function SimpleJournalTable({
                 <span className="flex min-w-0 items-center gap-1.5">
                   <SymbolChartLink
                     symbol={row.symbol}
+                    asTicker
                     className="transition hover:text-blue-600"
-                  >
-                    {row.symbol}
-                  </SymbolChartLink>
+                  />
                   {statusUi.label && (
                     <span
                       className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[0.68em] font-semibold tracking-wide ${statusUi.chipClass}`}
@@ -152,7 +226,6 @@ export function SimpleJournalTable({
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.stopLossPct != null ? `${Math.abs(row.stopLossPct).toFixed(1)}%` : "—"}</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.ageDays}</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-700">{row.allocationPct.toFixed(1)}%</td>
-              <td className="whitespace-nowrap px-3 py-3 text-slate-700">{showAmounts ? row.openQty : hiddenAmt}</td>
               <td className={`whitespace-nowrap px-3 py-3 font-medium ${pnlColor(row.pnlPct)}`}>{fmtPct(row.pnlPct)}</td>
               <td className={`whitespace-nowrap px-3 py-3 font-medium ${pnlColor(row.impactPct)}`}>{fmtPct(row.impactPct)}</td>
               <td className="whitespace-nowrap px-3 py-3">
@@ -179,6 +252,9 @@ export function SimpleJournalTable({
                     <Circle className="h-4 w-4" />
                   </span>
                 )}
+              </td>
+              <td className="px-2 py-1.5">
+                <NotesCell tradeId={row.id} initial={row.notes ?? ""} />
               </td>
             </tr>
             );

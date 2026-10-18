@@ -555,21 +555,21 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
       )}
 
       <section className="rounded-2xl border border-line bg-panel px-2.5 py-2 shadow-sm sm:px-3">
-        <div className="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto lg:overflow-visible">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <JournalFilters
             values={filters}
             onChange={onFilterChange}
             onDebouncedChange={onFilterDebounced}
             resetToken={resetToken}
           />
-          <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
+          <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
             <Link
               href="/trades/simple"
               data-tip="Simple view"
               className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-1.5 text-[11px] text-slate-600 transition hover:bg-canvas sm:rounded-lg sm:px-2.5"
             >
               <Table2 size={14} />
-              <span className="hidden xl:inline">Simple</span>
+              <span className="hidden 2xl:inline">Simple</span>
             </Link>
             <button
               onClick={handleDownload}
@@ -578,7 +578,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               aria-label="Download CSV"
             >
               <Download size={14} />
-              <span className="hidden xl:inline">CSV</span>
+              <span className="hidden 2xl:inline">CSV</span>
             </button>
             <button
               onClick={handleRefresh}
@@ -588,7 +588,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               aria-label="Refresh"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              <span className="hidden xl:inline">Refresh</span>
+              <span className="hidden 2xl:inline">Refresh</span>
             </button>
             <EodPriceSyncTrigger sync={eodSync} />
             <button
@@ -599,7 +599,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               aria-label="Map symbols to TradingView tickers"
             >
               <Tag size={14} className={mappingTickers ? "animate-pulse" : ""} />
-              <span className="hidden xl:inline">Tickers</span>
+              <span className="hidden 2xl:inline">Tickers</span>
             </button>
             <input
               ref={slFileInput}
@@ -616,7 +616,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               aria-label="Fetch SL from algo"
             >
               <ShieldCheck size={14} className={slFetching ? "animate-pulse" : ""} />
-              <span className="hidden xl:inline">Fetch SL</span>
+              <span className="hidden 2xl:inline">Fetch SL</span>
             </button>
             <button
               onClick={() => setTodayOpen(true)}
@@ -624,7 +624,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-accent bg-white px-2.5 text-[11px] font-medium text-accent transition hover:bg-canvas"
             >
               <Zap size={14} />
-              <span className="hidden xl:inline">Today</span>
+              <span className="hidden 2xl:inline">Today</span>
             </button>
             <button
               onClick={() => setDhanOpen(true)}
@@ -632,7 +632,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               className="tip flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[11px] font-medium text-white transition hover:opacity-90"
             >
               <CloudDownload size={14} />
-              <span className="hidden xl:inline">Dhan</span>
+              <span className="hidden 2xl:inline">Dhan</span>
             </button>
           </div>
         </div>
