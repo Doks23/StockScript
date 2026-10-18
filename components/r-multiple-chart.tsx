@@ -35,6 +35,7 @@ import {
   usePlotArea,
 } from "recharts";
 import Link from "next/link";
+import { usePersistedSort } from "@/lib/use-persisted-sort";
 import {
   Table2,
   BarChart3,
@@ -468,6 +469,7 @@ function bandRange(index: number) {
 type RSortKey = "seq" | "symbol" | "entry" | "stop" | "alloc" | "pnl" | "r";
 
 /** Ascending reads better for names and for time; biggest-first for amounts. */
+const R_SORT_KEYS: readonly RSortKey[] = ["seq", "symbol", "entry", "stop", "alloc", "pnl", "r"];
 const ASCENDING_FIRST: RSortKey[] = ["seq", "symbol", "entry"];
 
 function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
@@ -608,16 +610,19 @@ export function RMultipleChart({
   month?: string;
 }) {
   const [view, setView] = useState<"chart" | "table">("chart");
-  const [sortKey, setSortKey] = useState<RSortKey>("seq");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [{ key: savedSortKey, dir: sortDir }, setSort] = usePersistedSort<RSortKey>(
+    "rMultipleSort",
+    R_SORT_KEYS,
+    { key: "seq", dir: "asc" },
+  );
+  const sortKey: RSortKey = savedSortKey ?? "seq";
 
   function handleSort(key: RSortKey) {
-    if (key === sortKey) {
-      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(key);
-    setSortDir(ASCENDING_FIRST.includes(key) ? "asc" : "desc");
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: ASCENDING_FIRST.includes(key) ? "asc" : "desc" },
+    );
   }
 
   /** Keeps the date range while flipping the open-trades switch. */

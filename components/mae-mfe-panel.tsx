@@ -1,5 +1,6 @@
 "use client";
 
+import { usePersistedSort } from "@/lib/use-persisted-sort";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
@@ -415,7 +416,12 @@ export function MaeMfePanel({ initialYear }: Props) {
   const [year, setYear] = useState<number | null>(initialYear ?? null);
   const [setup, setSetup] = useState<string>("all");
   const [outcome, setOutcome] = useState<(typeof OUTCOME_FILTERS)[number]>("ALL");
-  const [sort, setSort] = useState<SortState>({ key: "date", dir: "desc" });
+  const [savedSort, setSort] = usePersistedSort<SortKey>(
+    "maeMfeSort",
+    Object.keys(SORT_VALUE) as SortKey[],
+    { key: "date", dir: "desc" },
+  );
+  const sort: SortState = { key: savedSort.key ?? "date", dir: savedSort.dir };
   /** The supporting columns stay out of the way until asked for. */
   const [showDetails, setShowDetails] = useState(false);
   // Each block folds away; the choice is remembered in this browser.
@@ -489,7 +495,7 @@ export function MaeMfePanel({ initialYear }: Props) {
         ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
         : { key, dir: key === "symbol" ? "asc" : "desc" },
     );
-  }, []);
+  }, [setSort]);
 
   const years = data?.years ?? [];
 

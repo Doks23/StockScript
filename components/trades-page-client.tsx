@@ -28,6 +28,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
+import { usePersistedSort } from "@/lib/use-persisted-sort";
 
 type SortKey =
   | "symbol"
@@ -41,6 +42,20 @@ type SortKey =
   | "pnlPct"
   | "pnlAmount"
   | "impactPct";
+
+const JOURNAL_SORT_KEYS: readonly SortKey[] = [
+  "symbol",
+  "entryDate",
+  "exitDate",
+  "openCapital",
+  "stopLossPct",
+  "allocationPct",
+  "ageDays",
+  "avgEntryPrice",
+  "pnlPct",
+  "pnlAmount",
+  "impactPct",
+];
 
 type SearchResult = {
   trades: GroupedTradeRow[];
@@ -68,8 +83,13 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
     reset: resetFilters,
   } = useJournalFilters();
   const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sort, setSort, sortRestored] = usePersistedSort<SortKey>(
+    "journalSort",
+    JOURNAL_SORT_KEYS,
+    { key: null, dir: "desc" },
+  );
+  const sortKey = sort.key;
+  const sortDir = sort.dir;
   const [toast, setToast] = useState("");
   const [dhanOpen, setDhanOpen] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
@@ -165,9 +185,9 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   useEffect(() => {
     // Waits for the saved filters, so the journal loads the remembered view once
     // rather than the default view followed by the remembered one.
-    if (!filtersRestored) return;
+    if (!filtersRestored || !sortRestored) return;
     fetchData(filters, page, sortKey, sortDir);
-  }, [filters, filtersRestored, page, sortKey, sortDir, fetchData]);
+  }, [filters, filtersRestored, sortRestored, page, sortKey, sortDir, fetchData]);
 
   // Held here rather than inside one component because the trigger sits in the
   // ribbon and the results table renders further down the page.
@@ -409,16 +429,13 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
   }, [filters]);
 
   const handleSort = useCallback((key: SortKey) => {
-    setSortKey((prev) => {
-      if (prev === key) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-      } else {
-        setSortDir("desc");
-      }
-      return key;
-    });
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" },
+    );
     setPage(1);
-  }, []);
+  }, [setSort]);
 
   // Escape closes the sync dialog, and the journal behind it stays put rather
   // than scrolling under a form that is taller than the viewport.

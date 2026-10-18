@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 import { SymbolChartLink } from "@/components/symbol-chart-link";
 import { getTradeStatusUi } from "@/lib/trade-status";
+import { usePersistedSort } from "@/lib/use-persisted-sort";
 
 const fmtPrice = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
@@ -28,6 +29,20 @@ type SortKey =
   | "impactPct"
   | "reviewed"
   | "avoidable";
+
+const SIMPLE_SORT_KEYS: readonly SortKey[] = [
+  "symbol",
+  "entryDate",
+  "avgEntryPrice",
+  "avgExitPrice",
+  "stopLossPct",
+  "ageDays",
+  "allocationPct",
+  "pnlPct",
+  "impactPct",
+  "reviewed",
+  "avoidable",
+];
 
 function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
   if (!active) return <ArrowUpDown className="inline ml-0.5 h-2.5 w-2.5 opacity-30" />;
@@ -121,16 +136,18 @@ export function SimpleJournalTable({
   rows: GroupedTradeRow[];
   fontPx?: number;
 }) {
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [{ key: sortKey, dir: sortDir }, setSort] = usePersistedSort<SortKey>(
+    "simpleJournalSort",
+    SIMPLE_SORT_KEYS,
+    { key: null, dir: "desc" },
+  );
 
   function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" },
+    );
   }
 
   const sortedRows = useMemo(() => {
