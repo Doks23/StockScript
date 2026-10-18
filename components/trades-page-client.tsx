@@ -703,7 +703,7 @@ function TradesPageContent({ competitions }: { competitions: Competition[] }) {
               </p>
 
               {slResult.matched.length > 0 && (
-                <div className="mt-3 overflow-x-auto rounded-xl border border-line">
+                <div className="mt-3 overflow-x-auto sticky-head rounded-xl border border-line">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-canvas text-[11px] uppercase tracking-wider text-slate-500">
                       <tr>

@@ -1056,7 +1056,7 @@ export function MaeMfePanel({ initialYear }: Props) {
           </div>
         </div>
         {tableOpen && (
-        <div className="overflow-x-auto rounded-xl border border-line bg-white">
+        <div className="overflow-x-auto sticky-head rounded-xl border border-line bg-white">
           <table className={`${showDetails ? "min-w-[1480px]" : "min-w-[860px]"} w-full text-xs`}>
             <thead>
               <tr className="border-b border-line bg-slate-50 text-[10px] font-semibold uppercase tracking-wider">

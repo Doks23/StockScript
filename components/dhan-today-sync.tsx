@@ -314,7 +314,7 @@ export function DhanTodaySync({
           )}
 
           {result.preview.length > 0 && (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto sticky-head">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line text-left text-muted">

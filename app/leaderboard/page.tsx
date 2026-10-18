@@ -207,7 +207,7 @@ export default async function LeaderboardPage({
 
           {/* Full rankings table (desktop) */}
           <section className="hidden overflow-hidden rounded-2xl border border-line bg-white shadow-sm sm:block">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto sticky-head">
               <table className="min-w-full text-[13px]">
                 <thead>
                   <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider">

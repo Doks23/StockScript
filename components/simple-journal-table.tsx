@@ -175,7 +175,7 @@ export function SimpleJournalTable({
   return (
     // Sizing the wrapper rather than each cell: the rows carry no font size of
     // their own, so one number here scales the whole table.
-    <div className="overflow-x-auto" style={{ fontSize: `${fontPx}px` }}>
+    <div className="overflow-x-auto sticky-head" style={{ fontSize: `${fontPx}px` }}>
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-line bg-slate-50">

@@ -287,7 +287,7 @@ export function CSVImport({
             />
             Preview ({Math.min(5, totalDataRows)} of {totalDataRows} rows)
           </button>
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="overflow-x-auto sticky-head rounded-lg border border-slate-200">
             <table className="w-full text-xs text-slate-600">
               <thead>
                 <tr className="bg-slate-50">

@@ -87,7 +87,7 @@ export function AdminTraderTable({ traders }: { traders: Trader[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto sticky-head">
       <table className="min-w-full text-[13px]">
         <thead>
           <tr className="bg-ink text-white text-[11px] uppercase tracking-wider">

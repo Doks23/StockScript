@@ -102,7 +102,7 @@ export default async function TraderDrillDownPage({ params }: Props) {
 
       {/* Trade table — same format as Journal */}
       <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm p-3">
-        <div className="w-full overflow-x-auto scrollbar-hide">
+        <div className="sticky-head w-full overflow-x-auto scrollbar-hide">
           <table className="w-full whitespace-nowrap text-right text-[12px] text-slate-700">
             <thead>
               <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-line">

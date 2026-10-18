@@ -744,7 +744,7 @@ export function JournalTable({
         )}
       </div>
 
-      <div className="hidden w-full overflow-hidden lg:block">
+      <div className="sticky-head hidden w-full lg:block">
         <table className="w-full table-fixed whitespace-nowrap text-right text-[12px] text-slate-700">
           {/* 20 columns, widths summing to 100% - keep in step with both header rows. */}
           <colgroup>

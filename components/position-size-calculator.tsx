@@ -355,7 +355,7 @@ export function PositionSizeCalculator({
 
       {/* Desktop Table */}
       <section className="hidden overflow-hidden rounded-2xl border border-line bg-panel shadow-sm lg:block">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto sticky-head">
           <table className="w-full text-right text-[12px] text-slate-700">
             <thead>
               <tr className="border-b border-line bg-slate-100 text-[11px] uppercase tracking-wider text-slate-600">
