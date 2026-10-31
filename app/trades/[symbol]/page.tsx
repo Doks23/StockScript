@@ -1,3 +1,4 @@
+import { reviewSelectFields, reviewYesNoFields } from "@/lib/constants";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -269,6 +270,23 @@ export default async function TradeDetailPage({
                       {compactAttribute(trade.growthAreas)}
                     </p>
                   </div>
+                </div>
+
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {reviewSelectFields.map((f) => (
+                    <div key={f.key} className="rounded-lg border border-line bg-white px-3 py-2">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{f.label}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-700">{trade[f.key] ?? "--"}</p>
+                    </div>
+                  ))}
+                  {reviewYesNoFields.map((f) => (
+                    <div key={f.key} className="rounded-lg border border-line bg-white px-3 py-2">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{f.label}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-700">
+                        {trade[f.key] == null ? "--" : trade[f.key] ? "Yes" : "No"}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
 

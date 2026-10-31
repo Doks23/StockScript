@@ -66,6 +66,16 @@ model Trade {
   /// (one of avoidableReasonValues in lib/constants.ts).
   avoidable       Boolean?
   avoidableReason String?
+  /// Review answers from the trade-review checklist (see reviewSelectFields and
+  /// reviewYesNoFields in lib/constants.ts). All optional.
+  marketContext   String?
+  entrySource     String?
+  entryTiming     String?
+  sizeFit         String?
+  tradeStyle      String?
+  stopAtStructure Boolean?
+  addPlanned      Boolean?
+  reEntered       Boolean?
   proficiency   String?
   setup         String?
   reviewed      Boolean       @default(false)

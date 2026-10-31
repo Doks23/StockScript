@@ -156,6 +156,14 @@ export async function POST(request: Request) {
     const closingPrice = derivedStatus === "OPEN"
       ? firstPresent([...sorted].reverse(), (trade) => trade.closingPrice)
       : null;
+    const marketContext = firstPresent(sorted, (trade) => trade.marketContext);
+    const entrySource = firstPresent(sorted, (trade) => trade.entrySource);
+    const entryTiming = firstPresent(sorted, (trade) => trade.entryTiming);
+    const sizeFit = firstPresent(sorted, (trade) => trade.sizeFit);
+    const tradeStyle = firstPresent(sorted, (trade) => trade.tradeStyle);
+    const stopAtStructure = firstPresent(sorted, (trade) => trade.stopAtStructure);
+    const addPlanned = firstPresent(sorted, (trade) => trade.addPlanned);
+    const reEntered = firstPresent(sorted, (trade) => trade.reEntered);
     const planFollowed = firstPresent(sorted, (trade) => trade.planFollowed);
     const avoidable = firstPresent(sorted, (trade) => trade.avoidable);
     const avoidableReason = avoidable
@@ -186,6 +194,14 @@ export async function POST(request: Request) {
           planFollowed,
           avoidable,
           avoidableReason,
+          marketContext,
+          entrySource,
+          entryTiming,
+          sizeFit,
+          tradeStyle,
+          stopAtStructure,
+          addPlanned,
+          reEntered,
           exitTrigger: combineList(trades.map((t) => t.exitTrigger)),
           proficiency: combineList(trades.map((t) => t.proficiency)),
           growthAreas: combineList(trades.map((t) => t.growthAreas)),

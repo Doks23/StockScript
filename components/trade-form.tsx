@@ -11,6 +11,8 @@ import {
   segmentOptions,
   setupOptions,
   avoidableReasonOptions,
+  reviewSelectFields,
+  reviewYesNoFields,
   tradeTypeOptions,
 } from "@/lib/constants";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
@@ -47,6 +49,14 @@ export type InitialTradeData = {
   planFollowed: boolean | null;
   avoidable: boolean | null;
   avoidableReason: string | null;
+  marketContext: string | null;
+  entrySource: string | null;
+  entryTiming: string | null;
+  sizeFit: string | null;
+  tradeStyle: string | null;
+  stopAtStructure: boolean | null;
+  addPlanned: boolean | null;
+  reEntered: boolean | null;
   reviewed: boolean;
   exitTrigger: string | null;
   proficiency: string | null;
@@ -520,6 +530,13 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           ? String(formData.get("avoidableReason"))
           : null,
       reviewed: formData.get("reviewed") === "on",
+      ...Object.fromEntries([
+        ...reviewSelectFields.map((f) => [f.key, String(formData.get(f.key) || "") || null]),
+        ...reviewYesNoFields.map((f) => {
+          const v = String(formData.get(f.key) || "");
+          return [f.key, v === "" ? null : v === "true"];
+        }),
+      ]),
       exitTrigger: getMultiSelectValues(formData, "exitTrigger"),
       proficiency: getMultiSelectValues(formData, "proficiency"),
       growthAreas: getMultiSelectValues(formData, "growthAreas"),
@@ -815,6 +832,43 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
             </select>
           </label>
         )}
+      </div>
+
+      {/* Review checklist */}
+      <div className="grid gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
+        {reviewSelectFields.map((f) => (
+          <label key={f.key} className="flex flex-col gap-1.5 text-xs text-slate-500">
+            {f.label}
+            <select
+              name={f.key}
+              defaultValue={initialData?.[f.key] ?? ""}
+              className="form-input h-9 bg-slate-50 text-sm"
+            >
+              <option value="">Not set</option>
+              {f.options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+        {reviewYesNoFields.map((f) => (
+          <label key={f.key} className="flex flex-col gap-1.5 text-xs text-slate-500">
+            {f.label}
+            <select
+              name={f.key}
+              defaultValue={
+                initialData?.[f.key] == null ? "" : String(initialData[f.key])
+              }
+              className="form-input h-9 bg-slate-50 text-sm"
+            >
+              <option value="">Not set</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </label>
+        ))}
       </div>
 
       <div className="mt-2 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">

@@ -75,6 +75,7 @@ export const growthAreaValues = [
 
 export const exitTriggerValues = [
   "Breakeven exit",
+  "Fear exit",
   "Market Pressure",
   "R multiples",
   "Random",
@@ -93,6 +94,21 @@ export const avoidableReasonOptions = avoidableReasonValues.map((value) => ({ va
 
 export const growthAreaOptions = growthAreaValues.map((value) => ({ value, label: value }));
 export const exitTriggerOptions = exitTriggerValues.map((value) => ({ value, label: value }));
+
+/** Review checklist: pick-one questions, then yes/no questions. Keys are Trade columns. */
+export const reviewSelectFields = [
+  { key: "marketContext", label: "Market vs stock", options: ["Market strong", "Market weak", "Stock stronger than market"] },
+  { key: "entrySource", label: "Planned?", options: ["On watchlist", "Chased after thrust"] },
+  { key: "entryTiming", label: "Entry timing", options: ["Early", "On time", "Late"] },
+  { key: "sizeFit", label: "Size was", options: ["Too small", "Right", "Too big"] },
+  { key: "tradeStyle", label: "Trade type", options: ["Velocity", "Magnitude"] },
+] as const;
+
+export const reviewYesNoFields = [
+  { key: "stopAtStructure", label: "Stop at structure?" },
+  { key: "addPlanned", label: "Add planned?" },
+  { key: "reEntered", label: "Re-entered after stop-out?" },
+] as const;
 
 export const visibilityOptions = [
   { value: "PUBLIC", label: "Public" },
