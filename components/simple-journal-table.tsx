@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, Circle } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, Circle, Edit2 } from "lucide-react";
+import Link from "next/link";
 import { format } from "date-fns";
 import type { GroupedTradeRow } from "@/lib/trade-utils";
 import { SymbolChartLink } from "@/components/symbol-chart-link";
@@ -210,6 +211,7 @@ export function SimpleJournalTable({
             <th className="whitespace-nowrap px-3 py-2.5 text-left text-[0.82em] font-semibold uppercase tracking-wider text-slate-500">
               Notes
             </th>
+            <th className="w-8 px-1 py-2.5" aria-label="Edit" />
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -273,12 +275,22 @@ export function SimpleJournalTable({
               <td className="px-2 py-1.5">
                 <NotesCell tradeId={row.id} initial={row.notes ?? ""} />
               </td>
+              <td className="px-1 py-3 text-center">
+                <Link
+                  href={`/trades/${encodeURIComponent(row.symbol)}/edit/${row.id}`}
+                  title="Edit trade"
+                  aria-label={`Edit ${row.symbol}`}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <Edit2 size={13} />
+                </Link>
+              </td>
             </tr>
             );
           })}
           {sortedRows.length === 0 && (
             <tr>
-              <td colSpan={12} className="px-3 py-8 text-center text-slate-400">No trades found.</td>
+              <td colSpan={13} className="px-3 py-8 text-center text-slate-400">No trades found.</td>
             </tr>
           )}
         </tbody>
