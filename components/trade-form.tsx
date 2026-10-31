@@ -380,6 +380,11 @@ function LegEditor({
   );
 }
 
+/** Paise precision. Saved values can carry float noise (2763.8999...) that a 0.01 step rejects. */
+function round2(value: number | null | undefined): number | null {
+  return value == null || Number.isNaN(value) ? null : Math.round(value * 100) / 100;
+}
+
 export function TradeForm({ competitions, initialData }: TradeFormProps) {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -519,9 +524,9 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       proficiency: getMultiSelectValues(formData, "proficiency"),
       growthAreas: getMultiSelectValues(formData, "growthAreas"),
       stopLoss,
-      charges: Number(formData.get("charges") || 0),
+      charges: round2(Number(formData.get("charges") || 0)) ?? 0,
       closingPrice: formData.get("closingPrice")
-        ? Number(formData.get("closingPrice"))
+        ? round2(Number(formData.get("closingPrice")))
         : null,
       transactions,
     };
@@ -658,9 +663,9 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           <input
             name="charges"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
-            defaultValue={initialData?.charges ?? "0"}
+            defaultValue={round2(initialData?.charges) ?? "0"}
             className="form-input h-9 w-full sm:w-[100px]"
           />
         </label>
@@ -672,9 +677,9 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
           <input
             name="closingPrice"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
-            defaultValue={initialData?.closingPrice ?? ""}
+            defaultValue={round2(initialData?.closingPrice) ?? ""}
             className="form-input h-9 w-full sm:w-[100px]"
           />
         </label>
