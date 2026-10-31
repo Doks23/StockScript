@@ -138,7 +138,7 @@ function buildInitialGroups(
 
   for (const tx of filtered) {
     const row: TxRow = {
-      price: String(tx.price),
+      price: String(round2(tx.price) ?? tx.price),
       quantity: String(tx.quantity),
       dateTime: toLocalDT(tx.dateTime),
     };
@@ -249,7 +249,7 @@ function LegFields({
           <span className="min-w-[60px] text-[10px] text-slate-400 sm:hidden">{label}</span>
           <input
             type={field === "dateTime" ? "datetime-local" : "number"}
-            {...(field === "dateTime" ? {} : { step: "0.01", min: "0" })}
+            {...(field === "dateTime" ? {} : { step: "any", min: "0" })}
             placeholder={label}
             value={row[field]}
             onChange={(e) => onChange(field, e.target.value)}
@@ -433,7 +433,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       if (!row.price || !row.quantity || !row.dateTime) continue;
       transactions.push({
         type: entryType,
-        price: Number(row.price),
+        price: round2(Number(row.price)) ?? 0,
         quantity: Number(row.quantity),
         dateTime: new Date(row.dateTime).toISOString(),
       });
@@ -443,7 +443,7 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
       if (!row.price || !row.quantity || !row.dateTime) continue;
       transactions.push({
         type: exitType,
-        price: Number(row.price),
+        price: round2(Number(row.price)) ?? 0,
         quantity: Number(row.quantity),
         dateTime: new Date(row.dateTime).toISOString(),
       });
