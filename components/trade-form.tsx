@@ -10,6 +10,7 @@ import {
   proficiencyOptions,
   segmentOptions,
   setupOptions,
+  setupValues,
   avoidableReasonOptions,
   reviewSelectFields,
   reviewYesNoFields,
@@ -730,7 +731,12 @@ export function TradeForm({ competitions, initialData }: TradeFormProps) {
             defaultValue={splitInitialValues(initialData?.setup)}
             className="form-input min-h-[88px] bg-slate-50 text-sm"
           >
-            {setupOptions.map((option) => (
+            {[
+              ...setupOptions,
+              ...splitInitialValues(initialData?.setup)
+                .filter((v) => !(setupValues as readonly string[]).includes(v))
+                .map((v) => ({ value: v, label: `${v} (old)` })),
+            ].map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

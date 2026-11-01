@@ -14,22 +14,30 @@ export const tradeTypeOptions = [
 ] as const;
 
 export const setupValues = [
+  "Base",
+  "Cheat",
+  "Low Cheat",
+  "Pullback",
+  "Flag",
+  "Reversal",
+  "Delayed EP",
+  "Others",
+] as const;
+
+/** Earlier setups: still accepted on saved trades and imports, no longer offered for new picks. */
+export const legacySetupValues = [
   "Base on Base",
   "Box",
   "Channel",
-  "Cheat",
   "CwH",
   "EP",
   "EP Pullback",
-  "Flag",
   "iH&S",
   "IPO base",
   "Inside Day",
   "Intraday",
-  "Low Cheat",
   "NR Bar",
   "Pennant",
-  "Pullback",
   "Pyramid",
   "Shakeout",
   "Tight Closes",
@@ -40,6 +48,8 @@ export const setupValues = [
   "Wedge",
   "WIB",
 ] as const;
+
+export const knownSetupValues: readonly string[] = [...setupValues, ...legacySetupValues];
 
 export const proficiencyValues = [
   "Emotional Control",

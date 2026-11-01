@@ -4,7 +4,7 @@ import {
   exitTriggerValues,
   growthAreaValues,
   proficiencyValues,
-  setupValues,
+  knownSetupValues,
 } from "@/lib/constants";
 
 type StockyMindRow = Record<string, unknown>;
@@ -133,7 +133,7 @@ export function parseStockyMindWorkbook(
     const isShort = side === "S" || side === "SELL";
     if (!isLong && !isShort) rowErrors.push('invalid Buy/ Sell value, expected "B" or "S"');
 
-    const setup = normalizeAllowedValue(get(row, "Setup"), setupValues);
+    const setup = normalizeAllowedValue(get(row, "Setup"), knownSetupValues);
     const exitTrigger = normalizeAllowedValue(get(row, "Exit Trigger"), exitTriggerValues);
     const proficiency = normalizeAllowedValue(get(row, "Proficiency"), proficiencyValues);
     const growthAreas = normalizeAllowedValue(get(row, "Growth Areas"), growthAreaValues);

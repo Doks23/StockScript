@@ -8,7 +8,7 @@ import {
   reviewSelectFields,
   reviewYesNoFields,
   proficiencyValues,
-  setupValues,
+  knownSetupValues,
 } from "@/lib/constants";
 
 export const segmentSchema = z.enum([
@@ -121,7 +121,7 @@ export const tradePayloadSchema = z
         });
       }
     }
-    validateOptionalListValue(data.setup, setupValues, ctx, "setup");
+    validateOptionalListValue(data.setup, knownSetupValues, ctx, "setup");
     validateOptionalListValue(data.exitTrigger, exitTriggerValues, ctx, "exitTrigger");
     validateOptionalListValue(data.proficiency, proficiencyValues, ctx, "proficiency");
     validateOptionalListValue(data.growthAreas, growthAreaValues, ctx, "growthAreas");
