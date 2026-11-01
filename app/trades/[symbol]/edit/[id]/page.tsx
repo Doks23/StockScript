@@ -7,8 +7,10 @@ import { requireActiveUser } from "@/lib/auth";
 
 export default async function EditTradePage({
   params,
+  searchParams,
 }: {
   params: { id: string; symbol: string };
+  searchParams?: { from?: string };
 }) {
   const user = await requireActiveUser();
 
@@ -47,6 +49,7 @@ export default async function EditTradePage({
           name: comp.name,
         }))}
         initialData={initialData}
+        returnTo={searchParams?.from === "simple" ? "/trades/simple" : "/trades"}
       />
     </div>
   );

@@ -277,7 +277,7 @@ export function SimpleJournalTable({
               </td>
               <td className="px-1 py-3 text-center">
                 <Link
-                  href={`/trades/${encodeURIComponent(row.symbol)}/edit/${row.id}`}
+                  href={`/trades/${encodeURIComponent(row.symbol)}/edit/${row.id}?from=simple`}
                   title="Edit trade"
                   aria-label={`Edit ${row.symbol}`}
                   className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
